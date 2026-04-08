@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test + build + drift gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      # Drift gate: regenerate both sync outputs (create-helpbase templates
+      # and the shadcn registry source tree) from apps/web and fail if
+      # either is out of sync. Safeguard against the bug class that shipped
+      # on 2026-04-09 (scaffolder producing a stub instead of the real help
+      # center because someone touched apps/web without re-syncing).
+      - name: Verify sync outputs are in sync with apps/web
+        run: |
+          pnpm sync:templates
+          if ! git diff --exit-code packages/create-helpbase/templates/ registry/helpbase/; then
+            echo ""
+            echo "✖ Sync outputs are out of sync with apps/web/"
+            echo ""
+            echo "  Cause: apps/web was modified without re-running the sync script."
+            echo "  Fix:   from the repo root, run:"
+            echo "             pnpm sync:templates"
+            echo "         then commit the result and push again."
+            echo ""
+            exit 1
+          fi
+          echo "✓ Both sync outputs match apps/web"
+
+      # Verify the public/r/*.json registry output is also in sync. This
+      # catches the case where someone edits registry.json or registry/
+      # sources without running registry:build.
+      - name: Verify shadcn registry JSON is in sync
+        run: |
+          npx shadcn@latest build
+          if ! git diff --exit-code public/r/; then
+            echo ""
+            echo "✖ public/r/*.json is out of sync with registry.json / registry/helpbase/"
+            echo ""
+            echo "  Fix: run 'pnpm registry:build' and commit the result."
+            echo ""
+            exit 1
+          fi
+          echo "✓ public/r/*.json is in sync"
+
+      # Install-path smoke test: scaffolds a fresh project via
+      # create-helpbase, installs deps, runs the production build, asserts
+      # expected routes generated. Would have caught the 2026-04-09 dogfood
+      # gap. Cost: $0. Runtime: ~30-60s.
+      - name: Install-path smoke test (create-helpbase)
+        run: pnpm smoke:install
+
+      # Registry smoke test: creates a fresh Next.js + shadcn project, runs
+      # `shadcn add` against our built registry JSON, asserts the build
+      # produces the expected routes and the MDX articles render. This is
+      # the test that proves the "drop into an existing project" promise
+      # in the README is actually honored. Cost: $0. Runtime: ~60-120s.
+      - name: Registry smoke test (shadcn add)
+        run: pnpm smoke:registry

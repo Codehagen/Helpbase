@@ -1,0 +1,58 @@
+---
+schemaVersion: 1
+title: "Configuration"
+description: "Learn how to configure your help center with custom settings and options."
+tags: ["configuration", "setup"]
+order: 2
+featured: true
+---
+
+# Configuration
+
+Your help center can be customized through configuration files and frontmatter options.
+
+## Project structure
+
+```
+my-help-center/
+  content/
+    getting-started/
+      _category.json
+      introduction.mdx
+    another-category/
+      _category.json
+      article.mdx
+  apps/web/
+  packages/
+```
+
+## Category configuration
+
+Each category directory can include a `_category.json` file:
+
+```json
+{
+  "title": "Getting Started",
+  "description": "Learn the basics",
+  "icon": "sparkles",
+  "order": 1
+}
+```
+
+## Article frontmatter
+
+Every article requires frontmatter with the following fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `schemaVersion` | number | Yes | Schema version (currently `1`) |
+| `title` | string | Yes | Article title |
+| `description` | string | Yes | Brief description |
+| `tags` | string[] | No | Tags for filtering |
+| `order` | number | No | Sort order within category |
+| `featured` | boolean | No | Show on homepage |
+
+## Next steps
+
+- Learn about [writing articles](/getting-started/introduction)
+- Set up [search](/getting-started/introduction) for your help center

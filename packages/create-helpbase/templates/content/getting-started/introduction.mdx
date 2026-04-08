@@ -1,0 +1,45 @@
+---
+schemaVersion: 1
+title: "Introduction"
+description: "Welcome to your help center. Learn how to get started."
+tags: ["getting-started", "basics"]
+order: 1
+featured: true
+---
+
+# Introduction
+
+Welcome to your help center! This is your first article, created automatically when you scaffolded this project.
+
+## What is this?
+
+This is a developer-first help center built with Next.js and MDX. You write articles in markdown, and they render as a polished help center.
+
+## Quick start
+
+1. Edit this file at `content/getting-started/introduction.mdx`
+2. Create new articles by adding `.mdx` files to the `content/` directory
+3. Organize articles into categories using subdirectories
+4. Run `pnpm dev` to see your changes live
+
+## Writing articles
+
+Every article needs frontmatter at the top:
+
+```yaml
+---
+schemaVersion: 1
+title: "Your Article Title"
+description: "A brief description"
+tags: ["tag1", "tag2"]
+order: 1
+featured: false
+---
+```
+
+## Next steps
+
+- Add more articles to `content/getting-started/`
+- Create new categories by adding subdirectories to `content/`
+- Run `helpcenter generate --url <your-site>` to generate articles with AI
+- Run `helpcenter audit` to check content health

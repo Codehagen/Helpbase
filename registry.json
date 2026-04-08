@@ -1,0 +1,219 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "helpbase",
+  "homepage": "https://helpbase.dev",
+  "items": [
+    {
+      "name": "help-center",
+      "type": "registry:block",
+      "title": "Help Center",
+      "description": "A complete help center block with sidebar navigation, Cmd+K search, dark mode support, MDX content pipeline, and sample articles. Drops into any Next.js + shadcn/ui project.",
+      "dependencies": [
+        "next-mdx-remote",
+        "next-themes",
+        "gray-matter",
+        "rehype-slug",
+        "remark-gfm",
+        "zod"
+      ],
+      "registryDependencies": ["badge"],
+      "files": [
+        {
+          "path": "registry/helpbase/app/(docs)/layout.tsx",
+          "type": "registry:page",
+          "target": "app/(docs)/layout.tsx"
+        },
+        {
+          "path": "registry/helpbase/app/(docs)/[category]/page.tsx",
+          "type": "registry:page",
+          "target": "app/(docs)/[category]/page.tsx"
+        },
+        {
+          "path": "registry/helpbase/app/(docs)/[category]/[slug]/page.tsx",
+          "type": "registry:page",
+          "target": "app/(docs)/[category]/[slug]/page.tsx"
+        },
+        {
+          "path": "registry/helpbase/app/(docs)/helpbase-styles.css",
+          "type": "registry:file",
+          "target": "app/(docs)/helpbase-styles.css"
+        },
+        {
+          "path": "registry/helpbase/components/header.tsx",
+          "type": "registry:component",
+          "target": "components/header.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/footer.tsx",
+          "type": "registry:component",
+          "target": "components/footer.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/docs-sidebar.tsx",
+          "type": "registry:component",
+          "target": "components/docs-sidebar.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mobile-sidebar.tsx",
+          "type": "registry:component",
+          "target": "components/mobile-sidebar.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/search-dialog.tsx",
+          "type": "registry:component",
+          "target": "components/search-dialog.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/search-trigger.tsx",
+          "type": "registry:component",
+          "target": "components/search-trigger.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/theme-provider.tsx",
+          "type": "registry:component",
+          "target": "components/theme-provider.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/toc.tsx",
+          "type": "registry:component",
+          "target": "components/toc.tsx"
+        },
+        {
+          "path": "registry/helpbase/lib/content.ts",
+          "type": "registry:lib",
+          "target": "lib/content.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/search.ts",
+          "type": "registry:lib",
+          "target": "lib/search.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/toc.ts",
+          "type": "registry:lib",
+          "target": "lib/toc.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/schemas.ts",
+          "type": "registry:lib",
+          "target": "lib/schemas.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/slugify.ts",
+          "type": "registry:lib",
+          "target": "lib/slugify.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/types.ts",
+          "type": "registry:lib",
+          "target": "lib/types.ts"
+        },
+        {
+          "path": "registry/helpbase/content/getting-started/_category.json",
+          "type": "registry:file",
+          "target": "content/getting-started/_category.json"
+        },
+        {
+          "path": "registry/helpbase/content/getting-started/introduction.mdx",
+          "type": "registry:file",
+          "target": "content/getting-started/introduction.mdx"
+        },
+        {
+          "path": "registry/helpbase/content/getting-started/configuration.mdx",
+          "type": "registry:file",
+          "target": "content/getting-started/configuration.mdx"
+        },
+        {
+          "path": "registry/helpbase/content/customization/_category.json",
+          "type": "registry:file",
+          "target": "content/customization/_category.json"
+        },
+        {
+          "path": "registry/helpbase/content/customization/theming.mdx",
+          "type": "registry:file",
+          "target": "content/customization/theming.mdx"
+        }
+      ],
+      "cssVars": {
+        "theme": {
+          "font-heading": "var(--font-sans)"
+        },
+        "light": {
+          "sidebar": "oklch(0.988 0.003 106.5)",
+          "sidebar-foreground": "oklch(0.153 0.006 107.1)",
+          "sidebar-primary": "oklch(0.228 0.013 107.4)",
+          "sidebar-primary-foreground": "oklch(0.988 0.003 106.5)",
+          "sidebar-accent": "oklch(0.966 0.005 106.5)",
+          "sidebar-accent-foreground": "oklch(0.228 0.013 107.4)",
+          "sidebar-border": "oklch(0.93 0.007 106.5)",
+          "sidebar-ring": "oklch(0.737 0.021 106.9)"
+        },
+        "dark": {
+          "sidebar": "oklch(0.228 0.013 107.4)",
+          "sidebar-foreground": "oklch(0.988 0.003 106.5)",
+          "sidebar-primary": "oklch(0.488 0.243 264.376)",
+          "sidebar-primary-foreground": "oklch(0.988 0.003 106.5)",
+          "sidebar-accent": "oklch(0.286 0.016 107.4)",
+          "sidebar-accent-foreground": "oklch(0.988 0.003 106.5)",
+          "sidebar-border": "oklch(1 0 0 / 10%)",
+          "sidebar-ring": "oklch(0.58 0.031 107.3)"
+        }
+      }
+    },
+    {
+      "name": "help-center-search",
+      "type": "registry:component",
+      "title": "Help Center Search",
+      "description": "Cmd+K search dialog for help center articles. Keyboard-navigable with arrow keys.",
+      "files": [
+        {
+          "path": "registry/helpbase/components/search-dialog.tsx",
+          "type": "registry:component",
+          "target": "components/search-dialog.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/search-trigger.tsx",
+          "type": "registry:component",
+          "target": "components/search-trigger.tsx"
+        },
+        {
+          "path": "registry/helpbase/lib/search.ts",
+          "type": "registry:lib",
+          "target": "lib/search.ts"
+        }
+      ]
+    },
+    {
+      "name": "help-center-toc",
+      "type": "registry:component",
+      "title": "Help Center Table of Contents",
+      "description": "Scroll-spy table of contents with sliding active indicator. Clerk-style design.",
+      "files": [
+        {
+          "path": "registry/helpbase/components/toc.tsx",
+          "type": "registry:component",
+          "target": "components/toc.tsx"
+        }
+      ]
+    },
+    {
+      "name": "help-center-sidebar",
+      "type": "registry:component",
+      "title": "Help Center Sidebar",
+      "description": "Collapsible docs sidebar with category icons, active indicators, and mobile drawer.",
+      "dependencies": ["next-themes"],
+      "files": [
+        {
+          "path": "registry/helpbase/components/docs-sidebar.tsx",
+          "type": "registry:component",
+          "target": "components/docs-sidebar.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mobile-sidebar.tsx",
+          "type": "registry:component",
+          "target": "components/mobile-sidebar.tsx"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@workspace/shared",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./schemas": "./src/schemas.ts",
+    "./types": "./src/types.ts",
+    "./slugify": "./src/slugify.ts",
+    "./ai": "./src/ai.ts"
+  },
+  "dependencies": {
+    "ai": "^5.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "^5.9.3"
+  }
+}

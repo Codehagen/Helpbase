@@ -1,0 +1,4 @@
+# Preserve LF line endings on shell scripts even if a Windows contributor
+# clones the repo with autocrlf=true. Without this, scripts/smoke-test.sh
+# would get CRLF line endings and fail to run on Mac/Linux.
+*.sh text eol=lf

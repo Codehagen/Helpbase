@@ -187,6 +187,37 @@ Content rules (each one is MANDATORY, not advisory):
 - Fenced code blocks MUST open on their own line with three backticks followed by a language identifier (e.g. \`\`\`javascript), contain the code on subsequent lines, and close on their own line with three backticks. Never embed a fenced code block inside a paragraph or sentence. Never put prose and backticks on the same line.
 - Include a fenced code example whenever the source content mentions any of the following: an API call, a CLI command, an SDK usage example, a request or response payload, a config file, an environment variable, or a shell install command (e.g. \`npm install\`, \`pip install\`, \`brew install\`).
 
+Component palette (MDX components you may use in the article body):
+
+Use these components when the content structure warrants it, not as a formula. Vary usage across articles.
+
+<Callout type="tip">Short practical advice or best practice.</Callout>
+<Callout type="warning">Something that could break or cause problems.</Callout>
+
+<Steps>
+  <Step title="First step">Body of step one with concrete instructions.</Step>
+  <Step title="Second step">Body of step two.</Step>
+  <Step title="Third step">Body of step three.</Step>
+</Steps>
+
+<Accordion>
+  <AccordionItem title="Frequently asked question">Answer with concrete details.</AccordionItem>
+  <AccordionItem title="Another question">Another answer.</AccordionItem>
+</Accordion>
+
+<CardGroup cols={2}>
+  <Card icon="rocket" title="Related article" href="/category/article-slug">Short description of the linked article.</Card>
+  <Card icon="book-open" title="Another article" href="/category/other-slug">Another short description.</Card>
+</CardGroup>
+
+Component rules:
+- Use <Steps> for how-to articles with 3 or more sequential actions. Minimum 3 steps.
+- Use <Callout type="tip"> for best practices, <Callout type="warning"> for gotchas. At most 2 callouts per article.
+- Use <CardGroup> at the end of the article for 2-4 related links. Minimum 2 cards.
+- Use <Accordion> for FAQ sections or edge cases. Minimum 2 items.
+- Do NOT use <Figure>, <Video>, <CtaCard>, or <Tabs> in generated output. Those require real assets or human curation.
+- Not every article needs Steps. Not every article needs CardGroup. Use components when the content structure warrants it.
+
 Grounding rules:
 - Do NOT invent features that are not mentioned in the scraped content.
 - Prefer concrete steps over generic advice.

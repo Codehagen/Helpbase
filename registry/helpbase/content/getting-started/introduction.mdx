@@ -15,12 +15,23 @@ Welcome to your help center! This is your first article, created automatically w
 
 This is a developer-first help center built with Next.js and MDX. You write articles in markdown, and they render as a polished help center.
 
+<Callout type="tip">
+You can use rich MDX components like this callout, step-by-step guides, accordions, tabs, and card grids to make your articles more useful.
+</Callout>
+
 ## Quick start
 
-1. Edit this file at `content/getting-started/introduction.mdx`
-2. Create new articles by adding `.mdx` files to the `content/` directory
-3. Organize articles into categories using subdirectories
-4. Run `pnpm dev` to see your changes live
+<Steps>
+  <Step title="Edit this file">
+    Open `content/getting-started/introduction.mdx` in your editor. This is the article you're reading right now.
+  </Step>
+  <Step title="Create new articles">
+    Add `.mdx` files to the `content/` directory. Organize them into categories using subdirectories.
+  </Step>
+  <Step title="See your changes live">
+    Run `pnpm dev` to start the development server. Changes to your articles will appear instantly.
+  </Step>
+</Steps>
 
 ## Writing articles
 
@@ -39,7 +50,11 @@ featured: false
 
 ## Next steps
 
-- Add more articles to `content/getting-started/`
-- Create new categories by adding subdirectories to `content/`
-- Run `helpcenter generate --url <your-site>` to generate articles with AI
-- Run `helpcenter audit` to check content health
+<CardGroup cols={2}>
+  <Card icon="file-plus" title="Configuration" href="/getting-started/configuration">
+    Set up your help center with custom branding, categories, and navigation.
+  </Card>
+  <Card icon="sparkles" title="Generate with AI" href="/getting-started/configuration">
+    Use the CLI to generate article drafts from your product URL.
+  </Card>
+</CardGroup>

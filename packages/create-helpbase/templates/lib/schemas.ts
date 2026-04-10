@@ -5,6 +5,33 @@ import { z } from "zod"
  * This is the single source of truth for content validation —
  * used by the CLI, audit, and the web app.
  */
+/**
+ * Allowed hosts for videoEmbed iframe URLs.
+ * Prevents arbitrary iframe injection while supporting common video platforms.
+ */
+export const EMBED_HOST_ALLOWLIST = [
+  "youtube.com",
+  "www.youtube.com",
+  "youtube-nocookie.com",
+  "www.youtube-nocookie.com",
+  "loom.com",
+  "www.loom.com",
+  "vimeo.com",
+  "player.vimeo.com",
+  "supercut.ai",
+] as const
+
+function isAllowedEmbedHost(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return EMBED_HOST_ALLOWLIST.some(
+      (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`),
+    )
+  } catch {
+    return false
+  }
+}
+
 export const frontmatterSchema = z.object({
   schemaVersion: z.number({
     error: "schemaVersion is required. Add 'schemaVersion: 1' to your frontmatter.",
@@ -15,6 +42,16 @@ export const frontmatterSchema = z.object({
   tags: z.array(z.string()).default([]),
   order: z.number().default(999),
   featured: z.boolean().default(false),
+  heroImage: z.string().optional(),
+  coverImage: z.string().optional(),
+  videoEmbed: z
+    .string()
+    .url("videoEmbed must be a valid URL")
+    .refine(isAllowedEmbedHost, {
+      message: `videoEmbed must be from an allowed host: ${EMBED_HOST_ALLOWLIST.filter((h) => !h.startsWith("www.") && !h.startsWith("player.")).join(", ")}`,
+    })
+    .optional(),
+  ogImage: z.string().optional(),
 })
 
 export type Frontmatter = z.infer<typeof frontmatterSchema>

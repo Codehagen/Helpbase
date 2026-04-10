@@ -14,9 +14,10 @@
         "gray-matter",
         "rehype-slug",
         "remark-gfm",
-        "zod"
+        "zod",
+        "lucide-react"
       ],
-      "registryDependencies": ["badge"],
+      "registryDependencies": ["badge", "accordion", "tabs"],
       "files": [
         {
           "path": "registry/helpbase/app/(docs)/layout.tsx",
@@ -79,9 +80,59 @@
           "target": "components/toc.tsx"
         },
         {
+          "path": "registry/helpbase/lib/mdx-components.tsx",
+          "type": "registry:lib",
+          "target": "lib/mdx-components.tsx"
+        },
+        {
+          "path": "registry/helpbase/lib/assets.ts",
+          "type": "registry:lib",
+          "target": "lib/assets.ts"
+        },
+        {
           "path": "registry/helpbase/lib/content.ts",
           "type": "registry:lib",
           "target": "lib/content.ts"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/callout.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/callout.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/figure.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/figure.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/video.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/video.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/steps.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/steps.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/accordion.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/accordion.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/tabs.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/tabs.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/card-group.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/card-group.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/cta-card.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/cta-card.tsx"
         },
         {
           "path": "registry/helpbase/lib/search.ts",

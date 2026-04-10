@@ -5,6 +5,7 @@ import {
   getArticle,
   getAdjacentArticles,
 } from "@/lib/content"
+import { resolveAssetPath } from "@/lib/assets"
 import { titleCase } from "@/lib/slugify"
 import { Badge } from "@/components/ui/badge"
 import { TableOfContents } from "@/components/toc"
@@ -82,6 +83,31 @@ export default async function ArticlePage({
               </div>
             )}
           </header>
+
+          {/* Hero image — between description and article body */}
+          {article.heroImage && (
+            <div className="mb-8 max-h-[360px] overflow-hidden rounded-xl border border-border">
+              <img
+                src={resolveAssetPath(article.category, article.slug, article.heroImage)}
+                alt={article.title}
+                loading="eager"
+                className="w-full object-cover"
+              />
+            </div>
+          )}
+          {/* Video embed fallback when no hero image */}
+          {article.videoEmbed && !article.heroImage && (
+            <div className="relative mb-8 aspect-video overflow-hidden rounded-xl border border-border">
+              <iframe
+                src={article.videoEmbed}
+                title={`Video: ${article.title}`}
+                sandbox="allow-scripts allow-same-origin"
+                referrerPolicy="no-referrer"
+                allow="fullscreen"
+                className="size-full"
+              />
+            </div>
+          )}
 
           {/* MDX content */}
           <div className="article-content max-w-none">

@@ -10,6 +10,7 @@ import { frontmatterSchema, categoryMetaSchema } from "@/lib/schemas"
 import type { ArticleMeta, Article, Category, TocItem } from "@/lib/types"
 import { titleCase } from "@/lib/slugify"
 import { extractToc } from "./toc"
+import { createArticleComponents } from "./mdx-components"
 
 const CONTENT_DIR = path.join(process.cwd(), "content")
 
@@ -139,6 +140,7 @@ export const getArticle = cache(
 
     const { content } = await compileMDX({
       source: rawContent,
+      components: createArticleComponents(category, slug),
       options: {
         mdxOptions: {
           remarkPlugins: [remarkGfm],

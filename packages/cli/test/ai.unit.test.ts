@@ -5,6 +5,7 @@ import {
   articleToMdx,
   planArticleWrites,
   scrapeUrl,
+  buildPrompt,
   DEFAULT_MODEL,
   TEST_MODEL,
   MIN_SCRAPED_LENGTH,
@@ -331,5 +332,32 @@ describe("generateArticlesFromContent", () => {
     })
 
     expect(result).toEqual(fakeArticles)
+  })
+})
+
+describe("buildPrompt v0.0.4 — component palette", () => {
+  const prompt = buildPrompt("sample content", "https://example.com")
+
+  it("includes a 'Component palette' section", () => {
+    expect(prompt).toContain("Component palette")
+  })
+
+  it("includes <Steps> example", () => {
+    expect(prompt).toContain("<Steps>")
+    expect(prompt).toContain("<Step")
+  })
+
+  it("bans Figure, Video, CtaCard, and Tabs from generated output", () => {
+    expect(prompt).toContain("Do NOT use <Figure>")
+    expect(prompt).toContain("<Video>")
+    expect(prompt).toContain("<CtaCard>")
+    expect(prompt).toContain("<Tabs>")
+  })
+
+  // v0.0.3 regression: core content rules must still be present
+  it("still includes v0.0.3 rules: 3-heading rule, 150-word floor, banned words", () => {
+    expect(prompt).toContain("at least 3 markdown")
+    expect(prompt).toContain("minimum 150 words")
+    expect(prompt).toMatch(/streamline.*seamless|seamless.*streamline/)
   })
 })

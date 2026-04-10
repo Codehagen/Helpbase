@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
-import { auditContent, AuditError } from "../src/audit.js"
+import { auditContent, AuditError, VALID_MDX_COMPONENTS } from "../src/audit.js"
 
 describe("auditContent", () => {
   let tmpDir: string
@@ -189,5 +189,84 @@ describe("auditContent", () => {
     const result = auditContent(tmpDir)
     expect(result.articleCount).toBe(2)
     expect(result.issues.filter((i) => i.level === "error")).toHaveLength(0)
+  })
+
+  // --- New checks: heroImage, MDX components, unused files ---
+
+  it("reports missing heroImage file as error", () => {
+    const dir = path.join(tmpDir, "guides")
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(
+      path.join(dir, "setup.mdx"),
+      `---\nschemaVersion: 1\ntitle: "Setup"\ndescription: "D"\nheroImage: "missing.png"\n---\n# Setup\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const issue = result.issues.find((i) => i.message.includes("heroImage"))
+    expect(issue).toBeDefined()
+    expect(issue?.level).toBe("error")
+    expect(issue?.message).toContain("missing.png")
+  })
+
+  it("reports unknown MDX component names as error", () => {
+    writeCategoryMeta("docs")
+    const dir = path.join(tmpDir, "docs")
+    fs.writeFileSync(
+      path.join(dir, "bad.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\n<UnknownWidget>hi</UnknownWidget>\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const issue = result.issues.find((i) => i.message.includes("UnknownWidget"))
+    expect(issue).toBeDefined()
+    expect(issue?.level).toBe("error")
+    expect(issue?.message).toContain("valid components")
+  })
+
+  it("accepts all valid MDX components without errors", () => {
+    writeCategoryMeta("docs")
+    const dir = path.join(tmpDir, "docs")
+    const components = [...VALID_MDX_COMPONENTS].map((c) => `<${c}>x</${c}>`).join("\n")
+    fs.writeFileSync(
+      path.join(dir, "all.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\n${components}\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const componentErrors = result.issues.filter((i) => i.message.includes("unknown MDX"))
+    expect(componentErrors).toHaveLength(0)
+  })
+
+  it("warns about unused asset files", () => {
+    writeCategoryMeta("guides")
+    writeArticle("guides", "setup.mdx", { schemaVersion: 1, title: "T", description: "D" })
+
+    // Create an asset dir with an unreferenced file
+    const assetDir = path.join(tmpDir, "guides", "setup")
+    fs.mkdirSync(assetDir, { recursive: true })
+    fs.writeFileSync(path.join(assetDir, "orphan.png"), "fake")
+
+    const result = auditContent(tmpDir)
+    const warning = result.issues.find((i) => i.message.includes("unused asset"))
+    expect(warning).toBeDefined()
+    expect(warning?.level).toBe("warning")
+    expect(warning?.message).toContain("orphan.png")
+  })
+
+  it("does not warn about referenced asset files", () => {
+    writeCategoryMeta("guides")
+    const dir = path.join(tmpDir, "guides")
+    fs.writeFileSync(
+      path.join(dir, "setup.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\nheroImage: "hero.png"\n---\n\n<Figure src="hero.png" />\n`,
+    )
+
+    const assetDir = path.join(dir, "setup")
+    fs.mkdirSync(assetDir, { recursive: true })
+    fs.writeFileSync(path.join(assetDir, "hero.png"), "fake")
+
+    const result = auditContent(tmpDir)
+    const warnings = result.issues.filter((i) => i.message.includes("unused asset"))
+    expect(warnings).toHaveLength(0)
   })
 })

@@ -35,3 +35,6 @@ npm-debug.log*
 .DS_Store
 *.pem
 .gstack/
+
+# Helpbase managed assets (rebuilt from content/ by sync-content-assets)
+public/_helpbase-assets/

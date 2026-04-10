@@ -1,0 +1,44 @@
+---
+schemaVersion: 1
+title: "Video"
+description: "Embed local video files or YouTube/Loom/Vimeo iframes."
+tags: ["component", "video"]
+order: 7
+featured: false
+---
+
+## Overview
+
+The Video component handles two modes: local video files via `src` and embedded iframes via `embed`. Provide exactly one — both or neither will throw an error. Local videos autoplay muted with a reduced-motion fallback.
+
+## Props
+
+| Prop       | Type      | Default | Description                                            |
+| ---------- | --------- | ------- | ------------------------------------------------------ |
+| `src`      | `string`  | —       | Path to a local video file (relative or absolute)       |
+| `embed`    | `string`  | —       | URL for iframe embed (YouTube, Loom, Vimeo)             |
+| `loop`     | `boolean` | `true`  | Loop the video (local only)                             |
+| `autoplay` | `boolean` | `true`  | Autoplay muted (local only, disabled on reduced-motion) |
+| `muted`    | `boolean` | `true`  | Mute audio (local only)                                 |
+| `caption`  | `string`  | —       | Optional caption below the video                        |
+| `poster`   | `string`  | —       | Poster image shown before play (local only)             |
+| `category` | `string`  | —       | Auto-injected by MDX component map                      |
+| `slug`     | `string`  | —       | Auto-injected by MDX component map                      |
+
+## Usage
+
+Local video:
+
+```mdx
+<Video src="demo.mp4" caption="Quick walkthrough of the setup process." />
+```
+
+Embedded video:
+
+```mdx
+<Video embed="https://www.youtube.com/embed/dQw4w9WgXcQ" caption="Product overview." />
+```
+
+## Allowed embed hosts
+
+Embeds are restricted to: youtube.com, youtube-nocookie.com, loom.com, vimeo.com, supercut.ai.

@@ -15,6 +15,26 @@ export interface AuditResult {
 }
 
 /**
+ * The complete set of MDX component names available in the helpbase palette.
+ * Any JSX tag in MDX content whose name is not in this set (and not a
+ * standard HTML element) is flagged as an error.
+ */
+export const VALID_MDX_COMPONENTS = new Set([
+  "Callout",
+  "Figure",
+  "Video",
+  "Steps",
+  "Step",
+  "Accordion",
+  "AccordionItem",
+  "Tabs",
+  "Tab",
+  "CardGroup",
+  "Card",
+  "CtaCard",
+])
+
+/**
  * Audit a content directory for missing fields, schema errors, and structural problems.
  * Pure function — no console output, no process.exit.
  */
@@ -58,6 +78,9 @@ export function auditContent(contentDir: string): AuditResult {
       })
     }
 
+    // Collect referenced asset filenames for unused-file detection
+    const referencedAssets = new Set<string>()
+
     for (const file of files) {
       articleCount++
       const filePath = path.join(categoryPath, file)
@@ -65,7 +88,7 @@ export function auditContent(contentDir: string): AuditResult {
       const fileRef = `${dir.name}/${file}`
 
       try {
-        const { data } = matter(raw)
+        const { data, content } = matter(raw)
 
         if (!data.title) {
           issues.push({ level: "error", file: fileRef, message: "missing title" })
@@ -76,17 +99,78 @@ export function auditContent(contentDir: string): AuditResult {
         if (!data.schemaVersion) {
           issues.push({ level: "error", file: fileRef, message: "missing schemaVersion" })
         }
+
+        // heroImage file existence check
+        const slug = file.replace(/\.mdx?$/, "")
+        if (typeof data.heroImage === "string") {
+          const assetDir = path.join(categoryPath, slug)
+          const heroPath = path.join(assetDir, data.heroImage)
+          if (!fs.existsSync(heroPath)) {
+            issues.push({
+              level: "error",
+              file: fileRef,
+              message: `heroImage "${data.heroImage}" not found at ${dir.name}/${slug}/${data.heroImage}`,
+            })
+          }
+          referencedAssets.add(`${slug}/${data.heroImage}`)
+        }
+        if (typeof data.coverImage === "string") {
+          referencedAssets.add(`${slug}/${data.coverImage}`)
+        }
+        if (typeof data.ogImage === "string") {
+          referencedAssets.add(`${slug}/${data.ogImage}`)
+        }
+
+        // MDX component name validation (regex-based JSX detection)
+        validateMdxComponents(content, fileRef, issues)
+
+        // Collect image refs from MDX body for unused-file detection
+        const srcRefs = content.matchAll(/\bsrc=["']([^"']+)["']/g)
+        for (const match of srcRefs) {
+          if (match[1] && !match[1].startsWith("http") && !match[1].startsWith("/")) {
+            referencedAssets.add(`${slug}/${match[1]}`)
+          }
+        }
+        // Markdown images
+        const mdImgRefs = content.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)
+        for (const match of mdImgRefs) {
+          if (match[1] && !match[1].startsWith("http") && !match[1].startsWith("/")) {
+            referencedAssets.add(`${slug}/${match[1]}`)
+          }
+        }
       } catch {
         issues.push({ level: "error", file: fileRef, message: "invalid frontmatter" })
+      }
+    }
+
+    // Unused file warnings: check asset subdirectories
+    const ASSET_EXTENSIONS = new Set([
+      ".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".mp4", ".webm",
+    ])
+    const subdirs = fs
+      .readdirSync(categoryPath, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+
+    for (const subdir of subdirs) {
+      const subdirPath = path.join(categoryPath, subdir.name)
+      const assetFiles = fs.readdirSync(subdirPath).filter(
+        (f) => ASSET_EXTENSIONS.has(path.extname(f).toLowerCase()),
+      )
+      for (const assetFile of assetFiles) {
+        const ref = `${subdir.name}/${assetFile}`
+        if (!referencedAssets.has(ref)) {
+          issues.push({
+            level: "warning",
+            file: `${dir.name}/${ref}`,
+            message: `unused asset file "${assetFile}" — not referenced by any article`,
+          })
+        }
       }
     }
   }
 
   // Guard against the silent-footgun case: a content directory that exists
-  // but contains zero categories. Without this warning, `helpbase audit`
-  // against the wrong directory (or before scaffolding) prints
-  // "All content is healthy!" and exits 0 — which used to mask misconfigured
-  // CI pipelines.
+  // but contains zero categories.
   if (categoryCount === 0) {
     issues.push({
       level: "warning",
@@ -97,6 +181,34 @@ export function auditContent(contentDir: string): AuditResult {
   }
 
   return { categoryCount, articleCount, issues }
+}
+
+/**
+ * Extract JSX component names from MDX content and flag unknown ones.
+ * Uses regex to find PascalCase JSX tags (components start with uppercase).
+ */
+function validateMdxComponents(
+  content: string,
+  fileRef: string,
+  issues: AuditIssue[],
+): void {
+  // Match opening JSX tags with PascalCase names: <Callout, <CardGroup, etc.
+  const tagPattern = /<([A-Z][a-zA-Z0-9]*)/g
+  const seen = new Set<string>()
+
+  for (const match of content.matchAll(tagPattern)) {
+    const name = match[1]!
+    if (seen.has(name)) continue
+    seen.add(name)
+
+    if (!VALID_MDX_COMPONENTS.has(name)) {
+      issues.push({
+        level: "error",
+        file: fileRef,
+        message: `unknown MDX component <${name}> — valid components: ${[...VALID_MDX_COMPONENTS].join(", ")}`,
+      })
+    }
+  }
 }
 
 export class AuditError extends Error {

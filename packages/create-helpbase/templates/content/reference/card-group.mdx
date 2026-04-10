@@ -1,0 +1,51 @@
+---
+schemaVersion: 1
+title: "CardGroup and Card"
+description: "Grid of linked cards with icons for related articles and navigation."
+tags: ["component", "card"]
+order: 5
+featured: false
+---
+
+## Overview
+
+CardGroup renders a responsive grid of Card components. Use it at the end of articles to link to related content. Each Card is a full-surface link with a lucide icon and hover arrow animation.
+
+## Props
+
+### CardGroup (container)
+
+| Prop       | Type        | Default | Description                                |
+| ---------- | ----------- | ------- | ------------------------------------------ |
+| `cols`     | `2 \| 3`   | `2`     | Number of columns at desktop breakpoint    |
+| `children` | `ReactNode` | —       | One or more `<Card>` elements              |
+
+### Card
+
+| Prop       | Type        | Default       | Description                     |
+| ---------- | ----------- | ------------- | ------------------------------- |
+| `icon`     | `string`    | `"file-text"` | Lucide icon name (kebab-case)   |
+| `title`    | `string`    | —             | Card heading text               |
+| `href`     | `string`    | —             | Link destination                |
+| `children` | `ReactNode` | —             | Short description text          |
+
+## Usage
+
+<CardGroup cols={2}>
+  <Card icon="rocket" title="Quick Start" href="/getting-started/introduction">
+    Get up and running in under 5 minutes.
+  </Card>
+  <Card icon="book-open" title="Configuration" href="/getting-started/configuration">
+    Customize branding, navigation, and categories.
+  </Card>
+</CardGroup>
+
+## MDX source
+
+```mdx
+<CardGroup cols={2}>
+  <Card icon="rocket" title="Article Title" href="/category/slug">
+    Short description of the linked article.
+  </Card>
+</CardGroup>
+```

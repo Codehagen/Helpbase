@@ -1,0 +1,38 @@
+---
+schemaVersion: 1
+title: "Figure"
+description: "Display images with optional captions and automatic asset resolution."
+tags: ["component", "figure", "image"]
+order: 6
+featured: false
+---
+
+## Overview
+
+The Figure component renders an image with an optional caption. It resolves relative paths through the asset pipeline, so you can reference images by filename. Standard markdown images (`![alt](path)`) are automatically routed through Figure.
+
+## Props
+
+| Prop       | Type     | Default | Description                                      |
+| ---------- | -------- | ------- | ------------------------------------------------ |
+| `src`      | `string` | —       | Image path (relative to article or absolute URL)  |
+| `alt`      | `string` | `""`    | Alt text for accessibility                        |
+| `caption`  | `string` | —       | Optional caption below the image                  |
+| `category` | `string` | —       | Auto-injected by MDX component map                |
+| `slug`     | `string` | —       | Auto-injected by MDX component map                |
+
+## Usage
+
+```mdx
+<Figure src="screenshot.png" alt="Dashboard view" caption="The main dashboard after setup." />
+```
+
+Or use standard markdown image syntax — it routes through the same resolver:
+
+```mdx
+![Dashboard view](screenshot.png)
+```
+
+## Asset resolution
+
+Place image files in `content/<category>/<slug>/` alongside your article. The sync script copies them to `public/_helpbase-assets/<category>/<slug>/` at build time.

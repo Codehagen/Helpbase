@@ -6,11 +6,20 @@ import { auditContent, AuditError } from "../audit.js"
 export const auditCommand = new Command("audit")
   .description("Check content health: missing fields, broken links, schema errors")
   .option("-d, --dir <dir>", "Content directory to audit", "content")
+  .option("-f, --format <format>", "Output format: text or json", "text")
   .action((opts) => {
     const contentDir = path.resolve(process.cwd(), opts.dir)
 
     try {
       const result = auditContent(contentDir)
+
+      if (opts.format === "json") {
+        console.log(JSON.stringify(result, null, 2))
+        if (result.issues.some((i) => i.level === "error") || result.issues.length > 0) {
+          process.exit(1)
+        }
+        return
+      }
 
       console.log()
       console.log(pc.bold("Helpbase Content Audit"))
@@ -34,6 +43,10 @@ export const auditCommand = new Command("audit")
       }
     } catch (err) {
       if (err instanceof AuditError) {
+        if (opts.format === "json") {
+          console.log(JSON.stringify({ error: err.message }))
+          process.exit(1)
+        }
         console.error(
           `${pc.red("✖")} ${err.message}\n` +
             `  Fix: Run this from your project root, or use ${pc.cyan("--dir <path>")}\n`

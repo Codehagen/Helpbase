@@ -1,0 +1,56 @@
+---
+schemaVersion: 1
+title: "Tabs"
+description: "Switchable content panels for code examples and platform-specific instructions."
+tags: ["component", "tabs"]
+order: 4
+featured: false
+---
+
+## Overview
+
+The Tabs component renders switchable panels, useful for showing code in multiple languages or platform-specific instructions. Supports arrow-key navigation and horizontal scrolling on narrow viewports. Maximum 6 tabs.
+
+## Props
+
+### Tabs (container)
+
+| Prop       | Type        | Default | Description                   |
+| ---------- | ----------- | ------- | ----------------------------- |
+| `children` | `ReactNode` | —       | One or more `<Tab>` elements  |
+
+### Tab
+
+| Prop       | Type        | Default | Description              |
+| ---------- | ----------- | ------- | ------------------------ |
+| `label`    | `string`    | —       | Tab button text          |
+| `children` | `ReactNode` | —       | Panel content            |
+
+## Usage
+
+<Tabs>
+  <Tab label="npm">
+    ```bash
+    npm install helpbase
+    ```
+  </Tab>
+  <Tab label="pnpm">
+    ```bash
+    pnpm add helpbase
+    ```
+  </Tab>
+  <Tab label="yarn">
+    ```bash
+    yarn add helpbase
+    ```
+  </Tab>
+</Tabs>
+
+## MDX source
+
+```mdx
+<Tabs>
+  <Tab label="npm">Content for npm tab.</Tab>
+  <Tab label="pnpm">Content for pnpm tab.</Tab>
+</Tabs>
+```

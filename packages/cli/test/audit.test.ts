@@ -154,6 +154,34 @@ description: "Desc"
     expect(result.stdout).toContain("Content directory not found")
   })
 
+  it("outputs valid JSON with --format json", () => {
+    const contentDir = path.join(tmpDir, "content", "getting-started")
+    fs.mkdirSync(contentDir, { recursive: true })
+
+    fs.writeFileSync(
+      path.join(contentDir, "_category.json"),
+      JSON.stringify({ title: "Getting Started", description: "", order: 1 })
+    )
+
+    fs.writeFileSync(
+      path.join(contentDir, "intro.mdx"),
+      `---
+schemaVersion: 1
+title: "Introduction"
+description: "Welcome"
+---
+
+# Hello
+`
+    )
+
+    const result = run(`audit --dir ${path.join(tmpDir, "content")} --format json`)
+    const parsed = JSON.parse(result.stdout)
+    expect(parsed.categoryCount).toBe(1)
+    expect(parsed.articleCount).toBe(1)
+    expect(Array.isArray(parsed.issues)).toBe(true)
+  })
+
   it("reports correct counts with multiple categories and articles", () => {
     // Category 1 with 2 articles
     const cat1 = path.join(tmpDir, "content", "guides")

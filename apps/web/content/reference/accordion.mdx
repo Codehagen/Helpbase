@@ -1,0 +1,49 @@
+---
+schemaVersion: 1
+title: "Accordion"
+description: "Collapsible sections for FAQs and optional details."
+tags: ["component", "accordion"]
+order: 3
+featured: false
+---
+
+## Overview
+
+The Accordion component wraps collapsible content sections. Use it for FAQ sections or edge-case details that most readers can skip.
+
+## Props
+
+### Accordion (container)
+
+| Prop          | Type        | Default | Description                            |
+| ------------- | ----------- | ------- | -------------------------------------- |
+| `children`    | `ReactNode` | —       | One or more `<AccordionItem>` elements |
+| `defaultOpen` | `boolean`   | `false` | Open the first item by default         |
+
+### AccordionItem
+
+| Prop          | Type        | Default | Description                   |
+| ------------- | ----------- | ------- | ----------------------------- |
+| `title`       | `string`    | —       | Clickable header text         |
+| `children`    | `ReactNode` | —       | Collapsible body content      |
+| `defaultOpen` | `boolean`   | `false` | Start this item in open state |
+
+## Usage
+
+<Accordion>
+  <AccordionItem title="What formats are supported?">
+    We support MDX and standard Markdown files. MDX allows you to embed React components directly in your content.
+  </AccordionItem>
+  <AccordionItem title="Can I nest components?">
+    Yes, you can nest most components inside each other. For example, a Callout inside an AccordionItem works correctly.
+  </AccordionItem>
+</Accordion>
+
+## MDX source
+
+```mdx
+<Accordion>
+  <AccordionItem title="Question here">Answer here.</AccordionItem>
+  <AccordionItem title="Another question">Another answer.</AccordionItem>
+</Accordion>
+```

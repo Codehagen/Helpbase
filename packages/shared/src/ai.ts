@@ -163,7 +163,7 @@ export async function generateArticlesFromContent({
  * from the repo root to compare your change against the committed prompt.
  * See SMOKE.md for the grading rubric, cost expectation, and PR checklist.
  */
-function buildPrompt(content: string, sourceUrl: string): string {
+export function buildPrompt(content: string, sourceUrl: string): string {
   return `You are generating a help center for the product at ${sourceUrl}.
 
 Read the scraped website content below and generate 4 to 6 high-quality help articles. If the source content clearly covers 6 or more distinct topics, prefer 6 over 4 — do not default to the floor when the material supports breadth.

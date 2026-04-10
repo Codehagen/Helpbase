@@ -1,0 +1,51 @@
+---
+schemaVersion: 1
+title: "Steps"
+description: "Display sequential instructions with numbered steps and a connecting line."
+tags: ["component", "steps"]
+order: 2
+featured: false
+---
+
+## Overview
+
+The Steps component renders an ordered list with numbered circles and a vertical connecting line. Use it for how-to guides with 3 or more sequential actions.
+
+## Props
+
+### Steps (container)
+
+| Prop       | Type        | Default | Description                      |
+| ---------- | ----------- | ------- | -------------------------------- |
+| `children` | `ReactNode` | —       | One or more `<Step>` components  |
+
+### Step
+
+| Prop       | Type        | Default | Description                      |
+| ---------- | ----------- | ------- | -------------------------------- |
+| `title`    | `string`    | —       | Step heading (optional)          |
+| `children` | `ReactNode` | —       | Content of the step              |
+
+## Usage
+
+<Steps>
+  <Step title="Install the package">
+    Run the install command in your project directory.
+  </Step>
+  <Step title="Configure your settings">
+    Edit the configuration file with your API keys and preferences.
+  </Step>
+  <Step title="Verify the setup">
+    Start the dev server and confirm everything works correctly.
+  </Step>
+</Steps>
+
+## MDX source
+
+```mdx
+<Steps>
+  <Step title="First step">Body of step one.</Step>
+  <Step title="Second step">Body of step two.</Step>
+  <Step title="Third step">Body of step three.</Step>
+</Steps>
+```

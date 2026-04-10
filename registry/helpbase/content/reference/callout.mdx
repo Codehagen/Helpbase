@@ -1,0 +1,45 @@
+---
+schemaVersion: 1
+title: "Callout"
+description: "Highlight important information with styled callout boxes."
+tags: ["component", "callout"]
+order: 1
+featured: false
+---
+
+## Overview
+
+The Callout component draws attention to important information with a colored left border and icon. Use it sparingly — at most 2 per article.
+
+## Props
+
+| Prop       | Type                                        | Default  | Description                     |
+| ---------- | ------------------------------------------- | -------- | ------------------------------- |
+| `type`     | `"note"` \| `"tip"` \| `"warning"` \| `"danger"` | `"note"` | Visual style and icon variant   |
+| `children` | `ReactNode`                                 | —        | Content displayed in the callout |
+
+## Usage
+
+<Callout type="note">
+This is a **note** callout for neutral supplementary information.
+</Callout>
+
+<Callout type="tip">
+This is a **tip** callout for best practices and helpful suggestions.
+</Callout>
+
+<Callout type="warning">
+This is a **warning** callout for things that could cause problems.
+</Callout>
+
+<Callout type="danger">
+This is a **danger** callout for destructive actions or critical errors.
+</Callout>
+
+## MDX source
+
+```mdx
+<Callout type="tip">
+Short practical advice or best practice.
+</Callout>
+```

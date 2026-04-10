@@ -4,12 +4,15 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "predev": "node scripts/sync-content-assets.mjs",
+    "prebuild": "node scripts/sync-content-assets.mjs",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.1.1",

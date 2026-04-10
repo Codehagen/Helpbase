@@ -1,0 +1,38 @@
+---
+schemaVersion: 1
+title: "CtaCard"
+description: "Image card with hover overlay for call-to-action links."
+tags: ["component", "cta"]
+order: 8
+featured: false
+---
+
+## Overview
+
+The CtaCard component renders an image with a dark overlay that appears on hover or focus, showing a title, optional description, and arrow icon. Use it for visually prominent call-to-action links.
+
+## Props
+
+| Prop          | Type     | Default | Description                                        |
+| ------------- | -------- | ------- | -------------------------------------------------- |
+| `src`         | `string` | —       | Image path (relative to article or absolute URL)    |
+| `title`       | `string` | —       | Overlay heading text                                |
+| `href`        | `string` | —       | Link destination                                    |
+| `description` | `string` | —       | Optional overlay subtext                            |
+| `category`    | `string` | —       | Auto-injected by MDX component map                  |
+| `slug`        | `string` | —       | Auto-injected by MDX component map                  |
+
+## Usage
+
+```mdx
+<CtaCard
+  src="preview.png"
+  title="See the live demo"
+  href="https://demo.example.com"
+  description="Try it out in your browser."
+/>
+```
+
+## Notes
+
+This component is not available in AI-generated articles. It requires manually curated images.

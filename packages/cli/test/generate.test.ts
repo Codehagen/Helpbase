@@ -31,7 +31,7 @@ describe("helpbase generate", () => {
   it("shows examples in the error output", () => {
     const result = run("generate")
     expect(result.output).toContain("helpbase generate --url")
-    expect(result.output).toContain("helpbase generate --repo")
+    expect(result.output).toContain("--screenshots")
   })
 
   it("fails gracefully with an unreachable URL", () => {

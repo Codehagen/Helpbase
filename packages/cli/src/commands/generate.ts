@@ -5,19 +5,31 @@ import fs from "node:fs"
 import path from "node:path"
 import matter from "gray-matter"
 import {
-  scrapeUrl,
-  generateArticlesFromContent,
   planArticleWrites,
   resolveModel,
   MissingApiKeyError,
   GatewayError,
   TEST_MODEL,
 } from "@workspace/shared/ai"
+import {
+  scrapeUrl,
+  generateArticlesFromContent,
+} from "@workspace/shared/ai-text"
+import {
+  generateArticlesFromScreenshots,
+} from "@workspace/shared/ai-visual"
+import {
+  readScreenshotsDir,
+  readCaptions,
+  resizeForModel,
+} from "@workspace/shared/screenshots"
 
 export const generateCommand = new Command("generate")
   .description("Generate help articles using AI")
   .option("--url <url>", "Scrape a website URL and generate articles")
   .option("--repo <path>", "Read a local repository and generate articles")
+  .option("--screenshots <dir>", "Generate visual how-to articles from a folder of screenshots")
+  .option("--title <title>", "Title for the generated how-to guide (required with --screenshots when no --url)")
   .option("-o, --output <dir>", "Output directory for generated articles", "content")
   .option(
     "--test",
@@ -32,14 +44,26 @@ export const generateCommand = new Command("generate")
     "--dry-run",
     "Scrape the URL and print what would be sent to the LLM, without spending tokens",
   )
+  .option("--yes", "Skip interactive confirmations (for CI/scripted use)")
+  .option("--no-overwrite", "Error instead of overwriting existing image assets")
   .action(async (opts) => {
-    if (!opts.url && !opts.repo) {
+    if (!opts.url && !opts.repo && !opts.screenshots) {
       console.error(
-        `${pc.red("✖")} Provide a source: ${pc.cyan("--url <url>")} or ${pc.cyan("--repo <path>")}\n` +
+        `${pc.red("✖")} Provide a source: ${pc.cyan("--url <url>")}, ${pc.cyan("--screenshots <dir>")}, or ${pc.cyan("--repo <path>")}\n` +
         `\n  Examples:\n` +
         `    ${pc.dim("$")} helpbase generate --url https://myproduct.com\n` +
-        `    ${pc.dim("$")} helpbase generate --url https://myproduct.com --test\n` +
-        `    ${pc.dim("$")} helpbase generate --repo ./my-app\n`,
+        `    ${pc.dim("$")} helpbase generate --screenshots ./my-screenshots --title "How to invite a teammate"\n` +
+        `    ${pc.dim("$")} helpbase generate --url https://myproduct.com --screenshots ./my-screenshots\n`,
+      )
+      process.exit(1)
+    }
+
+    // --screenshots without --url requires --title
+    if (opts.screenshots && !opts.url && !opts.title) {
+      console.error(
+        `${pc.red("✖")} Provide --title when using --screenshots without --url\n` +
+        `\n  Example:\n` +
+        `    ${pc.dim("$")} helpbase generate --screenshots ./my-screenshots --title "How to invite a teammate"\n`,
       )
       process.exit(1)
     }
@@ -56,6 +80,216 @@ export const generateCommand = new Command("generate")
 
     const s = spinner()
 
+    // ── Screenshot mode ──────────────────────────────────────────
+    if (opts.screenshots) {
+      // Privacy warning on first use
+      printPrivacyWarning()
+
+      // Read and validate screenshots
+      let screenshots
+      try {
+        screenshots = readScreenshotsDir(opts.screenshots)
+      } catch (err) {
+        console.error(
+          `\n${pc.red("✖")} ${err instanceof Error ? err.message : "Failed to read screenshots"}\n`,
+        )
+        process.exit(1)
+      }
+
+      console.log(
+        `  ${pc.dim("›")} Found ${pc.bold(String(screenshots.length))} screenshots`,
+      )
+      for (const ss of screenshots) {
+        console.log(`    ${pc.dim(`${ss.order}.`)} ${ss.filename}`)
+      }
+
+      // Read optional captions
+      let captions
+      try {
+        captions = readCaptions(opts.screenshots)
+        if (Object.keys(captions).length > 0) {
+          console.log(
+            `  ${pc.dim("›")} Loaded captions for ${Object.keys(captions).length} images`,
+          )
+        }
+      } catch (err) {
+        console.error(
+          `\n${pc.red("✖")} ${err instanceof Error ? err.message : "Failed to read captions"}\n`,
+        )
+        process.exit(1)
+      }
+
+      // Resize images for model
+      s.start("Preparing images...")
+      const warnings: string[] = []
+      for (const ss of screenshots) {
+        try {
+          const result = await resizeForModel(ss.buffer, ss.filename)
+          ss.buffer = result.buffer
+          if (result.warning) warnings.push(result.warning)
+        } catch (err) {
+          s.stop(pc.red("Failed"))
+          console.error(
+            `\n${pc.red("✖")} ${err instanceof Error ? err.message : "Image processing failed"}\n`,
+          )
+          process.exit(1)
+        }
+      }
+      s.stop("Images ready!")
+
+      for (const w of warnings) {
+        console.log(`  ${pc.yellow("⚠")} ${w}`)
+      }
+
+      // Optional: scrape URL for combined mode
+      let textContext: string | undefined
+      if (opts.url) {
+        s.start(`Scraping ${pc.cyan(opts.url)} for context...`)
+        try {
+          textContext = await scrapeUrl(opts.url)
+          s.stop("Website scraped!")
+        } catch (err) {
+          s.stop(pc.yellow("Scrape failed (continuing with screenshots only)"))
+          console.log(
+            `  ${pc.dim("›")} ${err instanceof Error ? err.message : "Scrape error"}`,
+          )
+        }
+      }
+
+      if (opts.dryRun) {
+        const totalSize = screenshots.reduce((sum, ss) => sum + ss.buffer.length, 0)
+        console.log("")
+        console.log(`${pc.dim("›")} ${pc.bold("Dry run — no LLM call")}`)
+        console.log(`  Model:            ${pc.cyan(model)}`)
+        console.log(`  Screenshots:      ${screenshots.length}`)
+        console.log(`  Total image size: ${(totalSize / 1_000_000).toFixed(1)}MB`)
+        if (textContext) {
+          console.log(`  Text context:     ${textContext.length.toLocaleString()} chars`)
+        }
+        console.log(`  Output dir:       ${pc.cyan(outputDir)}`)
+        console.log("")
+        console.log(`  ${pc.dim("Remove --dry-run to actually generate articles.")}`)
+        return
+      }
+
+      // Generate articles
+      s.start("Generating visual how-to guide with AI...")
+      let result
+      try {
+        result = await generateArticlesFromScreenshots({
+          screenshots,
+          captions,
+          textContext,
+          sourceUrl: opts.url,
+          title: opts.title,
+          model,
+        })
+      } catch (err) {
+        s.stop(pc.red("Failed"))
+        printGenerateError(err)
+        process.exit(1)
+      }
+      s.stop(`Generated ${pc.bold(String(result.articles.length))} article${result.articles.length === 1 ? "" : "s"}!`)
+
+      // Write articles + copy images
+      const plans = planArticleWrites(
+        result.articles,
+        outputDir,
+        result.imagesByArticle,
+      )
+      const copiedAssets: string[] = [] // Track for orphan cleanup on error
+      const categoriesWritten = new Set<string>()
+
+      try {
+        for (const plan of plans) {
+          const categoryDir = path.join(outputDir, plan.categorySlug)
+          fs.mkdirSync(categoryDir, { recursive: true })
+
+          if (!categoriesWritten.has(plan.categorySlug)) {
+            const metaPath = path.join(categoryDir, "_category.json")
+            if (!fs.existsSync(metaPath)) {
+              fs.writeFileSync(
+                metaPath,
+                JSON.stringify(
+                  { title: plan.categoryTitle, description: "", icon: "file-text", order: 1 },
+                  null,
+                  2,
+                ),
+              )
+            }
+            categoriesWritten.add(plan.categorySlug)
+          }
+
+          // Copy image assets to article's asset folder
+          if (plan.imageFiles?.length) {
+            const assetDir = path.join(
+              outputDir,
+              plan.categorySlug,
+              plan.articleSlug,
+            )
+            fs.mkdirSync(assetDir, { recursive: true })
+
+            for (const img of plan.imageFiles) {
+              const destPath = path.join(assetDir, img.filename)
+
+              // --no-overwrite check (commander's --no-X sets opts.overwrite=false)
+              if (opts.overwrite === false && fs.existsSync(destPath)) {
+                throw new Error(
+                  `File exists: ${destPath}\n` +
+                    `  Fix: Remove --no-overwrite to allow overwriting, or delete the existing file.`,
+                )
+              }
+
+              fs.copyFileSync(img.sourcePath, destPath)
+              copiedAssets.push(destPath)
+              console.log(
+                `  ${pc.blue("◆")} ${plan.categorySlug}/${plan.articleSlug}/${img.filename}`,
+              )
+            }
+          }
+
+          fs.writeFileSync(plan.filePath, plan.mdx)
+
+          // Round-trip frontmatter check
+          try {
+            matter(fs.readFileSync(plan.filePath, "utf-8"))
+          } catch (parseErr) {
+            console.error(
+              `\n${pc.red("✖")} Generated file has invalid frontmatter: ${plan.filePath}\n` +
+                `  Reason: ${parseErr instanceof Error ? parseErr.message : "parse error"}\n` +
+                `  Fix: This is a bug in articleToMdx — please file an issue with the file contents.\n` +
+                `  Docs: https://helpbase.dev/docs/troubleshooting#bad-frontmatter\n`,
+            )
+            process.exit(1)
+          }
+
+          console.log(
+            `  ${pc.green("+")} ${plan.categorySlug}/${plan.articleSlug}.mdx`,
+          )
+        }
+      } catch (err) {
+        // Orphan cleanup: remove copied assets if generation failed mid-way
+        for (const assetPath of copiedAssets) {
+          try {
+            fs.unlinkSync(assetPath)
+          } catch {
+            // Best effort cleanup
+          }
+        }
+        console.error(
+          `\n${pc.red("✖")} ${err instanceof Error ? err.message : "Failed to write articles"}\n`,
+        )
+        process.exit(1)
+      }
+
+      note(
+        `Run ${pc.cyan("helpbase dev")} to preview your articles.`,
+        "Done",
+      )
+      return
+    }
+
+    // ── URL mode (original flow, unchanged) ──────────────────────
     if (opts.url) {
       s.start(`Scraping ${pc.cyan(opts.url)}...`)
 
@@ -78,7 +312,6 @@ export const generateCommand = new Command("generate")
       }
 
       if (opts.dryRun) {
-        // Rough token estimate: 1 token ≈ 4 chars for English prose.
         const estimatedTokens = Math.ceil(markdown.length / 4)
         console.log("")
         console.log(`${pc.dim("›")} ${pc.bold("Dry run — no LLM call")}`)
@@ -144,9 +377,6 @@ export const generateCommand = new Command("generate")
 
         fs.writeFileSync(plan.filePath, plan.mdx)
 
-        // Round-trip check: confirm the file we just wrote parses cleanly
-        // through gray-matter. Belt-and-suspenders for future edge cases
-        // in articleToMdx that our unit tests don't cover yet.
         try {
           matter(fs.readFileSync(plan.filePath, "utf-8"))
         } catch (parseErr) {
@@ -180,6 +410,31 @@ export const generateCommand = new Command("generate")
       process.exit(1)
     }
   })
+
+// ── Privacy warning ────────────────────────────────────────────────
+
+const PRIVACY_FLAG_PATH = path.join(
+  process.env.HOME || process.env.USERPROFILE || ".",
+  ".helpbase-screenshots-warned",
+)
+
+function printPrivacyWarning(): void {
+  if (fs.existsSync(PRIVACY_FLAG_PATH)) return
+
+  console.log(
+    `\n${pc.yellow("⚠")} Screenshots will be sent to Gemini (Google) for AI processing.` +
+    `\n  Do not include images containing secrets, API keys, or sensitive customer data.\n`,
+  )
+
+  // Mark as warned
+  try {
+    fs.writeFileSync(PRIVACY_FLAG_PATH, new Date().toISOString())
+  } catch {
+    // Best effort — don't break the flow
+  }
+}
+
+// ── Error formatting ───────────────────────────────────────────────
 
 function printScrapeError(url: string, err: unknown): void {
   const reason = err instanceof Error ? err.message : "Unknown error"
@@ -218,7 +473,7 @@ function printGenerateError(err: unknown): void {
   console.error(
     `\n${pc.red("✖")} Could not generate articles\n` +
     `  Reason: ${reason}\n` +
-    `  Fix: Check the URL and try again.\n` +
+    `  Fix: Check the source and try again.\n` +
     `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
   )
 }

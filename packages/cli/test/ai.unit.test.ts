@@ -4,15 +4,17 @@ import {
   resolveModel,
   articleToMdx,
   planArticleWrites,
-  scrapeUrl,
-  buildPrompt,
   DEFAULT_MODEL,
   TEST_MODEL,
-  MIN_SCRAPED_LENGTH,
   MissingApiKeyError,
   GatewayError,
-  generateArticlesFromContent,
 } from "@workspace/shared/ai"
+import {
+  scrapeUrl,
+  buildPrompt,
+  MIN_SCRAPED_LENGTH,
+  generateArticlesFromContent,
+} from "@workspace/shared/ai-text"
 import type { GeneratedArticle } from "@workspace/shared/schemas"
 
 describe("resolveModel", () => {
@@ -292,8 +294,9 @@ describe("generateArticlesFromContent", () => {
       ),
     }))
 
-    const { generateArticlesFromContent: mockedGenerate, GatewayError: GE } =
-      await import("@workspace/shared/ai")
+    const { GatewayError: GE } = await import("@workspace/shared/ai")
+    const { generateArticlesFromContent: mockedGenerate } =
+      await import("@workspace/shared/ai-text")
 
     await expect(
       mockedGenerate({
@@ -324,7 +327,7 @@ describe("generateArticlesFromContent", () => {
     }))
 
     const { generateArticlesFromContent: mockedGenerate } =
-      await import("@workspace/shared/ai")
+      await import("@workspace/shared/ai-text")
 
     const result = await mockedGenerate({
       content: "scraped",

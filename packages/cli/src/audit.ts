@@ -124,18 +124,52 @@ export function auditContent(contentDir: string): AuditResult {
         // MDX component name validation (regex-based JSX detection)
         validateMdxComponents(content, fileRef, issues)
 
+        // Strip code blocks (fenced and inline) before collecting image refs.
+        // Code blocks may contain example src= attributes and markdown images
+        // that should not be validated as real file references.
+        const contentNoFences = content
+          .replace(/```[\s\S]*?```/g, "")  // fenced code blocks
+          .replace(/`[^`]+`/g, "")          // inline code
+
         // Collect image refs from MDX body for unused-file detection
-        const srcRefs = content.matchAll(/\bsrc=["']([^"']+)["']/g)
+        // AND validate that explicitly referenced files (./ prefix) exist on disk.
+        const srcRefs = contentNoFences.matchAll(/\bsrc=["']([^"']+)["']/g)
         for (const match of srcRefs) {
           if (match[1] && !match[1].startsWith("http") && !match[1].startsWith("/")) {
-            referencedAssets.add(`${slug}/${match[1]}`)
+            const ref = match[1].replace(/^\.\//, "")
+            referencedAssets.add(`${slug}/${ref}`)
+
+            // Only validate file existence for explicit relative paths (./foo.png).
+            // Plain references (foo.png) are collected for unused-file detection
+            // but may be component prop examples, not real file references.
+            if (match[1].startsWith("./")) {
+              const refPath = path.join(categoryPath, slug, ref)
+              if (!fs.existsSync(refPath)) {
+                issues.push({
+                  level: "error",
+                  file: fileRef,
+                  message: `referenced image "${ref}" not found at ${dir.name}/${slug}/${ref}`,
+                })
+              }
+            }
           }
         }
-        // Markdown images
-        const mdImgRefs = content.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)
+        // Markdown images (also use fenced-block-stripped content)
+        const mdImgRefs = contentNoFences.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)
         for (const match of mdImgRefs) {
           if (match[1] && !match[1].startsWith("http") && !match[1].startsWith("/")) {
-            referencedAssets.add(`${slug}/${match[1]}`)
+            const ref = match[1].replace(/^\.\//, "")
+            referencedAssets.add(`${slug}/${ref}`)
+
+            // Markdown images are always explicit references — validate existence.
+            const refPath = path.join(categoryPath, slug, ref)
+            if (!fs.existsSync(refPath)) {
+              issues.push({
+                level: "error",
+                file: fileRef,
+                message: `referenced image "${ref}" not found at ${dir.name}/${slug}/${ref}`,
+              })
+            }
           }
         }
       } catch {

@@ -253,6 +253,40 @@ describe("auditContent", () => {
     expect(warning?.message).toContain("orphan.png")
   })
 
+  it("errors when a Figure src references a missing file", () => {
+    writeCategoryMeta("guides")
+    const dir = path.join(tmpDir, "guides")
+    fs.writeFileSync(
+      path.join(dir, "setup.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\n<Figure src="./missing-shot.png" alt="A screenshot" />\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const issue = result.issues.find((i) => i.message.includes("missing-shot.png"))
+    expect(issue).toBeDefined()
+    expect(issue?.level).toBe("error")
+    expect(issue?.message).toContain("not found")
+  })
+
+  it("passes when a Figure src references an existing file", () => {
+    writeCategoryMeta("guides")
+    const dir = path.join(tmpDir, "guides")
+    fs.writeFileSync(
+      path.join(dir, "setup.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\n<Figure src="./01-dashboard.png" alt="Dashboard" />\n`,
+    )
+
+    const assetDir = path.join(dir, "setup")
+    fs.mkdirSync(assetDir, { recursive: true })
+    fs.writeFileSync(path.join(assetDir, "01-dashboard.png"), "fake-png")
+
+    const result = auditContent(tmpDir)
+    const errors = result.issues.filter(
+      (i) => i.level === "error" && i.message.includes("01-dashboard.png"),
+    )
+    expect(errors).toHaveLength(0)
+  })
+
   it("does not warn about referenced asset files", () => {
     writeCategoryMeta("guides")
     const dir = path.join(tmpDir, "guides")

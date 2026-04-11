@@ -7,14 +7,16 @@ import fs from "node:fs"
 import path from "node:path"
 import { execSync } from "node:child_process"
 import {
-  scrapeUrl,
-  generateArticlesFromContent,
   planArticleWrites,
   resolveModel,
   MissingApiKeyError,
   GatewayError,
   TEST_MODEL,
 } from "@workspace/shared/ai"
+import {
+  scrapeUrl,
+  generateArticlesFromContent,
+} from "@workspace/shared/ai-text"
 import { scaffoldProject, clearSampleContent } from "./scaffold.js"
 
 interface RunOptions {

@@ -7,7 +7,10 @@
     "./schemas": "./src/schemas.ts",
     "./types": "./src/types.ts",
     "./slugify": "./src/slugify.ts",
-    "./ai": "./src/ai.ts"
+    "./ai": "./src/ai.ts",
+    "./ai-text": "./src/ai-text.ts",
+    "./ai-visual": "./src/ai-visual.ts",
+    "./screenshots": "./src/screenshots.ts"
   },
   "dependencies": {
     "ai": "^5.0.0",

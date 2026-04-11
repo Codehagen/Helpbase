@@ -1,32 +1,41 @@
-import { generateObject } from "ai"
+import { generateObject, generateText } from "ai"
 import {
   generatedArticlesSchema,
   type GeneratedArticle,
+  type ArticleImage,
 } from "./schemas.js"
 import { slugify } from "./slugify.js"
+import type { z } from "zod"
 
 /**
- * AI generation helpers for helpbase CLI and create-helpbase scaffolder.
+ * Shared AI infrastructure for helpbase CLI and scaffolder.
  *
- * Design:
- * - Uses Vercel AI SDK + AI Gateway. One env var: AI_GATEWAY_API_KEY.
- * - Model is passed as a string in `provider/model` form. No provider SDK
- *   imports — the Gateway routes by prefix.
- * - Typed errors so callers can format their own problem+cause+fix+docs UX.
+ * Architecture (after split):
+ *   ai.ts        — shared: model resolution, error classes, callGenerator,
+ *                   extractJsonFromText, articleToMdx, planArticleWrites
+ *   ai-text.ts   — text generation: scrapeUrl, generateArticlesFromContent,
+ *                   buildPrompt
+ *   ai-visual.ts — visual generation: generateArticlesFromScreenshots,
+ *                   buildVisualPrompt
+ *
+ * Uses Vercel AI SDK + AI Gateway. One env var: AI_GATEWAY_API_KEY.
+ * Model is passed as a string in `provider/model` form.
  */
+
+// ── Model constants ────────────────────────────────────────────────
 
 /**
  * Default model for article generation.
- * Gemini 3.1 Flash Lite is fast, cheap, and has a 1M context window, which
- * lets us ingest full scraped pages without trimming.
+ * Gemini 3.1 Flash Lite is fast, cheap, and has a 1M context window.
  */
 export const DEFAULT_MODEL = "google/gemini-3.1-flash-lite-preview"
 
 /**
- * Model used when --test is passed. Hard-coded so test runs stay stable
- * even if DEFAULT_MODEL changes. Currently identical to DEFAULT_MODEL.
+ * Model used when --test is passed. Hard-coded so test runs stay stable.
  */
 export const TEST_MODEL = "google/gemini-3.1-flash-lite-preview"
+
+// ── Error classes ──────────────────────────────────────────────────
 
 /** Thrown when AI_GATEWAY_API_KEY is not set in the environment. */
 export class MissingApiKeyError extends Error {
@@ -47,10 +56,10 @@ export class GatewayError extends Error {
   }
 }
 
+// ── Model resolution ───────────────────────────────────────────────
+
 export interface ResolveModelOptions {
-  /** --test flag: forces TEST_MODEL. */
   test?: boolean
-  /** --model <id> flag: wins over --test and default. */
   modelOverride?: string
 }
 
@@ -64,90 +73,88 @@ export function resolveModel(opts: ResolveModelOptions = {}): string {
   return DEFAULT_MODEL
 }
 
-/**
- * Minimum stripped-text length for a page to be considered usable.
- * Below this we assume the page is an auth wall, JS-only SPA, or empty
- * shell, and refuse to spend tokens on garbage input.
- */
-export const MIN_SCRAPED_LENGTH = 500
+// ── Shared generator wrapper (DRY) ────────────────────────────────
 
-/**
- * Fetch a URL and return a cleaned text representation.
- * Strips scripts, styles, and tags; collapses whitespace.
- * Caps at 200k chars (Gemini's 1M context is plenty; cap prevents runaway).
- * Throws if the stripped body is under MIN_SCRAPED_LENGTH chars — we'd
- * rather fail loudly than hand the LLM near-empty content and let it
- * hallucinate a help center from nothing.
- */
-export async function scrapeUrl(url: string): Promise<string> {
-  let response: Response
-  try {
-    response = await fetch(url)
-  } catch (err) {
-    throw new Error(
-      `Connection failed. Is ${url} accessible? (${err instanceof Error ? err.message : "unknown"})`,
-    )
-  }
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-  }
-
-  const html = await response.text()
-  const stripped = html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 200_000)
-
-  if (stripped.length < MIN_SCRAPED_LENGTH) {
-    throw new Error(
-      `Scraped content is too short (${stripped.length} chars, need ${MIN_SCRAPED_LENGTH}+). ` +
-        `The page may be JS-rendered, behind auth, or empty. ` +
-        `Try a different URL or check the page in a browser first.`,
-    )
-  }
-
-  return stripped
-}
-
-export interface GenerateOptions {
-  /** Cleaned page content (markdown-ish text). */
-  content: string
-  /** Source URL, included in the prompt for grounding. */
-  sourceUrl: string
-  /** Model ID in provider/model form. Defaults to DEFAULT_MODEL. */
-  model?: string
+export interface CallGeneratorOptions {
+  model: string
+  prompt: string
+  schema: z.ZodType
+  /** Optional inline images for multimodal generation. */
+  images?: Array<{ mimeType: string; data: string }>
 }
 
 /**
- * Generate structured help articles from scraped page content.
- * Uses generateObject with a Zod schema so the output is type-safe.
+ * Shared wrapper around Vercel AI SDK generation.
+ * Tries generateObject first. If that fails with images (some model/SDK
+ * combos don't support structured output + inline images), falls back
+ * to generateText + JSON extraction.
  */
-export async function generateArticlesFromContent({
-  content,
-  sourceUrl,
-  model = DEFAULT_MODEL,
-}: GenerateOptions): Promise<GeneratedArticle[]> {
+export async function callGenerator<T>({
+  model,
+  prompt,
+  schema,
+  images,
+}: CallGeneratorOptions): Promise<T> {
   if (!process.env.AI_GATEWAY_API_KEY) {
     throw new MissingApiKeyError()
   }
 
+  // Build messages array for multimodal requests
+  const messages = images?.length
+    ? [
+        {
+          role: "user" as const,
+          content: [
+            ...images.map((img) => ({
+              type: "image" as const,
+              image: `data:${img.mimeType};base64,${img.data}`,
+            })),
+            { type: "text" as const, text: prompt },
+          ],
+        },
+      ]
+    : undefined
+
   try {
+    if (messages) {
+      // Multimodal: try generateObject with messages
+      const { object } = await generateObject({
+        model,
+        schema,
+        messages,
+      })
+      return object as T
+    }
+    // Text-only: use prompt directly
     const { object } = await generateObject({
       model,
-      schema: generatedArticlesSchema,
-      prompt: buildPrompt(content, sourceUrl),
+      schema,
+      prompt,
     })
-    return object.articles
+    return object as T
   } catch (err) {
     if (err instanceof MissingApiKeyError) throw err
+
+    // If multimodal generateObject failed, try generateText fallback
+    if (images?.length) {
+      try {
+        const { text } = await generateText({
+          model,
+          messages: messages!,
+        })
+        const parsed = extractJsonFromText(text)
+        return schema.parse(parsed) as T
+      } catch (fallbackErr) {
+        if (fallbackErr instanceof MissingApiKeyError) throw fallbackErr
+        throw new GatewayError(
+          fallbackErr instanceof Error
+            ? fallbackErr.message
+            : "Unknown gateway error (fallback)",
+          fallbackErr,
+        )
+      }
+    }
+
     throw new GatewayError(
       err instanceof Error ? err.message : "Unknown gateway error",
       err,
@@ -155,92 +162,76 @@ export async function generateArticlesFromContent({
   }
 }
 
+// ── JSON extraction from generateText output ───────────────────────
+
 /**
- * Builds the prompt sent to the LLM for article generation.
+ * Extract JSON from raw model text output.
+ * Models often wrap JSON in markdown fences or add commentary.
  *
- * This is the surface most open-source contributors will want to edit.
- * When you change anything in this function, run `pnpm smoke --baseline`
- * from the repo root to compare your change against the committed prompt.
- * See SMOKE.md for the grading rubric, cost expectation, and PR checklist.
+ * Strategy:
+ *   1. Try JSON.parse(raw) directly
+ *   2. Extract content between ```json and ``` fences
+ *   3. Find first { and last }, try JSON.parse on that substring
+ *   4. Throw structured error with first 500 chars of raw output
  */
-export function buildPrompt(content: string, sourceUrl: string): string {
-  return `You are generating a help center for the product at ${sourceUrl}.
+export function extractJsonFromText(raw: string): unknown {
+  // 1. Direct parse
+  try {
+    return JSON.parse(raw)
+  } catch {
+    // continue to next strategy
+  }
 
-Read the scraped website content below and generate 4 to 6 high-quality help articles. If the source content clearly covers 6 or more distinct topics, prefer 6 over 4 — do not default to the floor when the material supports breadth.
+  // 2. Fence extraction
+  const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)```/)
+  if (fenceMatch?.[1]) {
+    try {
+      return JSON.parse(fenceMatch[1].trim())
+    } catch {
+      // continue
+    }
+  }
 
-Requirements for each article:
+  // 3. Brace extraction
+  const firstBrace = raw.indexOf("{")
+  const lastBrace = raw.lastIndexOf("}")
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(raw.slice(firstBrace, lastBrace + 1))
+    } catch {
+      // continue
+    }
+  }
 
-- Title: MUST start with "How to" followed by a verb, OR with an imperative verb. No gerunds ("-ing" forms), no noun phrases. Titles MUST NOT contain any of the banned marketing words listed under "Grounding rules" below (streamline, seamless, effortless, powerful, beautiful, robust, comprehensive, ultimate, cutting-edge) — this applies even when the word appears to be used as a verb.
-  PASS: "How to reset your password", "Deploy to production", "Configure your custom domain", "Send your first email"
-  FAIL: "Password resets", "Integrating AI models", "Optimizing app performance", "Getting started guide", "Streamline AI integration", "Build robust pipelines"
-- Description: one plain sentence. No marketing language. Do NOT start with "Learn".
-- Category: a natural human-readable name like "Getting Started", "Account & Billing", "Features", or "Troubleshooting".
-- Tags: 2-4 tags. Lowercase. Single words or hyphen-joined compounds — never contain a space. Keep dots in technology names.
-  PASS: ["deployment", "getting-started", "node.js", "bot-management"]
-  FAIL: ["Deployment", "getting started", "Node.js", "bot management"]
-- Content: MDX body. Do NOT include frontmatter — title/description are schema fields, not body content.
-
-Content rules (each one is MANDATORY, not advisory):
-- Structure: the body MUST contain at least 3 markdown \`## H2\` headings. Each \`##\` heading is followed by 2-5 sentences of prose and, when relevant, a fenced code block. Never write the body as a single long paragraph. The \`##\` headings are the section markers — numbered lists, bold text, and long paragraphs do NOT replace them. Articles with fewer than 3 \`##\` headings are rejected.
-- Word count: minimum 150 words of prose across all sections combined (do not count words inside fenced code blocks). Distribute words across the sections; do not pile everything into one section. Before returning, count your prose words. If under 150, add concrete details to each section rather than inflating any single section.
-- Do not imitate source density: if the source is a terse README or markdown doc, your output must still hit the 150-word floor per article and still use \`##\` headings. The goal is an end-user help center, not a mirror of the source.
-- Fenced code blocks MUST open on their own line with three backticks followed by a language identifier (e.g. \`\`\`javascript), contain the code on subsequent lines, and close on their own line with three backticks. Never embed a fenced code block inside a paragraph or sentence. Never put prose and backticks on the same line.
-- Include a fenced code example whenever the source content mentions any of the following: an API call, a CLI command, an SDK usage example, a request or response payload, a config file, an environment variable, or a shell install command (e.g. \`npm install\`, \`pip install\`, \`brew install\`).
-
-Component palette (MDX components you may use in the article body):
-
-Use these components when the content structure warrants it, not as a formula. Vary usage across articles.
-
-<Callout type="tip">Short practical advice or best practice.</Callout>
-<Callout type="warning">Something that could break or cause problems.</Callout>
-
-<Steps>
-  <Step title="First step">Body of step one with concrete instructions.</Step>
-  <Step title="Second step">Body of step two.</Step>
-  <Step title="Third step">Body of step three.</Step>
-</Steps>
-
-<Accordion>
-  <AccordionItem title="Frequently asked question">Answer with concrete details.</AccordionItem>
-  <AccordionItem title="Another question">Another answer.</AccordionItem>
-</Accordion>
-
-<CardGroup cols={2}>
-  <Card icon="rocket" title="Related article" href="/category/article-slug">Short description of the linked article.</Card>
-  <Card icon="book-open" title="Another article" href="/category/other-slug">Another short description.</Card>
-</CardGroup>
-
-Component rules:
-- Use <Steps> for how-to articles with 3 or more sequential actions. Minimum 3 steps.
-- Use <Callout type="tip"> for best practices, <Callout type="warning"> for gotchas. At most 2 callouts per article.
-- Use <CardGroup> at the end of the article for 2-4 related links. Minimum 2 cards.
-- Use <Accordion> for FAQ sections or edge cases. Minimum 2 items.
-- Do NOT use <Figure>, <Video>, <CtaCard>, or <Tabs> in generated output. Those require real assets or human curation.
-- Not every article needs Steps. Not every article needs CardGroup. Use components when the content structure warrants it.
-
-Grounding rules:
-- Do NOT invent features that are not mentioned in the scraped content.
-- Prefer concrete steps over generic advice.
-- Use the product's own naming and terminology when possible.
-- Never use these marketing words anywhere (title, description, or body): streamline, seamless, effortless, powerful, beautiful, robust, comprehensive, ultimate, cutting-edge.
-- Never start a sentence with "Learn" (e.g. "Learn how to...", "Learn the basics of...").
-
-SCRAPED CONTENT:
-${content}`
+  // 4. Give up
+  const preview = raw.slice(0, 500)
+  throw new GatewayError(
+    `Model returned invalid JSON. Raw output: ${preview}`,
+  )
 }
+
+// ── Article serialization ──────────────────────────────────────────
 
 /**
  * Convert a generated article into a full MDX file string with frontmatter.
- * The frontmatter matches the Frontmatter schema in `./schemas.ts`.
+ * When images are provided, inserts <Figure> components at appropriate positions.
  */
 export function articleToMdx(
   article: GeneratedArticle,
   order: number,
+  images?: ArticleImage[],
 ): string {
   const tagsYaml =
     article.tags.length > 0
       ? `[${article.tags.map((t) => JSON.stringify(t)).join(", ")}]`
       : "[]"
+
+  let content = article.content.trim()
+
+  // Insert Figure components when images are provided
+  if (images?.length) {
+    content = insertFigures(content, images)
+  }
 
   return `---
 schemaVersion: 1
@@ -251,9 +242,59 @@ order: ${order}
 featured: false
 ---
 
-${article.content.trim()}
+${content}
 `
 }
+
+/**
+ * Insert <Figure> components into MDX content.
+ *
+ * If content contains <Steps>/<Step> blocks: insert Figure as the last
+ * child of the corresponding Step (1:1 mapping by step number).
+ *
+ * If no Steps: insert Figure N after the Nth prose paragraph.
+ */
+function insertFigures(content: string, images: ArticleImage[]): string {
+  const hasSteps = /<Steps>/.test(content)
+
+  if (hasSteps) {
+    // Insert Figure inside each <Step> block by step number
+    const sorted = [...images].sort((a, b) => a.step - b.step)
+    for (const img of sorted) {
+      const figureTag = `\n\n<Figure src="./${img.filename}" alt=${JSON.stringify(img.alt)} />`
+      // Find the closing </Step> for the Nth step and insert before it
+      let stepIndex = 0
+      content = content.replace(/<\/Step>/g, (match) => {
+        stepIndex++
+        if (stepIndex === img.step) {
+          return `${figureTag}\n${match}`
+        }
+        return match
+      })
+    }
+  } else {
+    // Insert after the Nth paragraph (double-newline separated blocks)
+    const sorted = [...images].sort((a, b) => a.step - b.step)
+    const paragraphs = content.split(/\n\n+/)
+    const result: string[] = []
+
+    for (let i = 0; i < paragraphs.length; i++) {
+      result.push(paragraphs[i]!)
+      // Check if any image's step matches this paragraph index (1-indexed)
+      const matchingImages = sorted.filter((img) => img.step === i + 1)
+      for (const img of matchingImages) {
+        result.push(
+          `<Figure src="./${img.filename}" alt=${JSON.stringify(img.alt)} />`,
+        )
+      }
+    }
+    content = result.join("\n\n")
+  }
+
+  return content
+}
+
+// ── Article write planning ─────────────────────────────────────────
 
 export interface ArticleWritePlan {
   categorySlug: string
@@ -261,6 +302,8 @@ export interface ArticleWritePlan {
   articleSlug: string
   filePath: string
   mdx: string
+  /** Source image files to copy into the article's asset folder. */
+  imageFiles?: Array<{ sourcePath: string; filename: string }>
 }
 
 /**
@@ -270,8 +313,8 @@ export interface ArticleWritePlan {
 export function planArticleWrites(
   articles: GeneratedArticle[],
   outputDir: string,
+  imagesByArticle?: Map<number, { images: ArticleImage[]; sourceFiles: Array<{ sourcePath: string; filename: string }> }>,
 ): ArticleWritePlan[] {
-  // Group articles by category slug so we can assign stable order values.
   const byCategory = new Map<string, GeneratedArticle[]>()
   for (const article of articles) {
     const key = slugify(article.category)
@@ -281,17 +324,21 @@ export function planArticleWrites(
   }
 
   const plans: ArticleWritePlan[] = []
+  let globalIndex = 0
   for (const [categorySlug, categoryArticles] of byCategory) {
     const categoryTitle = categoryArticles[0]!.category
     categoryArticles.forEach((article, index) => {
       const articleSlug = slugify(article.title)
+      const articleImages = imagesByArticle?.get(globalIndex)
       plans.push({
         categorySlug,
         categoryTitle,
         articleSlug,
         filePath: `${outputDir}/${categorySlug}/${articleSlug}.mdx`,
-        mdx: articleToMdx(article, index + 1),
+        mdx: articleToMdx(article, index + 1, articleImages?.images),
+        imageFiles: articleImages?.sourceFiles,
       })
+      globalIndex++
     })
   }
   return plans

@@ -24,72 +24,6 @@ _All P2 items shipped on 2026-04-09. See the Completed section._
 
 ## P3
 
-### TODO-003: Dedup `registry/helpbase/lib/schemas.ts` against `packages/shared/src/schemas.ts`
-
-**What:** Two parallel copies of the article frontmatter / category metadata schemas exist. They are now out of sync after a recent comment update on `packages/shared/src/schemas.ts`.
-
-**Why:** Schema drift is a silent-failure source. The shadcn registry consumers will eventually load a different schema than the helpbase package consumers, and the divergence will manifest as confusing build errors or rejected articles.
-
-**Pros:** One source of truth. Eliminates a known drift vector.
-**Cons:** Requires a build-time copy or generated-file pattern, similar to the templates sync work in the scaffolder fix. Could be combined with that effort.
-
-**Context:**
-- Files: `packages/shared/src/schemas.ts` (canonical) vs `registry/helpbase/lib/schemas.ts` (drift copy)
-- The registry has its own copy because shadcn registry items must be self-contained — the consumer doesn't get workspace deps
-- Possible fix: extend the same templates sync pattern from the scaffolder fix to also generate `registry/helpbase/lib/*` from `packages/shared/src/*`. One sync script, two outputs.
-
-**Effort:** S (human ~30 min / CC ~10 min if combined with the templates sync work)
-**Priority:** P3
-**Depends on:** Scaffolder fix landed (the sync script pattern from that fix is the model)
-**Source:** Pre-existing tech debt; surfaced again in /plan-ceo-review 2026-04-09 Step 0B
-
----
-
-### TODO-005: Drop unused @hugeicons deps from apps/web/package.json
-
-**What:** `apps/web/package.json` declares `@hugeicons/core-free-icons ^4.1.1` and `@hugeicons/react ^1.1.6` as dependencies, but neither is imported anywhere in apps/web source files. They were probably added speculatively.
-
-**Why:** Inflates install size by ~80KB. More importantly, signals that the apps/web dep list isn't trustworthy, which makes the templates+sync work in TODO-002-adjacent territory more confusing for contributors.
-
-**Pros:** Cleaner dep list. Smaller `pnpm install` size. One source of "actually used" deps that the scaffolder can mirror confidently.
-**Cons:** None. Pure cleanup.
-
-**Context:**
-- Files: `apps/web/package.json` lines 15-16
-- Verification: `grep -r "@hugeicons" apps/web/{app,components,lib} --include="*.tsx" --include="*.ts"` returns zero results
-- After dropping: `pnpm install && pnpm --filter web build` should still pass
-- Discovered during /plan-eng-review 2026-04-09 dependency inventory for the scaffolder fix
-
-**Effort:** S (human ~5 min / CC ~2 min)
-**Priority:** P3
-**Depends on:** None
-**Source:** /plan-eng-review 2026-04-09
-
----
-
-### TODO-006: Zod version mismatch in workspace
-
-**What:** `packages/ui/package.json` declares `zod ^3.25.76`. `packages/shared/package.json` and `apps/web/package.json` declare `zod ^4.3.6`. Pnpm's hoisting will pick one or the other unpredictably depending on resolution order.
-
-**Why:** Real workspace inconsistency, not cosmetic. zod v3 and v4 have meaningful API differences (schema definition, error formatting, default value handling). If a Badge variant ever gets validated through `packages/ui`'s zod, the result depends on which version pnpm hoisted.
-
-**Pros:** One zod across the workspace. Predictable behavior. Easier dep audits.
-**Cons:** Need to verify the Badge component (the only zod consumer in `packages/ui`) still works after the bump. Probably trivial since Badge uses `class-variance-authority`, not zod directly — but worth verifying the package even imports zod for a real reason.
-
-**Context:**
-- Files: `packages/ui/package.json` line containing `zod`
-- Bump target: `^4.3.6` to match the rest of the workspace
-- Verification: `pnpm install && pnpm test && pnpm --filter web build`
-- Investigation step before bumping: `grep -r "from \"zod\"" packages/ui/src` to see if zod is even imported by the ui package, or whether it's a leftover dep declaration
-- Discovered during /plan-eng-review 2026-04-09
-
-**Effort:** S (human ~10 min / CC ~5 min)
-**Priority:** P2
-**Depends on:** None
-**Source:** /plan-eng-review 2026-04-09
-
----
-
 ### TODO-004: Hero screenshot for README
 
 **What:** Capture a hero screenshot or recording of the polished docs page (sidebar + TOC, light mode, 1600x840) and add it to the README under the badges block.
@@ -157,6 +91,15 @@ _All P2 items shipped on 2026-04-09. See the Completed section._
 ---
 
 ## Completed
+
+### TODO-003: Dedup `registry/helpbase/lib/schemas.ts` against `packages/shared/src/schemas.ts`
+**Completed:** 8bc8e5b + 2d7beb8 (2026-04-11) — the sync script (`scripts/sync-templates.mjs`) now generates both registry and template copies from `packages/shared/src/schemas.ts` via `inlineWorkspaceUtilitiesToRegistry()` and `inlineWorkspaceUtilitiesToTemplates()`. CI gate (`pnpm sync:templates && git diff --exit-code`) catches drift. Verified both copies are byte-identical.
+
+### TODO-005: Drop unused @hugeicons deps from apps/web/package.json
+**Completed:** 8088ce7 (2026-04-11) — removed `@hugeicons/core-free-icons` and `@hugeicons/react` from apps/web (never imported). Kept in packages/ui where dialog.tsx uses them.
+
+### TODO-006: Zod version mismatch in workspace
+**Completed:** 8088ce7 (2026-04-11) — removed dead `zod ^3.25.76` from packages/ui (never imported, grep confirmed). Workspace now has one zod version: `^4.3.6` in apps/web and packages/shared.
 
 ### TODO-001: Update README "What you get" tree to match the real templates output
 **Completed:** bdefe1f (2026-04-09) — rewrote tree against the actual scaffolded output (37 files). Also fixed stale test count (87→94), stale license badge (MIT→AGPL-3.0), and extended the monorepo Project structure section with the new scripts/ directory and templates dir explanation.

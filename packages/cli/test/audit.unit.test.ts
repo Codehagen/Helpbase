@@ -303,4 +303,107 @@ describe("auditContent", () => {
     const warnings = result.issues.filter((i) => i.message.includes("unused asset"))
     expect(warnings).toHaveLength(0)
   })
+
+  // --- Internal link validation ---
+
+  it("warns about broken internal links in markdown syntax", () => {
+    writeCategoryMeta("guides")
+    writeArticle("guides", "intro.mdx", {
+      schemaVersion: 1,
+      title: "Intro",
+      description: "D",
+    })
+    const dir = path.join(tmpDir, "guides")
+    fs.writeFileSync(
+      path.join(dir, "links.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\nSee [missing](/guides/nonexistent) for more.\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const issue = result.issues.find((i) => i.message.includes("broken internal link"))
+    expect(issue).toBeDefined()
+    expect(issue?.level).toBe("warning")
+    expect(issue?.message).toContain("/guides/nonexistent")
+  })
+
+  it("warns about broken internal links in href props", () => {
+    writeCategoryMeta("docs")
+    writeArticle("docs", "one.mdx", {
+      schemaVersion: 1,
+      title: "One",
+      description: "D",
+    })
+    const dir = path.join(tmpDir, "docs")
+    fs.writeFileSync(
+      path.join(dir, "cards.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\n<Card icon="star" title="Missing" href="/docs/missing">Gone</Card>\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const issue = result.issues.find((i) => i.message.includes("/docs/missing"))
+    expect(issue).toBeDefined()
+    expect(issue?.level).toBe("warning")
+  })
+
+  it("passes when internal links resolve to existing articles", () => {
+    writeCategoryMeta("guides")
+    writeArticle("guides", "intro.mdx", {
+      schemaVersion: 1,
+      title: "Intro",
+      description: "D",
+    })
+    const dir = path.join(tmpDir, "guides")
+    fs.writeFileSync(
+      path.join(dir, "links.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\nSee [intro](/guides/intro) and [category](/guides).\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const broken = result.issues.filter((i) => i.message.includes("broken internal link"))
+    expect(broken).toHaveLength(0)
+  })
+
+  it("skips links inside code blocks", () => {
+    writeCategoryMeta("docs")
+    writeArticle("docs", "one.mdx", {
+      schemaVersion: 1,
+      title: "One",
+      description: "D",
+    })
+    const dir = path.join(tmpDir, "docs")
+    fs.writeFileSync(
+      path.join(dir, "code.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\n\`\`\`mdx\n<Card href="/nonexistent/page">Example</Card>\n\`\`\`\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const broken = result.issues.filter((i) => i.message.includes("broken internal link"))
+    expect(broken).toHaveLength(0)
+  })
+
+  it("skips placeholder links like /path and /category/slug", () => {
+    writeCategoryMeta("docs")
+    const dir = path.join(tmpDir, "docs")
+    fs.writeFileSync(
+      path.join(dir, "placeholders.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\n<Card href="/path">Example</Card>\n<CtaCard href="/category/slug" title="T" description="D" linkText="Go" />\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const broken = result.issues.filter((i) => i.message.includes("broken internal link"))
+    expect(broken).toHaveLength(0)
+  })
+
+  it("does not flag MDX components inside code blocks", () => {
+    writeCategoryMeta("docs")
+    const dir = path.join(tmpDir, "docs")
+    fs.writeFileSync(
+      path.join(dir, "example.mdx"),
+      `---\nschemaVersion: 1\ntitle: "T"\ndescription: "D"\n---\n\n\`\`\`tsx\n<ThemeProvider defaultTheme="dark">\n\`\`\`\n`,
+    )
+
+    const result = auditContent(tmpDir)
+    const componentErrors = result.issues.filter((i) => i.message.includes("unknown MDX"))
+    expect(componentErrors).toHaveLength(0)
+  })
 })

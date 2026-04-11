@@ -121,15 +121,17 @@ export function auditContent(contentDir: string): AuditResult {
           referencedAssets.add(`${slug}/${data.ogImage}`)
         }
 
-        // MDX component name validation (regex-based JSX detection)
-        validateMdxComponents(content, fileRef, issues)
-
-        // Strip code blocks (fenced and inline) before collecting image refs.
+        // Strip code blocks (fenced and inline) before validation.
+        // Code blocks may contain example JSX tags and src= attributes
+        // that should not be validated as real references.
         // Code blocks may contain example src= attributes and markdown images
         // that should not be validated as real file references.
         const contentNoFences = content
           .replace(/```[\s\S]*?```/g, "")  // fenced code blocks
           .replace(/`[^`]+`/g, "")          // inline code
+
+        // MDX component name validation (on code-stripped content)
+        validateMdxComponents(contentNoFences, fileRef, issues)
 
         // Collect image refs from MDX body for unused-file detection
         // AND validate that explicitly referenced files (./ prefix) exist on disk.
@@ -203,6 +205,10 @@ export function auditContent(contentDir: string): AuditResult {
     }
   }
 
+  // Internal link validation: build a set of valid routes from all content,
+  // then check every internal link in every article against it.
+  validateInternalLinks(contentDir, issues)
+
   // Guard against the silent-footgun case: a content directory that exists
   // but contains zero categories.
   if (categoryCount === 0) {
@@ -215,6 +221,88 @@ export function auditContent(contentDir: string): AuditResult {
   }
 
   return { categoryCount, articleCount, issues }
+}
+
+/**
+ * Build the set of valid internal routes from the content directory, then
+ * scan every article for internal links (markdown links + href props) and
+ * flag any that don't resolve to a known route.
+ *
+ * Valid routes: /{category} and /{category}/{slug} for every category/article.
+ * Links inside fenced code blocks or inline code are skipped (they're examples).
+ */
+function validateInternalLinks(
+  contentDir: string,
+  issues: AuditIssue[],
+): void {
+  // Build the set of valid routes
+  const validRoutes = new Set<string>(["/"])
+
+  const categories = fs
+    .readdirSync(contentDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+
+  for (const dir of categories) {
+    validRoutes.add(`/${dir.name}`)
+    const categoryPath = path.join(contentDir, dir.name)
+    const files = fs
+      .readdirSync(categoryPath)
+      .filter((f) => f.endsWith(".mdx") || f.endsWith(".md"))
+
+    for (const file of files) {
+      const slug = file.replace(/\.mdx?$/, "")
+      validRoutes.add(`/${dir.name}/${slug}`)
+    }
+  }
+
+  // Scan every article for internal links
+  for (const dir of categories) {
+    const categoryPath = path.join(contentDir, dir.name)
+    const files = fs
+      .readdirSync(categoryPath)
+      .filter((f) => f.endsWith(".mdx") || f.endsWith(".md"))
+
+    for (const file of files) {
+      const filePath = path.join(categoryPath, file)
+      const raw = fs.readFileSync(filePath, "utf-8")
+      const fileRef = `${dir.name}/${file}`
+
+      // Strip frontmatter
+      const contentOnly = raw.replace(/^---[\s\S]*?---/, "")
+
+      // Strip code blocks (fenced and inline) to avoid flagging examples
+      const stripped = contentOnly
+        .replace(/```[\s\S]*?```/g, "")
+        .replace(/`[^`]+`/g, "")
+
+      // Extract internal links from:
+      // 1. Markdown links: [text](/path) or [text](/path#anchor)
+      // 2. href props: href="/path" or href="/path#anchor"
+      const linkPatterns = [
+        /\[[^\]]*\]\(\/([^)#\s]*)[^)]*\)/g,  // markdown links
+        /href="\/([^"#]*)[^"]*"/g,            // JSX href props
+      ]
+
+      for (const pattern of linkPatterns) {
+        for (const match of stripped.matchAll(pattern)) {
+          const target = `/${match[1]}`
+
+          // Skip placeholder/example paths
+          if (target === "/path" || target === "/category/slug" || target === "/") {
+            continue
+          }
+
+          if (!validRoutes.has(target)) {
+            issues.push({
+              level: "warning",
+              file: fileRef,
+              message: `broken internal link "${target}" — no matching article or category found`,
+            })
+          }
+        }
+      }
+    }
+  }
 }
 
 /**

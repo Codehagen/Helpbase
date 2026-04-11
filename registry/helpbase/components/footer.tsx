@@ -10,12 +10,12 @@ export function Footer() {
             href="/"
             className="font-medium text-foreground underline-offset-4 hover:underline"
           >
-            HelpCenter
+            helpbase
           </Link>
         </p>
         <div className="flex items-center gap-4">
           <a
-            href="https://github.com"
+            href="https://github.com/Codehagen/helpbase"
             target="_blank"
             rel="noopener noreferrer"
             className="transition-colors hover:text-foreground"

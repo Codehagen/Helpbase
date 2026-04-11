@@ -56,11 +56,11 @@ const REGISTRY = join(REPO_ROOT, "registry/helpbase")
 // new files in apps/web only get included if they live under one of these.
 const APPS_WEB_DIRS = ["app", "components", "lib", "content"]
 
-// Files/directories to exclude from the TEMPLATES target. The hosted tier
-// (tenant routes, tenant-content, hosted-mdx-components, proxy) is only
-// available via `helpbase deploy` to Supabase — scaffolded standalone
-// projects don't ship it.
-const TEMPLATES_EXCLUDE_PREFIXES = [
+// Files/directories to exclude from standalone targets (templates + registry).
+// The hosted tier (tenant routes, tenant-content, hosted-mdx-components,
+// supabase client) is only available via `helpbase deploy` to Supabase —
+// neither scaffolded projects nor shadcn registry consumers ship it.
+const HOSTED_TIER_EXCLUDES = [
   "app/(tenant)/",
   "lib/tenant-content.ts",
   "lib/hosted-mdx-components.tsx",
@@ -477,7 +477,7 @@ function syncTemplates() {
     const files = walkFiles(fullDir)
     for (const rel of files) {
       const relPath = join(dir, rel)
-      if (TEMPLATES_EXCLUDE_PREFIXES.some((p) => relPath.startsWith(p))) {
+      if (HOSTED_TIER_EXCLUDES.some((p) => relPath.startsWith(p))) {
         skippedCount++
         continue
       }
@@ -887,9 +887,10 @@ function syncRegistry() {
   }
   console.log(`  ✓ Copied ${componentFiles.length} component files`)
 
-  // Copy lib/ (3 apps/web lib files: content, search, toc)
+  // Copy lib/ (apps/web lib files: content, search, toc, etc.)
+  // Excludes hosted-tier files (tenant-content, hosted-mdx-components, supabase).
   const libFiles = walkFiles(join(APPS_WEB, "lib")).filter(
-    (f) => !f.endsWith(".gitkeep"),
+    (f) => !f.endsWith(".gitkeep") && !HOSTED_TIER_EXCLUDES.includes(`lib/${f}`),
   )
   for (const rel of libFiles) {
     copyAppsWebFileToRegistry(join("lib", rel))

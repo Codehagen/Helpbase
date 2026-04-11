@@ -56,6 +56,17 @@ const REGISTRY = join(REPO_ROOT, "registry/helpbase")
 // new files in apps/web only get included if they live under one of these.
 const APPS_WEB_DIRS = ["app", "components", "lib", "content"]
 
+// Files/directories to exclude from the TEMPLATES target. The hosted tier
+// (tenant routes, tenant-content, hosted-mdx-components, proxy) is only
+// available via `helpbase deploy` to Supabase — scaffolded standalone
+// projects don't ship it.
+const TEMPLATES_EXCLUDE_PREFIXES = [
+  "app/(tenant)/",
+  "lib/tenant-content.ts",
+  "lib/hosted-mdx-components.tsx",
+  "lib/supabase.ts",
+]
+
 // Import transform map. Each @workspace/* prefix maps to a local @/* path.
 // When a contributor adds a new @workspace/* import to apps/web, they must
 // add an entry here. The validation step at the end fails loudly if not.
@@ -429,6 +440,7 @@ function generateTemplatesPackageJson() {
       clsx: "^2.1.1",
       "tailwind-merge": "^3.5.0",
       "class-variance-authority": "^0.7.1",
+      "lucide-react": "^1.8.0",
       "radix-ui": "^1.4.3",
       "tw-animate-css": "^1.4.0",
       shadcn: "^4.2.0",
@@ -458,16 +470,22 @@ function syncTemplates() {
   mkdirSync(TEMPLATES, { recursive: true })
 
   let copiedCount = 0
+  let skippedCount = 0
   for (const dir of APPS_WEB_DIRS) {
     const fullDir = join(APPS_WEB, dir)
     if (!existsSync(fullDir)) continue
     const files = walkFiles(fullDir)
     for (const rel of files) {
-      copyAppsWebFileToTemplates(join(dir, rel))
+      const relPath = join(dir, rel)
+      if (TEMPLATES_EXCLUDE_PREFIXES.some((p) => relPath.startsWith(p))) {
+        skippedCount++
+        continue
+      }
+      copyAppsWebFileToTemplates(relPath)
       copiedCount++
     }
   }
-  console.log(`  ✓ Copied ${copiedCount} files from apps/web/`)
+  console.log(`  ✓ Copied ${copiedCount} files from apps/web/ (skipped ${skippedCount} hosted-tier files)`)
 
   inlineWorkspaceUtilitiesToTemplates()
   console.log("  ✓ Inlined 4 workspace utilities into templates/lib/")
@@ -500,8 +518,8 @@ function syncTemplates() {
  * transforms applied. Same transform rules as the templates target —
  * the output tree is a standalone, workspace-free copy.
  */
-function copyAppsWebFileToRegistry(relativePath) {
-  const src = join(APPS_WEB, relativePath)
+function copyAppsWebFileToRegistry(relativePath, { srcRelativePath } = {}) {
+  const src = join(APPS_WEB, srcRelativePath || relativePath)
   const dest = join(REGISTRY, relativePath)
 
   if (!isTextFile(relativePath.split("/").pop())) {
@@ -889,11 +907,16 @@ function syncRegistry() {
   }
   console.log(`  ✓ Copied ${contentFiles.length} content files`)
 
-  // Copy app/(docs)/[category]/** (the dynamic routes, but NOT the layout —
-  // we generate a registry-specific layout below).
-  const docsCategoryFiles = walkFiles(join(APPS_WEB, "app/(docs)/[category]"))
+  // Copy app/(main)/(docs)/[category]/** (the dynamic routes, but NOT the
+  // layout — we generate a registry-specific layout below). The source path
+  // is under (main)/ due to the hosted tier route group split, but the
+  // registry output omits (main)/ since the consumer doesn't have the
+  // hosted tier's route group structure.
+  const docsCategoryFiles = walkFiles(join(APPS_WEB, "app/(main)/(docs)/[category]"))
   for (const rel of docsCategoryFiles) {
-    copyAppsWebFileToRegistry(join("app/(docs)/[category]", rel))
+    copyAppsWebFileToRegistry(join("app/(docs)/[category]", rel), {
+      srcRelativePath: join("app/(main)/(docs)/[category]", rel),
+    })
   }
   console.log(`  ✓ Copied ${docsCategoryFiles.length} app/(docs) page files`)
 

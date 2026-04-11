@@ -93,3 +93,20 @@ export const generatedArticlesSchema = z.object({
 })
 
 export type GeneratedArticle = z.infer<typeof generatedArticleSchema>
+
+/**
+ * An image associated with a generated article.
+ * Used by the visual generation pipeline (--screenshots flag).
+ *
+ * Each image maps 1:1 to a <Step> block. When no <Steps> are present,
+ * `step` is treated as an ordinal position (Figure N inserted after
+ * the Nth prose paragraph).
+ */
+export interface ArticleImage {
+  /** Source filename, e.g. "01-dashboard.png" */
+  filename: string
+  /** AI-generated description of what the screenshot shows */
+  alt: string
+  /** Which Step this image belongs to (1-indexed) */
+  step: number
+}

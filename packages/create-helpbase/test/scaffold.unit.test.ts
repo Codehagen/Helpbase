@@ -157,11 +157,11 @@ describe("scaffoldProject", () => {
     scaffoldProject({ projectName: "test", projectDir })
 
     expect(
-      fs.existsSync(path.join(projectDir, "app", "(docs)", "layout.tsx")),
+      fs.existsSync(path.join(projectDir, "app", "(main)", "(docs)", "layout.tsx")),
     ).toBe(true)
     expect(
       fs.existsSync(
-        path.join(projectDir, "app", "(docs)", "[category]", "page.tsx"),
+        path.join(projectDir, "app", "(main)", "(docs)", "[category]", "page.tsx"),
       ),
     ).toBe(true)
     expect(
@@ -169,6 +169,7 @@ describe("scaffoldProject", () => {
         path.join(
           projectDir,
           "app",
+          "(main)",
           "(docs)",
           "[category]",
           "[slug]",

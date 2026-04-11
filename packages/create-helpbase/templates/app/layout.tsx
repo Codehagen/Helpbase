@@ -2,10 +2,6 @@ import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
-import { SearchDialog } from "@/components/search-dialog"
-import { getSearchIndex } from "@/lib/search"
 import { cn } from "@/lib/utils"
 
 import type { Metadata } from "next"
@@ -22,13 +18,11 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const searchItems = await getSearchIndex()
-
   return (
     <html
       lang="en"
@@ -42,12 +36,7 @@ export default async function RootLayout({
     >
       <body>
         <ThemeProvider>
-          <div className="flex min-h-svh flex-col">
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
-          <SearchDialog items={searchItems} />
+          {children}
         </ThemeProvider>
       </body>
     </html>

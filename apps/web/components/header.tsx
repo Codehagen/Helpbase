@@ -136,7 +136,7 @@ export function Header() {
           <div className="flex size-7 items-center justify-center rounded-lg bg-foreground">
             <span className="text-xs font-bold text-background">?</span>
           </div>
-          <span className="hidden sm:inline">Help Center</span>
+          <span className="hidden sm:inline">helpbase</span>
         </Link>
 
         {/* Search */}
@@ -148,7 +148,7 @@ export function Header() {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <a
-            href="https://github.com"
+            href="https://github.com/Codehagen/helpbase"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

@@ -112,6 +112,50 @@ _All P2 items shipped on 2026-04-09. See the Completed section._
 
 ---
 
+### TODO-007: Implement `helpbase generate --repo` for GitHub source ingestion
+
+**What:** The `--repo` flag is declared in the generate CLI but exits with "Repository-based generation is not yet implemented." Currently `--url` only scrapes rendered HTML pages, which doesn't work well for GitHub repo pages (scrapes the HTML shell, not the content).
+
+**Why:** Developers want to generate help center articles from their GitHub README and source files. The current workaround (pointing `--url` at rendered docs pages) misses repo-only content like code examples, API docs, and architecture docs.
+
+**Pros:** Enables the primary dogfooding workflow. Completes the CLI surface area.
+**Cons:** Requires GitHub API integration or raw content fetching. Token management for private repos.
+
+**Context:**
+- File: `packages/cli/src/commands/generate.ts` line 30 (the `--repo` flag declaration)
+- The exit-with-error is on the same file, inside the generate command handler
+- Approach: Use GitHub Contents API to fetch README.md and other markdown files, then feed to the existing generation pipeline
+- Could also support local repo paths: `helpbase generate --repo .` reads files from disk
+
+**Effort:** M (human ~1 week / CC ~30 min)
+**Priority:** P2
+**Depends on:** None
+**Source:** /plan-ceo-review 2026-04-11, surfaced by Codex outside voice
+
+---
+
+### TODO-008: Add link checker to `helpbase audit`
+
+**What:** `helpbase audit` validates frontmatter but doesn't check internal links, anchor references, or external URLs in article content. Broken links in MDX content ship silently.
+
+**Why:** Hand-authored MDX articles contain links to other articles, GitHub URLs, and anchor references. Without validation, link rot accumulates. The Edit on GitHub links also need verification (correct file paths).
+
+**Pros:** Catches broken links before deploy. Completes the audit surface.
+**Cons:** External URL checking adds network calls and latency. Could be opt-in.
+
+**Context:**
+- File: `packages/cli/src/audit.ts`
+- Current audit checks: frontmatter validation, category metadata, empty categories
+- New checks needed: internal link targets exist, anchor targets exist in target articles, external URLs return 200 (opt-in flag)
+- Could also validate `<Card href="...">` and `<CtaCard href="...">` props
+
+**Effort:** S (human ~2 hr / CC ~15 min)
+**Priority:** P3
+**Depends on:** None
+**Source:** /plan-ceo-review 2026-04-11, surfaced by Codex outside voice
+
+---
+
 ## Completed
 
 ### TODO-001: Update README "What you get" tree to match the real templates output

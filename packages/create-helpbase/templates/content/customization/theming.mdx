@@ -1,47 +1,89 @@
 ---
 schemaVersion: 1
 title: "Theming"
-description: "Customize the look and feel of your help center with themes and color schemes."
-tags: ["theming", "design", "css"]
+description: "Customize colors, fonts, dark mode, and the overall look of your help center."
+tags: ["customization", "design"]
 order: 1
-featured: true
+featured: false
 ---
 
 # Theming
 
-Your help center uses CSS variables for theming, making it easy to customize colors, fonts, and spacing.
+helpbase uses shadcn/ui's theming system. Colors, fonts, spacing, and dark mode are all controlled through CSS variables in `app/globals.css`.
 
-## Color system
+## CSS variables
 
-Colors are defined using the oklch color space for perceptually uniform color manipulation:
+The core theme is defined in `:root` and `.dark` selectors:
 
 ```css
 :root {
   --background: oklch(1 0 0);
-  --foreground: oklch(0.153 0.006 107.1);
-  --primary: oklch(0.228 0.013 107.4);
-  --muted: oklch(0.966 0.005 106.5);
+  --foreground: oklch(0.145 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --border: oklch(0.922 0 0);
+  /* ... */
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  /* ... */
 }
 ```
+
+<Callout type="tip">
+helpbase uses oklch color space for perceptually uniform colors. You can use any color format CSS supports, but oklch gives the most predictable results across light and dark modes.
+</Callout>
 
 ## Dark mode
 
-Dark mode is built-in and works automatically. Users can toggle it with the `d` key or the theme toggle in the header.
+Dark mode is handled by `next-themes`. The toggle is in the header. Users' preferences persist across sessions via localStorage.
 
-The `.dark` class switches CSS variables to dark values:
+To change the default theme, update the `ThemeProvider` in `app/layout.tsx`:
 
-```css
-.dark {
-  --background: oklch(0.153 0.006 107.1);
-  --foreground: oklch(0.988 0.003 106.5);
-}
+```tsx
+<ThemeProvider defaultTheme="dark" attribute="class">
 ```
 
-## Typography
+## Fonts
 
-The help center uses [Geist](https://vercel.com/font) — a clean, modern font family by Vercel. Both sans-serif and monospace variants are included.
+The default font stack uses system fonts for fast loading. To use a custom font:
 
-## Next steps
+<Steps>
+  <Step title="Import the font">
+    ```tsx
+    // app/layout.tsx
+    import { Inter } from "next/font/google"
+    const inter = Inter({ subsets: ["latin"] })
+    ```
+  </Step>
+  <Step title="Apply to the body">
+    ```tsx
+    <body className={inter.className}>
+    ```
+  </Step>
+</Steps>
 
-- Learn about [custom components](/customization/theming)
-- See the [configuration reference](/getting-started/configuration)
+## Article typography
+
+Article content uses the `.article-content` class defined in `globals.css`. This controls:
+
+- Heading sizes and spacing
+- Paragraph line height
+- Code block styling
+- Table formatting
+- Blockquote appearance
+- Image border radius
+
+All values are customizable through the CSS class without touching component code.
+
+## Adding shadcn components
+
+Since helpbase is built on shadcn/ui, you can add any shadcn component:
+
+```bash
+npx shadcn add button dialog dropdown-menu
+```
+
+Components install into `components/ui/` and use your theme variables automatically.

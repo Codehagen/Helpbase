@@ -1,0 +1,83 @@
+---
+schemaVersion: 1
+title: "AI Generation"
+description: "Generate help center articles from any URL using the helpbase CLI."
+tags: ["getting-started", "ai", "cli"]
+order: 3
+featured: true
+---
+
+# AI Generation
+
+helpbase can generate help center articles from any URL. Point it at your product's marketing page, docs, or README, and it produces MDX articles with proper frontmatter, headings, and component usage.
+
+<Callout type="note">
+AI generation uses the Vercel AI SDK with configurable providers. The default model is Gemini Flash Lite for fast, cost-effective generation.
+</Callout>
+
+## Basic usage
+
+```bash
+npx helpbase generate --url https://your-product.com
+```
+
+This scrapes the page content and generates MDX articles in your `content/` directory.
+
+## How it works
+
+<Steps>
+  <Step title="Scrape the source URL">
+    The CLI fetches the page content, strips navigation and boilerplate, and extracts the meaningful text.
+  </Step>
+  <Step title="Generate structured articles">
+    The AI model receives the extracted content along with a tuned prompt that enforces:
+    - Proper frontmatter (title, description, tags)
+    - At least 3 markdown headings per article
+    - Minimum 150 words per article
+    - MDX component usage (Callout, Steps, CardGroup)
+  </Step>
+  <Step title="Write to content/">
+    Generated articles are written to your `content/` directory with proper category organization and `_category.json` files.
+  </Step>
+</Steps>
+
+## Options
+
+| Flag | Description |
+|------|-------------|
+| `--url <url>` | Source URL to generate from |
+| `--output <dir>` | Output directory (default: `content/`) |
+| `--screenshots <dir>` | Screenshot folder for visual how-to articles |
+| `--title <title>` | Article title (used with `--screenshots`) |
+
+## Visual how-to articles
+
+For step-by-step tutorials with screenshots, use the `--screenshots` flag:
+
+```bash
+npx helpbase generate --screenshots ./screenshots --title "Setting up SSO"
+```
+
+The CLI reads images from the folder, sends them to a vision model, and generates a visual walkthrough article with `<Figure>` components for each screenshot.
+
+<Callout type="tip">
+Take screenshots in the order of the workflow. The AI infers the logical sequence from the image content, but sequential filenames help.
+</Callout>
+
+## Prompt tuning
+
+The generation prompt is versioned and tuned for help center content. Current version: v0.0.3. Key rules the prompt enforces:
+
+- No marketing language ("streamline", "revolutionize", "cutting-edge")
+- Concrete examples over abstract descriptions
+- Code blocks for CLI commands and configuration
+- MDX components where they add value (not decoration)
+
+## After generating
+
+Always review and edit generated articles. The AI gets the structure right, but you know your product best. Common edits:
+
+1. Fix technical inaccuracies
+2. Add product-specific details the scraper missed
+3. Insert relevant MDX components (Accordion for FAQs, Tabs for multi-platform instructions)
+4. Run `npx helpbase audit` to validate frontmatter and structure

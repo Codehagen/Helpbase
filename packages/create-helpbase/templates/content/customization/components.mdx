@@ -1,0 +1,217 @@
+---
+schemaVersion: 1
+title: "Component Showcase"
+description: "Live examples of all 8 MDX components that ship with helpbase."
+tags: ["components", "mdx", "showcase"]
+order: 2
+featured: true
+---
+
+# Component Showcase
+
+helpbase ships 8 MDX components designed for help center content. Use them in any `.mdx` file without importing anything.
+
+## Callout
+
+Highlight important information with four severity levels:
+
+<Callout type="note">
+This is a **note** callout. Use it for supplementary context.
+</Callout>
+
+<Callout type="tip">
+This is a **tip** callout. Use it for best practices and shortcuts.
+</Callout>
+
+<Callout type="warning">
+This is a **warning** callout. Use it for potential issues or breaking changes.
+</Callout>
+
+<Callout type="danger">
+This is a **danger** callout. Use it for security warnings or destructive actions.
+</Callout>
+
+```mdx
+<Callout type="tip">
+Your tip content here.
+</Callout>
+```
+
+## Steps
+
+Numbered step-by-step instructions:
+
+<Steps>
+  <Step title="Create a new article">
+    Add an `.mdx` file to the `content/` directory with frontmatter.
+  </Step>
+  <Step title="Write your content">
+    Use markdown and MDX components to write your article.
+  </Step>
+  <Step title="Preview locally">
+    Run `pnpm dev` to see your changes instantly.
+  </Step>
+</Steps>
+
+```mdx
+<Steps>
+  <Step title="First step">
+    Description of the first step.
+  </Step>
+  <Step title="Second step">
+    Description of the second step.
+  </Step>
+</Steps>
+```
+
+## Accordion
+
+Collapsible content for FAQs and optional details:
+
+<Accordion title="How do I add a new category?">
+Create a new subdirectory in `content/` with a `_category.json` file containing the category title, description, icon, and sort order.
+</Accordion>
+
+<Accordion title="Can I use custom React components in MDX?">
+Yes. Add your component to `lib/mdx-components.tsx` and it becomes available in all MDX files without explicit imports.
+</Accordion>
+
+```mdx
+<Accordion title="Your question here">
+Answer content with **markdown** support.
+</Accordion>
+```
+
+## Tabs
+
+Switch between alternative content views:
+
+<Tabs>
+  <Tab title="pnpm">
+    ```bash
+    pnpm install helpbase
+    ```
+  </Tab>
+  <Tab title="npm">
+    ```bash
+    npm install helpbase
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add helpbase
+    ```
+  </Tab>
+</Tabs>
+
+```mdx
+<Tabs>
+  <Tab title="Option A">
+    Content for option A.
+  </Tab>
+  <Tab title="Option B">
+    Content for option B.
+  </Tab>
+</Tabs>
+```
+
+## CardGroup
+
+Navigation cards linking to related content:
+
+<CardGroup cols={2}>
+  <Card icon="sparkles" title="Getting Started" href="/getting-started/introduction">
+    Learn what helpbase is and how to set up your first project.
+  </Card>
+  <Card icon="terminal" title="CLI Reference" href="/cli/commands">
+    Complete reference for all helpbase CLI commands.
+  </Card>
+</CardGroup>
+
+```mdx
+<CardGroup cols={2}>
+  <Card icon="sparkles" title="Card Title" href="/path">
+    Card description.
+  </Card>
+</CardGroup>
+```
+
+## CtaCard
+
+A prominent call-to-action card:
+
+<CtaCard
+  title="Ready to build?"
+  description="Create your help center in under 5 minutes with create-helpbase."
+  href="/getting-started/installation"
+  linkText="Get Started"
+/>
+
+```mdx
+<CtaCard
+  title="Your CTA title"
+  description="Description text."
+  href="/path"
+  linkText="Button label"
+/>
+```
+
+## Figure
+
+Images with captions and proper formatting. Used in visual how-to articles generated with `--screenshots`:
+
+```mdx
+<Figure src="./screenshot.png" alt="Dashboard overview" caption="The main dashboard after login." />
+```
+
+<Callout type="note">
+Figure validates that image files exist on disk during `helpbase audit`. Missing images are flagged as errors.
+</Callout>
+
+## Video
+
+Embedded video content:
+
+```mdx
+<Video src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Getting started walkthrough" />
+```
+
+<Callout type="warning">
+Video embeds are sanitized in the hosted tier. Only allowlisted domains (YouTube, Vimeo, Loom) are permitted.
+</Callout>
+
+## Using components together
+
+Components compose naturally. Here's a realistic example:
+
+<Callout type="tip">
+Combine Steps with Callouts inside steps for warnings, and Tabs for platform-specific instructions.
+</Callout>
+
+<Steps>
+  <Step title="Choose your package manager">
+    <Tabs>
+      <Tab title="pnpm">
+        ```bash
+        npx create-helpbase my-docs
+        cd my-docs && pnpm install
+        ```
+      </Tab>
+      <Tab title="npm">
+        ```bash
+        npx create-helpbase my-docs
+        cd my-docs && npm install
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Start developing">
+    Run the dev server and open your browser:
+    ```bash
+    pnpm dev
+    ```
+    <Callout type="note">
+    The dev server uses Turbopack for instant hot reload. Changes to MDX files appear immediately.
+    </Callout>
+  </Step>
+</Steps>

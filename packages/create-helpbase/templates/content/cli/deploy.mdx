@@ -1,0 +1,109 @@
+---
+schemaVersion: 1
+title: "Deploy to Helpbase Cloud"
+description: "Deploy your help center to company.helpbase.dev with a single CLI command."
+tags: ["cli", "deploy", "hosted"]
+order: 2
+featured: false
+---
+
+# Deploy to Helpbase Cloud
+
+<Callout type="warning">
+Hosted deploy is in beta. The core flow works (auth, slug reservation, content sync), but image upload and automatic cache revalidation are still in progress.
+</Callout>
+
+helpbase offers two deployment paths:
+
+<Tabs>
+  <Tab title="Hosted (helpbase.dev)">
+    Deploy to `company.helpbase.dev` with a single command. No Vercel account needed, no DNS config, no build pipeline.
+
+    ```bash
+    npx helpbase deploy
+    ```
+
+    Your help center is live in under 2 minutes.
+  </Tab>
+  <Tab title="Self-hosted">
+    Deploy to your own infrastructure. Full control over hosting, domain, and configuration.
+
+    ```bash
+    pnpm build
+    # Deploy to Vercel, Netlify, or any Node.js host
+    ```
+  </Tab>
+</Tabs>
+
+## How hosted deploy works
+
+```
+content/ directory
+      |
+      v
+helpbase deploy
+  |-- Authenticate (Supabase magic link, cached)
+  |-- Reserve subdomain slug
+  |-- Validate all articles (frontmatter + schema)
+  |-- Upload articles to Supabase
+  |-- Upload categories to Supabase
+  v
+company.helpbase.dev is live
+```
+
+## First deploy walkthrough
+
+<Steps>
+  <Step title="Run the deploy command">
+    From your helpbase project directory:
+    ```bash
+    npx helpbase deploy
+    ```
+  </Step>
+  <Step title="Authenticate via magic link">
+    Enter your email when prompted. Check your inbox for the magic link and click it. The CLI detects the authentication automatically and caches the session.
+  </Step>
+  <Step title="Choose your subdomain">
+    Pick a slug for your help center URL. The CLI checks availability in real-time:
+    ```
+    ? Choose a subdomain: my-product
+    ✓ my-product.helpbase.dev is available!
+    ```
+  </Step>
+  <Step title="Content uploads automatically">
+    The CLI reads your `content/` directory, validates every article against the frontmatter schema, and uploads to Supabase. You see a progress indicator for each article.
+  </Step>
+  <Step title="Your site is live">
+    ```
+    ✓ Deployed 8 articles across 3 categories
+    ✓ Your help center is live at https://my-product.helpbase.dev
+    ```
+  </Step>
+</Steps>
+
+## Updating content
+
+After the first deploy, subsequent updates are simpler:
+
+```bash
+# Edit your MDX files locally
+# Then push the changes:
+npx helpbase deploy
+```
+
+Authentication and subdomain selection are skipped (cached from the first run). Only changed articles are updated.
+
+## Self-hosted vs hosted
+
+| Feature | Self-hosted | Hosted |
+|---------|------------|--------|
+| Hosting | Your infrastructure | helpbase.dev |
+| Domain | Your domain | company.helpbase.dev |
+| Deploy | `git push` + CI | `helpbase deploy` |
+| Content | Filesystem MDX | Supabase |
+| Custom code | Full control | MDX components only |
+| Cost | Your hosting costs | Free tier available |
+
+<Callout type="tip">
+You can start with hosted deploy and migrate to self-hosted later. The content format is identical. Copy your `content/` directory to a scaffolded project and deploy to your own infrastructure.
+</Callout>

@@ -30,6 +30,23 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
       <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z" />
     </svg>
   ),
+  reference: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-5">
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
+    </svg>
+  ),
+  cli: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-5">
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" x2="20" y1="19" y2="19" />
+    </svg>
+  ),
+  guides: (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-5">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+  ),
 }
 
 function getCategoryIcon(slug: string) {
@@ -56,11 +73,11 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--muted),transparent)]" />
         <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-24 text-center">
           <h1 className="animate-fade-in mx-auto max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
-            How can we help?
+            helpbase docs
           </h1>
           <p className="animate-fade-in-delay-1 mx-auto mt-4 max-w-lg text-lg text-muted-foreground">
-            Find answers, guides, and resources to help you get the most out of
-            our platform.
+            Open-source help center with AI content generation. Guides, CLI
+            reference, and component docs.
           </p>
 
           {/* Search bar in hero */}
@@ -128,7 +145,7 @@ export default async function HomePage() {
             <p className="mt-2 text-sm">
               Run{" "}
               <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
-                helpcenter generate
+                helpbase generate
               </code>{" "}
               to create your first article.
             </p>

@@ -1,60 +1,89 @@
 ---
 schemaVersion: 1
 title: "Introduction"
-description: "Welcome to your help center. Learn how to get started."
-tags: ["getting-started", "basics"]
+description: "What helpbase is, why it exists, and how to get started in under 5 minutes."
+tags: ["getting-started", "overview"]
 order: 1
 featured: true
 ---
 
 # Introduction
 
-Welcome to your help center! This is your first article, created automatically when you scaffolded this project.
-
-## What is this?
-
-This is a developer-first help center built with Next.js and MDX. You write articles in markdown, and they render as a polished help center.
+helpbase is an open-source help center built with Next.js, MDX, and shadcn/ui. You write articles in markdown, and they render as a polished, searchable help center.
 
 <Callout type="tip">
-You can use rich MDX components like this callout, step-by-step guides, accordions, tabs, and card grids to make your articles more useful.
+helpbase.dev itself is built with helpbase. Every article you're reading was written in MDX and deployed with the same tools you'll use.
 </Callout>
+
+## Why helpbase?
+
+Most help center tools are either closed-source SaaS (Mintlify, GitBook) or generic wikis that don't feel like a product. helpbase gives you:
+
+- **AI content generation** from any URL or product page
+- **8 MDX components** designed for help center content
+- **shadcn/ui integration** so it matches your existing design system
+- **Self-hosted or hosted** at company.helpbase.dev
+- **Open source** with no lock-in
 
 ## Quick start
 
 <Steps>
-  <Step title="Edit this file">
-    Open `content/getting-started/introduction.mdx` in your editor. This is the article you're reading right now.
+  <Step title="Scaffold a new project">
+    Run the scaffolder to create a new help center project with sample content:
+    ```bash
+    npx create-helpbase my-docs
+    cd my-docs
+    ```
   </Step>
-  <Step title="Create new articles">
-    Add `.mdx` files to the `content/` directory. Organize them into categories using subdirectories.
+  <Step title="Start the dev server">
+    The project uses Next.js with Turbopack for instant hot reload:
+    ```bash
+    pnpm dev
+    ```
+    Open `http://localhost:3000` to see your help center.
   </Step>
-  <Step title="See your changes live">
-    Run `pnpm dev` to start the development server. Changes to your articles will appear instantly.
+  <Step title="Generate articles with AI">
+    Point the CLI at your product URL to generate articles automatically:
+    ```bash
+    npx helpbase generate --url https://your-product.com
+    ```
   </Step>
 </Steps>
 
-## Writing articles
+## Project structure
 
-Every article needs frontmatter at the top:
+After scaffolding, your project looks like this:
 
-```yaml
----
-schemaVersion: 1
-title: "Your Article Title"
-description: "A brief description"
-tags: ["tag1", "tag2"]
-order: 1
-featured: false
----
+```
+my-docs/
+  content/
+    getting-started/
+      _category.json       # Category metadata
+      introduction.mdx     # This article
+    customization/
+      _category.json
+      theming.mdx
+  app/
+    (main)/
+      (docs)/              # Article routes
+      layout.tsx           # Root layout
+      page.tsx             # Homepage
+  components/
+    header.tsx
+    docs-sidebar.tsx
+    search-dialog.tsx
+  lib/
+    content.ts             # Content pipeline
+    search.ts              # Search index
 ```
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card icon="file-plus" title="Configuration" href="/getting-started/configuration">
-    Set up your help center with custom branding, categories, and navigation.
+  <Card icon="download" title="Installation" href="/getting-started/installation">
+    Detailed setup guide with all configuration options.
   </Card>
-  <Card icon="sparkles" title="Generate with AI" href="/getting-started/configuration">
-    Use the CLI to generate article drafts from your product URL.
+  <Card icon="sparkles" title="AI Generation" href="/getting-started/ai-generation">
+    Generate help center articles from any URL with the CLI.
   </Card>
 </CardGroup>

@@ -1,0 +1,85 @@
+---
+schemaVersion: 1
+title: "Installation"
+description: "Set up a new helpbase project from scratch with create-helpbase."
+tags: ["getting-started", "setup"]
+order: 2
+featured: false
+---
+
+# Installation
+
+helpbase ships as a scaffolder that creates a standalone Next.js project. No runtime dependency on the helpbase monorepo.
+
+## Prerequisites
+
+- Node.js 18+
+- pnpm (recommended) or npm
+
+## Create a new project
+
+<Steps>
+  <Step title="Run the scaffolder">
+    ```bash
+    npx create-helpbase my-docs
+    ```
+    This creates a new directory with a complete help center project.
+  </Step>
+  <Step title="Install dependencies">
+    ```bash
+    cd my-docs
+    pnpm install
+    ```
+  </Step>
+  <Step title="Start the dev server">
+    ```bash
+    pnpm dev
+    ```
+    Open `http://localhost:3000` to see your help center running locally.
+  </Step>
+</Steps>
+
+## What the scaffolder creates
+
+The scaffolder copies a production-ready help center with:
+
+- **8 MDX components** (Callout, Accordion, Steps, Tabs, CardGroup, CtaCard, Figure, Video)
+- **Sample content** with getting started, customization, and component reference articles
+- **Search** powered by client-side indexing (Cmd+K)
+- **Dark mode** with next-themes
+- **Responsive sidebar** with mobile support
+- **SEO metadata** with Open Graph tags
+
+<Callout type="note">
+The scaffolded project is completely standalone. It has no dependency on the helpbase monorepo or any workspace packages.
+</Callout>
+
+## Adding to an existing project
+
+If you already have a Next.js + shadcn project, use the registry instead:
+
+```bash
+npx shadcn add https://helpbase.dev/r/help-center.json
+```
+
+This adds the help center components, content pipeline, and routes to your existing project without replacing your layout or configuration.
+
+## Deploy
+
+<Tabs>
+  <Tab title="Vercel">
+    Push to GitHub and connect the repo in Vercel. Set the root directory to your project folder if using a monorepo.
+
+    ```bash
+    git init && git add -A && git commit -m "init helpbase"
+    ```
+  </Tab>
+  <Tab title="Self-hosted">
+    Build and run the Next.js app on any Node.js host:
+
+    ```bash
+    pnpm build
+    pnpm start
+    ```
+  </Tab>
+</Tabs>

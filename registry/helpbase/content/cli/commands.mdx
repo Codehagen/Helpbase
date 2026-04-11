@@ -1,0 +1,94 @@
+---
+schemaVersion: 1
+title: "CLI Commands"
+description: "Complete reference for all helpbase CLI commands: generate, audit, new, and deploy."
+tags: ["cli", "reference", "commands"]
+order: 1
+featured: false
+---
+
+# CLI Commands
+
+The helpbase CLI provides four commands for managing your help center content.
+
+## generate
+
+Generate help center articles from a source URL:
+
+```bash
+npx helpbase generate --url https://your-product.com
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--url <url>` | Source URL to scrape | required |
+| `--output <dir>` | Output directory | `content/` |
+| `--screenshots <dir>` | Screenshot folder for visual articles | - |
+| `--title <title>` | Article title (with `--screenshots`) | - |
+
+<Callout type="tip">
+Combine `--url` and `--screenshots` to generate visual how-to articles that include both scraped context and annotated screenshots.
+</Callout>
+
+## audit
+
+Validate all content in your help center:
+
+```bash
+npx helpbase audit
+```
+
+Checks for:
+- Valid frontmatter (title, description, schemaVersion)
+- Category metadata (`_category.json` in each category folder)
+- Empty categories (categories with no articles)
+- Missing content directory
+
+| Flag | Description |
+|------|-------------|
+| `--format json` | Output as JSON for CI integration |
+
+<Callout type="note">
+Run `helpbase audit` in your CI pipeline to catch content issues before they ship. Exit code 1 means validation failed.
+</Callout>
+
+## new
+
+Scaffold a new article from a template:
+
+```bash
+npx helpbase new getting-started/quickstart --template how-to
+```
+
+Available templates:
+- `how-to` (default) — Step-by-step guide with Steps component
+- `troubleshooting` — Problem/solution format with Callout and Accordion
+- `reference` — API or component reference with tables
+
+The command creates the MDX file with frontmatter and the appropriate MDX components pre-filled.
+
+## deploy
+
+Deploy your help center to helpbase cloud:
+
+<Callout type="warning">
+The hosted deploy feature is in beta. Magic link authentication and content sync work, but image upload and ISR revalidation are still being finalized.
+</Callout>
+
+```bash
+npx helpbase deploy
+```
+
+<Steps>
+  <Step title="Authenticate">
+    First run prompts for your email. A magic link is sent via Supabase Auth. After clicking the link, your session is cached at `~/.helpbase/auth.json`.
+  </Step>
+  <Step title="Choose a subdomain">
+    Pick your subdomain slug (e.g., `my-product`). The CLI checks availability and reserves it.
+  </Step>
+  <Step title="Upload content">
+    All MDX articles and category metadata are validated and uploaded to Supabase. Your help center goes live at `my-product.helpbase.dev`.
+  </Step>
+</Steps>
+
+Subsequent deploys skip authentication (cached) and subdomain selection (already reserved). Just run `helpbase deploy` to push content updates.

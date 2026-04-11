@@ -1,0 +1,6 @@
+{
+  "title": "CLI",
+  "description": "Command-line tools for generating, auditing, and deploying content",
+  "icon": "terminal",
+  "order": 4
+}

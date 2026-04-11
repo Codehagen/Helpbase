@@ -68,29 +68,12 @@ _All P2 items shipped on 2026-04-09. See the Completed section._
 
 ---
 
-### TODO-008: Add link checker to `helpbase audit`
-
-**What:** `helpbase audit` validates frontmatter but doesn't check internal links, anchor references, or external URLs in article content. Broken links in MDX content ship silently.
-
-**Why:** Hand-authored MDX articles contain links to other articles, GitHub URLs, and anchor references. Without validation, link rot accumulates. The Edit on GitHub links also need verification (correct file paths).
-
-**Pros:** Catches broken links before deploy. Completes the audit surface.
-**Cons:** External URL checking adds network calls and latency. Could be opt-in.
-
-**Context:**
-- File: `packages/cli/src/audit.ts`
-- Current audit checks: frontmatter validation, category metadata, empty categories
-- New checks needed: internal link targets exist, anchor targets exist in target articles, external URLs return 200 (opt-in flag)
-- Could also validate `<Card href="...">` and `<CtaCard href="...">` props
-
-**Effort:** S (human ~2 hr / CC ~15 min)
-**Priority:** P3
-**Depends on:** None
-**Source:** /plan-ceo-review 2026-04-11, surfaced by Codex outside voice
-
 ---
 
 ## Completed
+
+### TODO-008: Add link checker to `helpbase audit`
+**Completed:** 416ff8d (2026-04-11) — internal link validation for markdown links and href props. Strips code blocks before checking, skips placeholder paths. Also fixed MDX component validation to strip code blocks (prevents false positives like `<ThemeProvider>` in examples). Fixed broken link in reference/card-group.mdx. 6 new tests.
 
 ### TODO-003: Dedup `registry/helpbase/lib/schemas.ts` against `packages/shared/src/schemas.ts`
 **Completed:** 8bc8e5b + 2d7beb8 (2026-04-11) — the sync script (`scripts/sync-templates.mjs`) now generates both registry and template copies from `packages/shared/src/schemas.ts` via `inlineWorkspaceUtilitiesToRegistry()` and `inlineWorkspaceUtilitiesToTemplates()`. CI gate (`pnpm sync:templates && git diff --exit-code`) catches drift. Verified both copies are byte-identical.

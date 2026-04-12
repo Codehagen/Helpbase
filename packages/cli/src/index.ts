@@ -18,10 +18,12 @@ import { openCommand } from "./commands/open.js"
 import { feedbackCommand } from "./commands/feedback.js"
 import { configCommand } from "./commands/config.js"
 import { doctorCommand } from "./commands/doctor.js"
+import { completionCommand } from "./commands/completion.js"
 import { sendEvent } from "./lib/telemetry.js"
 import { isJsonMode, isQuiet, syncFlags } from "./lib/tty.js"
 import { renderGroupedHelp } from "./lib/help.js"
 import { loadEnvFiles } from "./lib/env-loader.js"
+import { HelpbaseError, exitWithError } from "./lib/errors.js"
 
 // Parse --json/--quiet before anything decorative runs so helpers called
 // during command registration (help text, update-notifier) see the mode.
@@ -77,6 +79,7 @@ program.addCommand(openCommand)
 program.addCommand(feedbackCommand)
 program.addCommand(configCommand)
 program.addCommand(doctorCommand)
+program.addCommand(completionCommand)
 
 // Telemetry dispatch: fires after each subcommand, no-op if user hasn't
 // opted in. Records command name, duration, exit code, and flag names
@@ -99,7 +102,20 @@ program.hook("postAction", (_thisCommand, actionCommand) => {
   )
 })
 
-program.parse()
+// Top-level HelpbaseError handler — subcommands can `throw new HelpbaseError(...)`
+// and get the structured problem/cause/fix/docs output instead of a raw stack.
+// Non-HelpbaseError exceptions still bubble so we see real bugs.
+process.on("uncaughtException", (err) => {
+  if (err instanceof HelpbaseError) exitWithError(err)
+  throw err
+})
+
+try {
+  program.parse()
+} catch (err) {
+  if (err instanceof HelpbaseError) exitWithError(err)
+  throw err
+}
 
 /**
  * Scan argv for --json/--quiet before Commander runs. Commander's preAction

@@ -31,7 +31,7 @@ const GROUPS: GroupDef[] = [
   { label: "Ship", commands: ["deploy", "link", "open"] },
   { label: "Author", commands: ["generate", "audit"] },
   { label: "Account", commands: ["login", "logout", "whoami", "config"] },
-  { label: "Diagnose", commands: ["doctor", "feedback", "completion"] },
+  { label: "Diagnose", commands: ["doctor", "feedback", "completion", "upgrade"] },
 ]
 
 const MOST_COMMON = ["helpbase new", "helpbase dev", "helpbase deploy"]

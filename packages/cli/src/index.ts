@@ -21,10 +21,17 @@ import { doctorCommand } from "./commands/doctor.js"
 import { sendEvent } from "./lib/telemetry.js"
 import { isJsonMode, isQuiet, syncFlags } from "./lib/tty.js"
 import { renderGroupedHelp } from "./lib/help.js"
+import { loadEnvFiles } from "./lib/env-loader.js"
 
 // Parse --json/--quiet before anything decorative runs so helpers called
 // during command registration (help text, update-notifier) see the mode.
 preSyncGlobalFlags()
+
+// Auto-load .env.local and .env from the project root so users don't have
+// to `export AI_GATEWAY_API_KEY=...` before every CLI invocation. Next.js
+// already reads those files; matching the convention removes a paper-cut.
+// Shell-exported values still win (see lib/env-loader.ts).
+loadEnvFiles()
 
 // Load package.json at runtime so the version and update check track the
 // installed CLI, not a build-time snapshot. dist/ sits next to package.json

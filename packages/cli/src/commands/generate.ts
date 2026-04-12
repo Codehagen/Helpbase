@@ -1,6 +1,6 @@
 import { Command } from "commander"
 import { note } from "@clack/prompts"
-import { spinner } from "../lib/ui.js"
+import { spinner, nextSteps } from "../lib/ui.js"
 import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
@@ -301,10 +301,9 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
         process.exit(1)
       }
 
-      note(
-        `Run ${pc.cyan("helpbase dev")} to preview your articles.`,
-        "Done",
-      )
+      nextSteps({
+        commands: ["helpbase dev", "helpbase audit", "helpbase deploy"],
+      })
       return
     }
 
@@ -413,10 +412,9 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
         )
       }
 
-      note(
-        `Run ${pc.cyan("helpbase dev")} to preview your articles.`,
-        "Done",
-      )
+      nextSteps({
+        commands: ["helpbase dev", "helpbase audit", "helpbase deploy"],
+      })
       return
     }
 

@@ -229,6 +229,80 @@ Every command fails loudly with a clear error when something is wrong. No
 silent exits, no "coming soon" messages that look like success. Errors
 include the problem, the cause, the fix, and a link to the docs.
 
+## Non-interactive / CI usage
+
+The CLI detects non-TTY stdin and `CI=1` and skips every interactive
+prompt, so the same binary works in GitHub Actions, Docker, and cron.
+Use these flag combinations when you need zero prompts. Decorative
+output (spinners, next-step blocks, summary tables) is suppressed
+automatically; pass `--json` or `--quiet` to guarantee composable output.
+
+| Command | Flags required to skip every prompt |
+|---|---|
+| `create-helpbase <dir>` | `<dir> --no-install --no-open` (optional `--url <url>` for AI) |
+| `helpbase deploy` | `--slug <slug>` with `HELPBASE_TOKEN` exported |
+| `helpbase login` | Not interactive-safe — use `HELPBASE_TOKEN` instead |
+| `helpbase link` | `--slug <slug>` |
+| `helpbase generate` | `--url <url>` (or `--repo <path>`) + `--yes` |
+| `helpbase new` | `--type <type> --title "..."` (optional `--category`, `--slug`) |
+
+Tokens are issued from `https://helpbase.dev/account/tokens`. Export
+once in CI and the CLI auths non-interactively for every command.
+
+## Shell completion
+
+`helpbase completion <shell>` prints a completion script generated at
+runtime from the command tree, so new subcommands and flags are
+completable the moment they ship. Static completion only — subcommand
+and flag names, no dynamic article paths.
+
+```bash
+# bash (Linux, macOS)
+echo 'eval "$(helpbase completion bash)"' >> ~/.bashrc
+
+# zsh
+echo 'eval "$(helpbase completion zsh)"' >> ~/.zshrc
+
+# fish
+helpbase completion fish > ~/.config/fish/completions/helpbase.fish
+
+# PowerShell (Windows, pwsh)
+helpbase completion powershell | Out-String | Invoke-Expression >> $PROFILE
+```
+
+## Environment & config
+
+The CLI reads secrets like `AI_GATEWAY_API_KEY` and `HELPBASE_TOKEN`
+from three places, in order. The first one that has a value wins.
+
+1. **Shell environment.** Anything you `export` (or pass inline like
+   `AI_GATEWAY_API_KEY=... helpbase generate`) always wins. This is
+   what CI should do.
+2. **`.env.local` walked up from cwd.** On startup the CLI walks up
+   from the current directory until it finds a `package.json`, then
+   loads `.env.local` and `.env` from that root. Matches Next.js
+   behavior so one file serves both the app and the CLI.
+3. **`~/.helpbase/config.json`.** Last-resort fallback. Set it once
+   with `helpbase config set ai-gateway-key <key>` and the CLI picks
+   it up from anywhere — handy for ad-hoc `helpbase generate` runs
+   outside a project root.
+
+### Telemetry
+
+Opt-in, off by default, asked once on first login. Disable any time
+with `helpbase config set telemetry off`, `HELPBASE_TELEMETRY=off`, or
+just run in CI (we never prompt or send telemetry from non-TTY
+environments). What gets recorded per command:
+
+- Command name, duration in ms, exit code
+- Flag **names** used (e.g. `--slug`) — never values
+- CLI version, Node version, platform, arch
+- A random install-scoped `anonId` stored in `~/.helpbase/config.json`
+
+What we **never** send: content, URLs, slugs, emails, file paths,
+argument values, error messages, tokens. The full implementation is
+at [`packages/cli/src/lib/telemetry.ts`](./packages/cli/src/lib/telemetry.ts).
+
 ## Content model
 
 Articles are MDX files with Zod-validated frontmatter:

@@ -10,6 +10,8 @@ import { deployCommand } from "./commands/deploy.js"
 import { loginCommand } from "./commands/login.js"
 import { logoutCommand } from "./commands/logout.js"
 import { whoamiCommand } from "./commands/whoami.js"
+import { linkCommand } from "./commands/link.js"
+import { openCommand } from "./commands/open.js"
 
 const program = new Command()
   .name("helpbase")
@@ -25,5 +27,7 @@ program.addCommand(deployCommand)
 program.addCommand(loginCommand)
 program.addCommand(logoutCommand)
 program.addCommand(whoamiCommand)
+program.addCommand(linkCommand)
+program.addCommand(openCommand)
 
 program.parse()

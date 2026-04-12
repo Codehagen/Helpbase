@@ -14,6 +14,7 @@ import {
   verifyLoginCode,
   type AuthSession,
 } from "../lib/auth.js"
+import { readProjectConfig, writeProjectConfig } from "../lib/project-config.js"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
 const RESERVED_SLUGS = new Set([
@@ -41,12 +42,35 @@ export const deployCommand = new Command("deploy")
     const client = await getAuthedSupabase(session)
 
     // 3. Get or create tenant
-    const { data: existingTenant } = await client
-      .from("tenants")
-      .select("*")
-      .eq("owner_id", session.userId)
-      .eq("active", true)
-      .single()
+    //    Priority: .helpbase/project.json → owner lookup → create new
+    const linked = readProjectConfig()
+    let existingTenant: { id: string; slug: string } | null = null
+
+    if (linked) {
+      const { data } = await client
+        .from("tenants")
+        .select("id, slug")
+        .eq("id", linked.tenantId)
+        .eq("active", true)
+        .single()
+      if (data) {
+        existingTenant = data
+      } else {
+        cancel(
+          `Linked tenant "${linked.slug}" not found or inactive.\n` +
+          `  Run ${pc.cyan("helpbase link --remove")} then ${pc.cyan("helpbase link")} to fix.`,
+        )
+        process.exit(1)
+      }
+    } else {
+      const { data } = await client
+        .from("tenants")
+        .select("id, slug")
+        .eq("owner_id", session.userId)
+        .eq("active", true)
+        .single()
+      existingTenant = data ?? null
+    }
 
     let tenantId: string
     let tenantSlug: string
@@ -54,7 +78,17 @@ export const deployCommand = new Command("deploy")
     if (existingTenant) {
       tenantId = existingTenant.id
       tenantSlug = existingTenant.slug
-      note(`Deploying to ${pc.cyan(`${tenantSlug}.helpbase.dev`)}`, "Tenant")
+      note(
+        linked
+          ? `Deploying to ${pc.cyan(`${tenantSlug}.helpbase.dev`)} ${pc.dim("(linked)")}`
+          : `Deploying to ${pc.cyan(`${tenantSlug}.helpbase.dev`)}`,
+        "Tenant",
+      )
+      // Backfill the project config for owner-lookup users so their next
+      // deploy is deterministic and commitable.
+      if (!linked) {
+        writeProjectConfig({ tenantId, slug: tenantSlug })
+      }
     } else {
       // First deploy: create tenant
       let slug = opts.slug
@@ -122,9 +156,11 @@ export const deployCommand = new Command("deploy")
 
       tenantId = newTenant.id
       tenantSlug = newTenant.slug
+      writeProjectConfig({ tenantId, slug: tenantSlug })
       note(
-        `Created ${pc.cyan(`${tenantSlug}.helpbase.dev`)}`,
-        "New help center"
+        `Created ${pc.cyan(`${tenantSlug}.helpbase.dev`)}\n` +
+        `Wrote ${pc.dim(".helpbase/project.json")} — commit it so teammates deploy to the same tenant.`,
+        "New help center",
       )
     }
 
@@ -295,7 +331,8 @@ export const deployCommand = new Command("deploy")
     outro(
       `${pc.green("✓")} Deployed! Your help center is live:\n` +
       `  ${pc.cyan(`https://${tenantSlug}.helpbase.dev`)}\n\n` +
-      `  Run ${pc.dim("helpbase deploy")} again after making changes.`
+      `  Open it:   ${pc.dim("helpbase open")}\n` +
+      `  Redeploy:  ${pc.dim("helpbase deploy")}`
     )
   })
 

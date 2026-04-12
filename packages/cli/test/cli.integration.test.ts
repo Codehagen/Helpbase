@@ -28,6 +28,12 @@ describe("helpbase CLI integration", () => {
       expect(stdout).toContain("generate")
       expect(stdout).toContain("audit")
       expect(stdout).toContain("add")
+      expect(stdout).toContain("deploy")
+      expect(stdout).toContain("login")
+      expect(stdout).toContain("logout")
+      expect(stdout).toContain("whoami")
+      expect(stdout).toContain("link")
+      expect(stdout).toContain("open")
     })
 
     it("prints version", () => {
@@ -36,7 +42,10 @@ describe("helpbase CLI integration", () => {
     })
 
     it("each subcommand has help text", () => {
-      for (const cmd of ["dev", "generate", "audit", "add"]) {
+      for (const cmd of [
+        "dev", "generate", "audit", "add", "new", "deploy",
+        "login", "logout", "whoami", "link", "open",
+      ]) {
         const { stdout } = exec(`${cmd} --help`)
         expect(stdout.length).toBeGreaterThan(20)
       }

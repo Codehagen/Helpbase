@@ -4,7 +4,8 @@ import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
 import { TEMPLATES, VALID_TYPES, slugify, type Template } from "../lib/templates.js"
-import { nextSteps } from "../lib/ui.js"
+import { nextSteps, ok } from "../lib/ui.js"
+import { validateArticle } from "../audit.js"
 
 export { VALID_TYPES }
 
@@ -99,6 +100,23 @@ ${template.body}`
     console.log(`\n  ${pc.green("+")} Created: ${categorySlug}/${slug}.mdx`)
     console.log(`  ${pc.green("+")} Created: ${categorySlug}/${slug}/ (asset directory)`)
     console.log()
+
+    // Validate the fresh article. A clean template should produce zero
+    // findings — any issues here mean the template itself is broken and
+    // the user would hit them again in dev. Better to surface now.
+    try {
+      const issues = validateArticle(filePath)
+      if (issues.length === 0) {
+        ok("lint clean")
+      } else {
+        for (const issue of issues) {
+          process.stderr.write(`  ${pc.yellow("⚠")} ${issue.message}\n`)
+        }
+      }
+    } catch {
+      // File just written; validator errors here would be exceptional.
+    }
+
     nextSteps({
       commands: [
         "helpbase dev",

@@ -339,3 +339,109 @@ export class AuditError extends Error {
     this.name = "AuditError"
   }
 }
+
+/**
+ * Validate a single article file. Subset of auditContent():
+ *   - frontmatter required fields (title, description, schemaVersion)
+ *   - MDX component names
+ *   - heroImage + markdown/JSX image references point at existing files
+ *
+ * Intentionally does NOT do cross-file checks (broken internal links,
+ * unused assets). Those need the whole tree and belong in `helpbase
+ * audit`, not on-save feedback. Returns `[]` for a healthy file so
+ * watchers can clear stale findings on the next valid save.
+ *
+ * `filePath` must be an absolute or cwd-relative path to a .mdx / .md
+ * file that lives at `<contentDir>/<category>/<slug>.mdx`. Missing files
+ * throw AuditError so callers can distinguish "file gone" (delete event)
+ * from "file broken" (real issue).
+ */
+export function validateArticle(filePath: string): AuditIssue[] {
+  if (!fs.existsSync(filePath)) {
+    throw new AuditError(`Article not found: ${filePath}`)
+  }
+  const ext = path.extname(filePath)
+  if (ext !== ".mdx" && ext !== ".md") {
+    throw new AuditError(`Not an article file: ${filePath}`)
+  }
+
+  const issues: AuditIssue[] = []
+  const categoryPath = path.dirname(filePath)
+  const categoryName = path.basename(categoryPath)
+  const fileName = path.basename(filePath)
+  const fileRef = `${categoryName}/${fileName}`
+  const slug = fileName.replace(/\.mdx?$/, "")
+  const raw = fs.readFileSync(filePath, "utf-8")
+
+  let data: Record<string, unknown>
+  let content: string
+  try {
+    const parsed = matter(raw)
+    data = parsed.data
+    content = parsed.content
+  } catch {
+    issues.push({ level: "error", file: fileRef, message: "invalid frontmatter" })
+    return issues
+  }
+
+  if (!data.title) {
+    issues.push({ level: "error", file: fileRef, message: "missing title" })
+  }
+  if (!data.description) {
+    issues.push({ level: "error", file: fileRef, message: "missing description" })
+  }
+  if (!data.schemaVersion) {
+    issues.push({ level: "error", file: fileRef, message: "missing schemaVersion" })
+  }
+
+  if (typeof data.heroImage === "string") {
+    const heroPath = path.join(categoryPath, slug, data.heroImage)
+    if (!fs.existsSync(heroPath)) {
+      issues.push({
+        level: "error",
+        file: fileRef,
+        message: `heroImage "${data.heroImage}" not found at ${categoryName}/${slug}/${data.heroImage}`,
+      })
+    }
+  }
+
+  // Strip code blocks so example JSX tags / src= attrs don't produce noise.
+  const contentNoFences = content
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/`[^`]+`/g, "")
+
+  validateMdxComponents(contentNoFences, fileRef, issues)
+
+  // Explicit relative refs (./file.png) — validate existence.
+  const srcRefs = contentNoFences.matchAll(/\bsrc=["']([^"']+)["']/g)
+  for (const match of srcRefs) {
+    const ref = match[1]
+    if (ref && ref.startsWith("./")) {
+      const refPath = path.join(categoryPath, slug, ref.replace(/^\.\//, ""))
+      if (!fs.existsSync(refPath)) {
+        issues.push({
+          level: "error",
+          file: fileRef,
+          message: `referenced image "${ref.replace(/^\.\//, "")}" not found`,
+        })
+      }
+    }
+  }
+  const mdImgRefs = contentNoFences.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)
+  for (const match of mdImgRefs) {
+    const ref = match[1]
+    if (ref && !ref.startsWith("http") && !ref.startsWith("/")) {
+      const rel = ref.replace(/^\.\//, "")
+      const refPath = path.join(categoryPath, slug, rel)
+      if (!fs.existsSync(refPath)) {
+        issues.push({
+          level: "error",
+          file: fileRef,
+          message: `referenced image "${rel}" not found`,
+        })
+      }
+    }
+  }
+
+  return issues
+}

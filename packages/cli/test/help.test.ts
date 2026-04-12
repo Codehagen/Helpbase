@@ -15,7 +15,7 @@ describe("helpbase --help", () => {
     expect(output).toContain("dev")
     expect(output).toContain("generate")
     expect(output).toContain("audit")
-    expect(output).toContain("add")
+    expect(output).toContain("new")
   })
 
   it("shows version", () => {
@@ -42,8 +42,9 @@ describe("helpbase --help", () => {
     expect(output).toContain("--dir")
   })
 
-  it("shows add subcommand help", () => {
-    const output = run("add --help")
-    expect(output).toContain("Add a new article or category")
+  it("shows new subcommand help", () => {
+    const output = run("new --help")
+    expect(output).toContain("Create a new article from a template")
+    expect(output).toContain("--type")
   })
 })

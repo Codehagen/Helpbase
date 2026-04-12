@@ -221,7 +221,7 @@ Edit, delete, or regenerate any of them. You own them.
 helpbase dev                    # start the Next.js dev server
 helpbase generate --url <url>   # generate articles from a URL
 helpbase audit                  # validate frontmatter, categories, schema
-helpbase add                    # add a new article or category interactively
+helpbase new                    # create a new article from a template (interactive or --type/--title)
 helpbase --help                 # show all commands
 ```
 

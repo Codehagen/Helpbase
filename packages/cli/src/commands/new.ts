@@ -1,74 +1,33 @@
 import { Command } from "commander"
+import { text, select, isCancel, cancel } from "@clack/prompts"
 import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
+import { TEMPLATES, VALID_TYPES, slugify, type Template } from "../lib/templates.js"
 
-const TEMPLATES: Record<string, { label: string; body: string }> = {
-  troubleshooting: {
-    label: "Troubleshooting",
-    body: `## Overview
-
-Describe the problem your users are experiencing and what they should expect after following these steps.
-
-## Diagnosis
-
-<Callout type="warning">Before proceeding, make sure you have saved any unsaved work.</Callout>
-
-Check for the most common causes first:
-
-1. Verify your configuration is correct
-2. Check the error logs for specific messages
-3. Confirm your environment meets the requirements
-
-## Solution
-
-<Steps>
-  <Step title="Identify the error">
-    Look for the specific error message in your logs or console output. Note down the exact wording — this helps narrow the root cause.
-  </Step>
-  <Step title="Apply the fix">
-    Based on the error message, apply the appropriate fix from the table below. If your error is not listed, check the related articles at the bottom of this page.
-  </Step>
-  <Step title="Verify the fix">
-    After applying the fix, restart your application and confirm the issue is resolved. If the problem persists, try the alternative approaches below.
-  </Step>
-</Steps>
-
-## Alternative Approaches
-
-<Callout type="tip">If the main solution did not work, these alternatives may help with edge cases.</Callout>
-
-Describe any fallback approaches or workarounds here.
-
-## Related Articles
-
-<CardGroup cols={2}>
-  <Card icon="book-open" title="Getting Started" href="/getting-started/introduction">Review the basics if you are new to the product.</Card>
-  <Card icon="settings" title="Configuration" href="/getting-started/configuration">Check your configuration settings for common issues.</Card>
-</CardGroup>
-`,
-  },
-}
-
-export const VALID_TYPES = Object.keys(TEMPLATES)
+export { VALID_TYPES }
 
 export const newCommand = new Command("new")
   .description("Create a new article from a template")
-  .requiredOption("-t, --type <type>", `Template type: ${VALID_TYPES.join(", ")}`)
+  .option("-t, --type <type>", `Template type: ${VALID_TYPES.join(", ")}`)
   .option("-d, --dir <dir>", "Content directory", "content")
-  .option("-c, --category <category>", "Category slug", "troubleshooting")
+  .option("-c, --category <category>", "Category slug (defaults to the template's default)")
   .option("--title <title>", "Article title")
+  .option("--description <description>", "Short description for the article frontmatter")
   .option("--slug <slug>", "Article slug (derived from title if omitted)")
   .addHelpText(
     "after",
     `
 Examples:
-  $ helpbase new --type troubleshooting --title "Fix broken builds"
-  $ helpbase new --type troubleshooting --title "Reset password" --category account
+  $ helpbase new                                                # fully interactive
+  $ helpbase new --type how-to --title "Reset your password"
+  $ helpbase new --type getting-started --title "Get started" --category intro
 `,
   )
-  .action((opts) => {
-    if (!TEMPLATES[opts.type]) {
+  .action(async (opts) => {
+    // Flag mode: --type given and a valid template. Validate up front so the
+    // user sees the error before any prompts fire.
+    if (opts.type && !TEMPLATES[opts.type]) {
       console.error(
         `${pc.red("✖")} Unknown template type "${opts.type}"\n` +
           `  Valid types: ${VALID_TYPES.join(", ")}\n`,
@@ -76,16 +35,19 @@ Examples:
       process.exit(1)
     }
 
-    const template = TEMPLATES[opts.type]!
+    const template = opts.type ? TEMPLATES[opts.type]! : await pickTemplate()
     const contentDir = path.resolve(process.cwd(), opts.dir)
-    const categorySlug = opts.category
-    const title = opts.title || `${template.label} Guide`
-    const slug =
-      opts.slug ||
-      title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
+
+    if (!fs.existsSync(contentDir)) {
+      fs.mkdirSync(contentDir, { recursive: true })
+    }
+
+    const categorySlug = opts.category ?? (opts.title ? template.defaultCategory : await pickCategory(contentDir, template))
+
+    const title = opts.title ?? (await promptTitle(template))
+    const description = opts.description ?? (opts.title ? "" : await promptDescription())
+
+    const slug = opts.slug || slugify(title)
 
     const categoryDir = path.join(contentDir, categorySlug)
     fs.mkdirSync(categoryDir, { recursive: true })
@@ -109,10 +71,12 @@ Examples:
       process.exit(1)
     }
 
+    // JSON.stringify handles quotes, backslashes, and control chars so that
+    // user-supplied titles/descriptions can't produce broken YAML frontmatter.
     const mdx = `---
 schemaVersion: 1
-title: "${title}"
-description: ""
+title: ${JSON.stringify(title)}
+description: ${JSON.stringify(description)}
 tags: []
 order: 1
 featured: false
@@ -130,3 +94,92 @@ ${template.body}`
     console.log(`  ${pc.green("+")} Created: ${categorySlug}/${slug}/ (asset directory)`)
     console.log()
   })
+
+async function pickTemplate(): Promise<Template> {
+  const choice = await select({
+    message: "Which template?",
+    options: VALID_TYPES.map((id) => ({
+      value: id,
+      label: TEMPLATES[id]!.label,
+      hint: TEMPLATES[id]!.description,
+    })),
+  })
+  if (isCancel(choice)) {
+    cancel("Cancelled.")
+    process.exit(0)
+  }
+  return TEMPLATES[choice as string]!
+}
+
+async function pickCategory(contentDir: string, template: Template): Promise<string> {
+  const existing = fs.existsSync(contentDir)
+    ? fs
+        .readdirSync(contentDir, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+        .map((d) => d.name)
+    : []
+
+  // Default category always available; if it's not already on disk, offer it
+  // as the top choice so the template "just works" in a fresh project.
+  const categorySet = new Set(existing)
+  categorySet.add(template.defaultCategory)
+  const categories = Array.from(categorySet)
+
+  const choice = await select({
+    message: "Which category?",
+    options: [
+      ...categories.map((c) => ({
+        value: c,
+        label: c,
+        hint: c === template.defaultCategory ? "default for this template" : undefined,
+      })),
+      { value: "__new__", label: pc.cyan("+ Create new category") },
+    ],
+    initialValue: template.defaultCategory,
+  })
+
+  if (isCancel(choice)) {
+    cancel("Cancelled.")
+    process.exit(0)
+  }
+
+  if (choice === "__new__") {
+    const name = await text({
+      message: "Category name?",
+      placeholder: "Getting Started",
+      validate: (v) => (v ? undefined : "Category name is required"),
+    })
+    if (isCancel(name)) {
+      cancel("Cancelled.")
+      process.exit(0)
+    }
+    return slugify(name as string)
+  }
+
+  return choice as string
+}
+
+async function promptTitle(template: Template): Promise<string> {
+  const value = await text({
+    message: "Article title?",
+    placeholder: template.defaultTitle,
+    validate: (v) => (v ? undefined : "Title is required"),
+  })
+  if (isCancel(value)) {
+    cancel("Cancelled.")
+    process.exit(0)
+  }
+  return value as string
+}
+
+async function promptDescription(): Promise<string> {
+  const value = await text({
+    message: "Brief description? (optional)",
+    placeholder: "A short summary shown in search results and previews",
+  })
+  if (isCancel(value)) {
+    cancel("Cancelled.")
+    process.exit(0)
+  }
+  return (value as string) || ""
+}

@@ -8,7 +8,6 @@ import { dirname, join } from "node:path"
 import { devCommand } from "./commands/dev.js"
 import { generateCommand } from "./commands/generate.js"
 import { auditCommand } from "./commands/audit.js"
-import { addCommand } from "./commands/add.js"
 import { newCommand } from "./commands/new.js"
 import { deployCommand } from "./commands/deploy.js"
 import { loginCommand } from "./commands/login.js"
@@ -41,7 +40,6 @@ const program = new Command()
 program.addCommand(devCommand)
 program.addCommand(generateCommand)
 program.addCommand(auditCommand)
-program.addCommand(addCommand)
 program.addCommand(newCommand)
 program.addCommand(deployCommand)
 program.addCommand(loginCommand)

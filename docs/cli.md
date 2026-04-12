@@ -10,7 +10,6 @@
 - [`helpbase dev`](#helpbase-dev)
 - [`helpbase generate`](#helpbase-generate)
 - [`helpbase audit`](#helpbase-audit)
-- [`helpbase add`](#helpbase-add)
 - [`helpbase new`](#helpbase-new)
 - [`helpbase deploy`](#helpbase-deploy)
 - [`helpbase login`](#helpbase-login)
@@ -85,18 +84,6 @@ Options:
   -h, --help             display help for command
 ```
 
-## `helpbase add`
-
-```
-Usage: helpbase add [options]
-
-Add a new article or category interactively
-
-Options:
-  -d, --dir <dir>  Content directory (default: "content")
-  -h, --help       display help for command
-```
-
 ## `helpbase new`
 
 ```
@@ -105,16 +92,20 @@ Usage: helpbase new [options]
 Create a new article from a template
 
 Options:
-  -t, --type <type>          Template type: troubleshooting
-  -d, --dir <dir>            Content directory (default: "content")
-  -c, --category <category>  Category slug (default: "troubleshooting")
-  --title <title>            Article title
-  --slug <slug>              Article slug (derived from title if omitted)
-  -h, --help                 display help for command
+  -t, --type <type>            Template type: getting-started, how-to, concept,
+                               troubleshooting
+  -d, --dir <dir>              Content directory (default: "content")
+  -c, --category <category>    Category slug (defaults to the template's
+                               default)
+  --title <title>              Article title
+  --description <description>  Short description for the article frontmatter
+  --slug <slug>                Article slug (derived from title if omitted)
+  -h, --help                   display help for command
 
 Examples:
-  $ helpbase new --type troubleshooting --title "Fix broken builds"
-  $ helpbase new --type troubleshooting --title "Reset password" --category account
+  $ helpbase new                                                # fully interactive
+  $ helpbase new --type how-to --title "Reset your password"
+  $ helpbase new --type getting-started --title "Get started" --category intro
 ```
 
 ## `helpbase deploy`

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Three new templates for `helpbase new`: `getting-started` (intro
+  walkthrough), `how-to` (task guide), and `concept` (explainer). Each is
+  MDX-native with `<Steps>`, `<Callout>`, and `<CardGroup>` and ~40-80 lines
+  of realistic body copy so users only lightly edit before publishing.
+- `helpbase new` now runs fully interactively with no args: pick a
+  template, pick or create a category, enter a title and optional
+  description. `--type`/`--title`/`--description` flags still work for
+  scripting.
 - `helpbase login`, `helpbase logout`, `helpbase whoami` — standalone auth
   commands. Previously auth was inline inside `deploy`.
 - `HELPBASE_TOKEN` environment variable for non-interactive (CI) use of
@@ -27,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SUPABASE_SERVICE_ROLE_KEY` set. Unlocks end-to-end CLI tests.
 
 ### Changed
+- `helpbase add` has been folded into `helpbase new`. Use `helpbase new`
+  with no args for the interactive flow. **Breaking:** anyone scripting
+  against `helpbase add` should switch to `helpbase new`. Article
+  frontmatter is now JSON-encoded, so titles and descriptions with quotes
+  or backslashes no longer break the YAML.
 - `helpbase deploy` now prefers `.helpbase/project.json` over the old
   owner-based tenant lookup. On first deploy it backfills the file so
   subsequent deploys (and teammates) are deterministic.

@@ -41,7 +41,7 @@ Required: `schemaVersion`, `title`, `description`. Optional: `tags`, `order`,
 
 ```bash
 pnpm dev                                          # local preview on :3000
-helpbase new --type troubleshooting --title "..."  # scaffold a new article
+helpbase new                                       # scaffold an article (interactive; 4 templates)
 helpbase generate --url https://yoursite.com       # AI-generate articles
 helpbase audit                                    # catch broken content
 helpbase deploy                                    # go live on helpbase.dev

@@ -187,18 +187,28 @@ async function run(directory: string | undefined, opts: RunOptions) {
     ? ""
     : `cd ${projectName as string}`
 
+  const devCmd = `${pkgManager === "npm" ? "npm run" : pkgManager} dev`
+  const bootstrap = [
+    cdCmd && pc.cyan(cdCmd),
+    opts.install === false && pc.cyan(`${pkgManager} install`),
+    pc.cyan(devCmd),
+  ]
+    .filter(Boolean)
+    .join("\n")
+
+  note(bootstrap, "Run it locally")
+
   note(
-    [
-      cdCmd && `${pc.cyan(cdCmd)}`,
-      opts.install === false && `${pc.cyan(`${pkgManager} install`)}`,
-      `${pc.cyan(`${pkgManager === "npm" ? "npm run" : pkgManager} dev`)}`,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    "Next steps",
+    `${pc.cyan("npx helpbase generate --url <your-site>")}  ${pc.dim("AI-write articles from your site")}\n` +
+    `${pc.cyan("npx helpbase deploy")}                      ${pc.dim("go live at <slug>.helpbase.dev")}\n` +
+    `${pc.cyan("npx helpbase new")}                         ${pc.dim("add a new article interactively")}`,
+    "What next",
   )
 
-  outro(pc.green("Your help center is ready!"))
+  outro(
+    `${pc.green("Your help center is ready!")}\n` +
+    `  Docs: ${pc.dim("https://helpbase.dev/docs")}`,
+  )
 
   // 7. Auto-open browser
   if (opts.install !== false && opts.open !== false) {

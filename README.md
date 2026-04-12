@@ -65,6 +65,19 @@ pnpm dev
 Open http://localhost:3000 and you have a working help center with sample
 articles. Edit the markdown in `content/` and the dev server hot-reloads.
 
+### Go live in one command
+
+When you're ready to share it, deploy to helpbase cloud:
+
+```bash
+npx helpbase deploy
+```
+
+One magic-link login, pick a subdomain, and your help center is live at
+`your-slug.helpbase.dev`. A `.helpbase/project.json` gets committed so
+teammates deploy to the same tenant. CI users can skip the prompt with
+`HELPBASE_TOKEN` + `--slug`.
+
 ### Generate articles from your site with AI
 
 Pass `--url` and helpbase scrapes the page, sends it through the Vercel AI

@@ -10,7 +10,8 @@
     "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "mint:token": "node scripts/mint-test-token.mjs"
   },
   "keywords": [
     "helpbase",

@@ -5,12 +5,15 @@ import fs from "node:fs"
 import path from "node:path"
 import matter from "gray-matter"
 import { frontmatterSchema, categoryMetaSchema } from "@workspace/shared/schemas"
+import { getAuthedSupabase } from "../lib/supabase-client.js"
 import {
-  createAnonClient,
-  createAuthClient,
-  storeAuth,
-  getStoredEmail,
-} from "../lib/supabase-client.js"
+  AuthError,
+  getCurrentSession,
+  isNonInteractive,
+  sendLoginCode,
+  verifyLoginCode,
+  type AuthSession,
+} from "../lib/auth.js"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
 const RESERVED_SLUGS = new Set([
@@ -34,92 +37,14 @@ export const deployCommand = new Command("deploy")
     }
 
     // 2. Authenticate
-    let client = await createAuthClient()
-
-    if (!client) {
-      note(
-        "First time? Let's get you set up.",
-        "Authentication"
-      )
-
-      const email = await text({
-        message: "Enter your email:",
-        placeholder: "you@company.com",
-        validate: (v) => {
-          if (!v.includes("@")) return "Please enter a valid email"
-          return undefined
-        },
-      })
-
-      if (isCancel(email)) {
-        cancel("Cancelled.")
-        process.exit(0)
-      }
-
-      const anon = createAnonClient()
-      const s = spinner()
-      s.start("Sending magic link...")
-
-      const { error: otpError } = await anon.auth.signInWithOtp({
-        email: email as string,
-      })
-
-      if (otpError) {
-        s.stop("Failed to send magic link")
-        cancel(`Authentication error: ${otpError.message}`)
-        process.exit(1)
-      }
-
-      s.stop("Magic link sent!")
-
-      const token = await text({
-        message: "Enter the 6-digit code from your email:",
-        placeholder: "123456",
-        validate: (v) => {
-          if (!/^\d{6}$/.test(v)) return "Enter the 6-digit code"
-          return undefined
-        },
-      })
-
-      if (isCancel(token)) {
-        cancel("Cancelled.")
-        process.exit(0)
-      }
-
-      const { data: session, error: verifyError } = await anon.auth.verifyOtp({
-        email: email as string,
-        token: token as string,
-        type: "email",
-      })
-
-      if (verifyError || !session.session) {
-        cancel(`Verification failed: ${verifyError?.message ?? "Invalid code"}`)
-        process.exit(1)
-      }
-
-      storeAuth(session.session)
-      client = anon
-
-      note(
-        `Authenticated as ${pc.cyan(email as string)}`,
-        "Success"
-      )
-    } else {
-      const email = getStoredEmail()
-      note(`Logged in as ${pc.cyan(email ?? "unknown")}`, "Authentication")
-    }
+    const session = await ensureAuthenticated()
+    const client = await getAuthedSupabase(session)
 
     // 3. Get or create tenant
-    const { data: { user } } = await client.auth.getUser()
-    if (!user) {
-      cancel("Session expired. Please run helpbase deploy again.")
-      process.exit(1)
-    }
-
     const { data: existingTenant } = await client
       .from("tenants")
       .select("*")
-      .eq("owner_id", user.id)
+      .eq("owner_id", session.userId)
       .eq("active", true)
       .single()
 
@@ -135,6 +60,12 @@ export const deployCommand = new Command("deploy")
       let slug = opts.slug
 
       if (!slug) {
+        if (isNonInteractive()) {
+          cancel(
+            "Non-interactive mode (HELPBASE_TOKEN set) requires --slug <name> on first deploy.",
+          )
+          process.exit(1)
+        }
         const input = await text({
           message: "Choose a subdomain for your help center:",
           placeholder: "my-product",
@@ -172,7 +103,7 @@ export const deployCommand = new Command("deploy")
         .from("tenants")
         .insert({
           slug,
-          owner_id: user.id,
+          owner_id: session.userId,
           name: slug,
         })
         .select()
@@ -367,3 +298,75 @@ export const deployCommand = new Command("deploy")
       `  Run ${pc.dim("helpbase deploy")} again after making changes.`
     )
   })
+
+async function ensureAuthenticated(): Promise<AuthSession> {
+  const existing = await getCurrentSession()
+  if (existing) {
+    const viaToken = isNonInteractive()
+    note(
+      viaToken
+        ? `Authenticated via HELPBASE_TOKEN ${pc.dim(`(${existing.email || existing.userId})`)}`
+        : `Logged in as ${pc.cyan(existing.email)}`,
+      "Authentication",
+    )
+    return existing
+  }
+
+  if (isNonInteractive()) {
+    cancel("HELPBASE_TOKEN is set but invalid or expired. Re-issue it and try again.")
+    process.exit(1)
+  }
+
+  note("First time? Let's get you set up.", "Authentication")
+
+  const email = await text({
+    message: "Enter your email:",
+    placeholder: "you@company.com",
+    validate: (v) => {
+      if (!v.includes("@")) return "Please enter a valid email"
+      return undefined
+    },
+  })
+  if (isCancel(email)) {
+    cancel("Cancelled.")
+    process.exit(0)
+  }
+
+  const s = spinner()
+  s.start("Sending magic link...")
+  try {
+    await sendLoginCode(email as string)
+    s.stop("Magic link sent!")
+  } catch (err) {
+    s.stop("Failed to send magic link")
+    const msg = err instanceof AuthError ? err.message : String(err)
+    cancel(`Authentication error: ${msg}`)
+    process.exit(1)
+  }
+
+  const code = await text({
+    message: "Enter the 6-digit code from your email:",
+    placeholder: "123456",
+    validate: (v) => {
+      if (!/^\d{6}$/.test(v)) return "Enter the 6-digit code"
+      return undefined
+    },
+  })
+  if (isCancel(code)) {
+    cancel("Cancelled.")
+    process.exit(0)
+  }
+
+  try {
+    const session = await verifyLoginCode(email as string, code as string)
+    note(`Authenticated as ${pc.cyan(session.email)}`, "Success")
+    return session
+  } catch (err) {
+    const msg = err instanceof AuthError ? err.message : String(err)
+    cancel(
+      `Verification failed: ${msg}\n` +
+      `  Run \`helpbase deploy\` again to get a new code, or check your spam folder.`,
+    )
+    process.exit(1)
+  }
+}

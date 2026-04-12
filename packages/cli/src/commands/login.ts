@@ -1,5 +1,5 @@
 import { Command } from "commander"
-import { intro, outro, text, spinner, cancel, isCancel, note } from "@clack/prompts"
+import { intro, outro, text, spinner, cancel, isCancel, note, confirm } from "@clack/prompts"
 import pc from "picocolors"
 import {
   getCurrentSession,
@@ -8,6 +8,10 @@ import {
   verifyLoginCode,
 } from "../lib/auth.js"
 import { HelpbaseError, formatError } from "../lib/errors.js"
+import {
+  hasAskedForConsent,
+  setTelemetryConsent,
+} from "../lib/telemetry.js"
 
 export const loginCommand = new Command("login")
   .description("Log in to helpbase cloud")
@@ -80,6 +84,7 @@ export const loginCommand = new Command("login")
 
     try {
       const session = await verifyLoginCode(email, code as string)
+      await maybeAskTelemetryConsent()
       outro(`Logged in as ${pc.cyan(session.email)}`)
     } catch (err) {
       if (err instanceof HelpbaseError) {
@@ -90,3 +95,28 @@ export const loginCommand = new Command("login")
       process.exit(1)
     }
   })
+
+/**
+ * Ask once, after the user's first successful login, whether they want to
+ * share anonymous usage telemetry. Silent on every subsequent login.
+ */
+async function maybeAskTelemetryConsent(): Promise<void> {
+  if (hasAskedForConsent()) return
+
+  const choice = await confirm({
+    message:
+      "Share anonymous usage data? (command names + timings, no content or URLs)",
+    initialValue: false,
+  })
+  if (isCancel(choice)) {
+    setTelemetryConsent("off")
+    return
+  }
+  setTelemetryConsent(choice ? "on" : "off")
+  note(
+    choice
+      ? `Telemetry on. Change any time: ${pc.cyan("helpbase config set telemetry off")}`
+      : `Telemetry off. Change any time: ${pc.cyan("helpbase config set telemetry on")}`,
+    "Preferences",
+  )
+}

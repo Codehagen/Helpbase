@@ -19,6 +19,7 @@
 - [`helpbase link`](#helpbase-link)
 - [`helpbase open`](#helpbase-open)
 - [`helpbase feedback`](#helpbase-feedback)
+- [`helpbase config`](#helpbase-config)
 
 ## `helpbase dev`
 
@@ -203,5 +204,22 @@ Options:
   --print              Print the URL instead of opening the browser
   -t, --title <title>  Issue title to prefill (default: "Bug in helpbase CLI")
   -h, --help           display help for command
+```
+
+## `helpbase config`
+
+```
+Usage: helpbase config [options] [command]
+
+Read or write CLI preferences (~/.helpbase/config.json)
+
+Options:
+  -h, --help         display help for command
+
+Commands:
+  get <key>          Print the current value of a config key
+  set <key> <value>  Set a config key
+  list               Print all known config keys and their current values
+  help [command]     display help for command
 ```
 

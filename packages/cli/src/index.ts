@@ -17,6 +17,8 @@ import { whoamiCommand } from "./commands/whoami.js"
 import { linkCommand } from "./commands/link.js"
 import { openCommand } from "./commands/open.js"
 import { feedbackCommand } from "./commands/feedback.js"
+import { configCommand } from "./commands/config.js"
+import { sendEvent } from "./lib/telemetry.js"
 
 // Load package.json at runtime so the version and update check track the
 // installed CLI, not a build-time snapshot. dist/ sits next to package.json
@@ -47,6 +49,28 @@ program.addCommand(whoamiCommand)
 program.addCommand(linkCommand)
 program.addCommand(openCommand)
 program.addCommand(feedbackCommand)
+program.addCommand(configCommand)
+
+// Telemetry dispatch: fires after each subcommand, no-op if user hasn't
+// opted in. Records command name, duration, exit code, and flag names
+// (not values). Never slows the CLI — 2s timeout, swallows errors.
+const startedAt = Date.now()
+program.hook("postAction", (_thisCommand, actionCommand) => {
+  const cmdName = actionCommand.name()
+  const flags = actionCommand.opts()
+  const flagNames = Object.keys(flags).filter(
+    (k) => flags[k] !== undefined && flags[k] !== false,
+  )
+  sendEvent(
+    {
+      command: cmdName,
+      durationMs: Date.now() - startedAt,
+      exitCode: 0,
+      flags: flagNames,
+    },
+    pkg.version,
+  )
+})
 
 program.parse()
 

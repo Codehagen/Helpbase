@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe what you want to do and why. The clearer the use case,
+        the easier it is to evaluate — concrete scenarios beat abstract
+        asks every time.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Start here. What's the user pain this would fix?
+      placeholder: |
+        When I run `helpbase deploy` on CI, I have to commit the tenant
+        slug into the repo. I'd like to pass it via an env var instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: If you have one in mind. It's fine to leave this empty — the problem statement is the important part.
+      placeholder: |
+        Accept HELPBASE_SLUG as a fallback when --slug isn't passed.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you try or think about?
+
+  - type: input
+    id: version
+    attributes:
+      label: Current helpbase CLI version
+      placeholder: "0.0.1"

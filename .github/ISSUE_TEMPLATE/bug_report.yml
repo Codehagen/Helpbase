@@ -1,0 +1,66 @@
+name: Bug report
+description: Something in the CLI, scaffolder, or help center UI is broken
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more concrete the
+        report, the faster we can fix it. Tip: `helpbase feedback` pre-fills
+        most of this for you.
+
+  - type: input
+    id: version
+    attributes:
+      label: helpbase CLI version
+      description: Run `helpbase --version`.
+      placeholder: "0.0.1"
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: OS + Node version. Run `node --version` and `uname -a` (or your shell's equivalent).
+      placeholder: "macOS 14.5, Node 22.13.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you run, what did you expect, what actually happened?
+      placeholder: |
+        I ran `helpbase deploy` and expected it to publish my site.
+        Instead I got an error about <x> and the deploy didn't complete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Minimum steps to trigger this.
+      placeholder: |
+        1. npx create-helpbase my-test
+        2. cd my-test
+        3. helpbase deploy --slug foo
+        4. See the error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / output
+      description: Paste any relevant terminal output. Use triple backticks.
+      render: shell
+
+  - type: input
+    id: error-code
+    attributes:
+      label: Error code (if any)
+      description: If the CLI printed a code like E_SLUG_TAKEN, paste it here. Full reference at helpbase.dev/errors.
+      placeholder: "E_AUTH_VERIFY_OTP"

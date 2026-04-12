@@ -62,6 +62,7 @@ const APPS_WEB_DIRS = ["app", "components", "lib", "content"]
 // neither scaffolded projects nor shadcn registry consumers ship it.
 const HOSTED_TIER_EXCLUDES = [
   "app/(tenant)/",
+  "app/(main)/errors/",
   "lib/tenant-content.ts",
   "lib/hosted-mdx-components.tsx",
   "lib/supabase.ts",
@@ -386,6 +387,19 @@ export default eslintConfig
   writeFile(join(TEMPLATES, "eslint.config.mjs"), content)
 }
 
+function writeTemplatesHelpbaseMd() {
+  const src = join(REPO_ROOT, "packages/create-helpbase/HELPBASE.md.template")
+  const content = existsSync(src)
+    ? readFileSync(src, "utf-8")
+    : DEFAULT_HELPBASE_MD
+  writeFile(join(TEMPLATES, "HELPBASE.md"), content)
+}
+
+const DEFAULT_HELPBASE_MD = `# helpbase
+
+This is your help center. See https://helpbase.dev/docs for the full guide.
+`
+
 function generateTemplatesGitignore() {
   const content = `# dependencies
 node_modules
@@ -503,7 +517,8 @@ function syncTemplates() {
   generateTemplatesEslintConfig()
   generateTemplatesGitignore()
   generateTemplatesPackageJson()
-  console.log("  ✓ Generated 7 config files (tsconfig, next, postcss, components, eslint, gitignore, package)")
+  writeTemplatesHelpbaseMd()
+  console.log("  ✓ Generated 8 config files (tsconfig, next, postcss, components, eslint, gitignore, package, HELPBASE.md)")
 
   validateNoWorkspaceImportsRemain(TEMPLATES, "Templates")
   console.log("  ✓ Validation passed: no @workspace/* references in templates")

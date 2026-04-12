@@ -16,6 +16,7 @@ import { logoutCommand } from "./commands/logout.js"
 import { whoamiCommand } from "./commands/whoami.js"
 import { linkCommand } from "./commands/link.js"
 import { openCommand } from "./commands/open.js"
+import { feedbackCommand } from "./commands/feedback.js"
 
 // Load package.json at runtime so the version and update check track the
 // installed CLI, not a build-time snapshot. dist/ sits next to package.json
@@ -45,6 +46,7 @@ program.addCommand(logoutCommand)
 program.addCommand(whoamiCommand)
 program.addCommand(linkCommand)
 program.addCommand(openCommand)
+program.addCommand(feedbackCommand)
 
 program.parse()
 

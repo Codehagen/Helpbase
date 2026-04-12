@@ -18,6 +18,7 @@
 - [`helpbase whoami`](#helpbase-whoami)
 - [`helpbase link`](#helpbase-link)
 - [`helpbase open`](#helpbase-open)
+- [`helpbase feedback`](#helpbase-feedback)
 
 ## `helpbase dev`
 
@@ -189,5 +190,18 @@ Open this project's help center in the default browser
 Options:
   --print     Print the URL instead of opening it (useful for CI / scripts)
   -h, --help  display help for command
+```
+
+## `helpbase feedback`
+
+```
+Usage: helpbase feedback [options]
+
+Open a prefilled GitHub issue with your environment info
+
+Options:
+  --print              Print the URL instead of opening the browser
+  -t, --title <title>  Issue title to prefill (default: "Bug in helpbase CLI")
+  -h, --help           display help for command
 ```
 

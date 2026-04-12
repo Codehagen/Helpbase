@@ -20,6 +20,7 @@
 - [`helpbase open`](#helpbase-open)
 - [`helpbase feedback`](#helpbase-feedback)
 - [`helpbase config`](#helpbase-config)
+- [`helpbase doctor`](#helpbase-doctor)
 
 ## `helpbase dev`
 
@@ -221,5 +222,17 @@ Commands:
   set <key> <value>  Set a config key
   list               Print all known config keys and their current values
   help [command]     display help for command
+```
+
+## `helpbase doctor`
+
+```
+Usage: helpbase doctor [options]
+
+Print diagnostic info about your helpbase install and project
+
+Options:
+  -f, --format <format>  Output format: text or json (default: "text")
+  -h, --help             display help for command
 ```
 

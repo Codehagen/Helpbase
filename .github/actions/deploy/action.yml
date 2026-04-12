@@ -1,0 +1,43 @@
+name: helpbase deploy
+description: Deploy a helpbase help center to helpbase cloud
+author: CodeHagen
+
+inputs:
+  token:
+    description: helpbase auth token (HELPBASE_TOKEN)
+    required: true
+  slug:
+    description: Tenant subdomain slug (only required on first deploy)
+    required: false
+  content-dir:
+    description: Content directory to deploy
+    required: false
+    default: content
+  working-directory:
+    description: Directory to run the deploy from (defaults to the repo root)
+    required: false
+    default: .
+  cli-version:
+    description: "helpbase CLI version to use (e.g. 0.1.0 or 'latest')"
+    required: false
+    default: latest
+
+runs:
+  using: composite
+  steps:
+    - name: Deploy
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        HELPBASE_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        ARGS=()
+        if [ -n "${{ inputs.slug }}" ]; then
+          ARGS+=(--slug "${{ inputs.slug }}")
+        fi
+        npx --yes helpbase@${{ inputs.cli-version }} deploy "${ARGS[@]}"
+
+branding:
+  icon: book-open
+  color: blue

@@ -18,6 +18,7 @@ import { linkCommand } from "./commands/link.js"
 import { openCommand } from "./commands/open.js"
 import { feedbackCommand } from "./commands/feedback.js"
 import { configCommand } from "./commands/config.js"
+import { doctorCommand } from "./commands/doctor.js"
 import { sendEvent } from "./lib/telemetry.js"
 
 // Load package.json at runtime so the version and update check track the
@@ -50,6 +51,7 @@ program.addCommand(linkCommand)
 program.addCommand(openCommand)
 program.addCommand(feedbackCommand)
 program.addCommand(configCommand)
+program.addCommand(doctorCommand)
 
 // Telemetry dispatch: fires after each subcommand, no-op if user hasn't
 // opted in. Records command name, duration, exit code, and flag names

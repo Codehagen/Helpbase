@@ -73,14 +73,19 @@ Examples:
 
     // JSON.stringify handles quotes, backslashes, and control chars so that
     // user-supplied titles/descriptions can't produce broken YAML frontmatter.
+    // The H1 matches frontmatter.title and establishes page hierarchy, matching
+    // the convention of every shipped article in apps/web/content/.
+    const tagsYaml = `[${template.defaultTags.map((t) => JSON.stringify(t)).join(", ")}]`
     const mdx = `---
 schemaVersion: 1
 title: ${JSON.stringify(title)}
 description: ${JSON.stringify(description)}
-tags: []
+tags: ${tagsYaml}
 order: 1
 featured: false
 ---
+
+# ${title}
 
 ${template.body}`
 

@@ -4,6 +4,7 @@ export interface Template {
   description: string
   defaultCategory: string
   defaultTitle: string
+  defaultTags: string[]
   body: string
 }
 
@@ -14,6 +15,7 @@ export const TEMPLATES: Record<string, Template> = {
     description: "Welcome article walking a new user through their first task",
     defaultCategory: "getting-started",
     defaultTitle: "Get started with [product]",
+    defaultTags: ["getting-started"],
     body: `## Overview
 
 Welcome! This guide walks you through the basics so you can get up and running in under ten minutes. By the end you will have completed your first task and know where to go next.
@@ -29,6 +31,13 @@ Before you begin, make sure you have:
 ## First steps
 
 <Steps>
+  <Step title="Install">
+    Grab the latest version and verify the install worked:
+    \`\`\`bash
+    npm install -g your-product
+    your-product --version
+    \`\`\`
+  </Step>
   <Step title="Create your workspace">
     Open the app and click **New workspace**. Give it a name that reflects what you are working on. You can rename it later.
   </Step>
@@ -37,9 +46,6 @@ Before you begin, make sure you have:
   </Step>
   <Step title="Complete your first task">
     Follow the in-app prompts to finish the starter task. This takes about two minutes and introduces the core features you will use every day.
-  </Step>
-  <Step title="Explore the dashboard">
-    Once your starter task is done, the dashboard unlocks. Take a minute to look around — you will see your recent activity, your team, and quick links to common actions.
   </Step>
 </Steps>
 
@@ -61,20 +67,30 @@ Before you begin, make sure you have:
     description: "Task-oriented guide for accomplishing a specific goal",
     defaultCategory: "how-to-guides",
     defaultTitle: "How to do [task]",
+    defaultTags: ["how-to"],
     body: `## Overview
 
 This guide shows you how to accomplish a specific task. Use it when you already know what you want to do and just need the exact steps.
 
-<Callout type="info">**Prerequisites:** An active account with the relevant permission. If you are not sure whether you have access, check with your workspace admin before starting.</Callout>
+## Prerequisites
+
+- An active account with the relevant permission
+- The feature enabled for your workspace (check under **Settings → Features**)
+- About five minutes
+
+If you are not sure whether you have access, ask your workspace admin before starting.
 
 ## Steps
 
 <Steps>
   <Step title="Open the relevant screen">
-    Navigate to the section of the app where this task lives. The quickest path is from the main dashboard — look for the matching icon in the sidebar.
+    Navigate to the section of the app where this task lives. The quickest path is from the main dashboard, look for the matching icon in the sidebar. For example, to reset a password, go to **Settings → Security**.
   </Step>
   <Step title="Start the action">
-    Click the primary action button. A modal or side panel will open with the fields you need to fill in.
+    Click the primary action button. A modal or side panel will open with the fields you need. If you prefer the CLI:
+    \`\`\`bash
+    your-product do-thing --name "example"
+    \`\`\`
   </Step>
   <Step title="Fill in the details">
     Enter the required information. Fields marked with an asterisk are required; the rest are optional and can be edited later.
@@ -94,7 +110,7 @@ After saving, confirm the change took effect:
 
 ## Troubleshooting
 
-<Callout type="warning">**Save button disabled?** The most common cause is a required field left blank. Scroll up and look for a red outline around any field. If all fields are filled and the button is still disabled, refresh the page and try again — a stale session can sometimes block the submit.</Callout>
+<Callout type="warning">**Save button disabled?** The most common cause is a required field left blank. Scroll up and look for a red outline around any field. If all fields are filled and the button is still disabled, refresh the page and try again, a stale session can sometimes block the submit.</Callout>
 
 ## Related articles
 
@@ -110,6 +126,7 @@ After saving, confirm the change took effect:
     description: "Explainer for a core idea, feature, or mental model",
     defaultCategory: "concepts",
     defaultTitle: "[Concept name]",
+    defaultTags: ["concepts"],
     body: `## TL;DR
 
 In one or two sentences: explain what this concept is and why a user should care. The rest of the article fills in the detail, but a reader who only scans the top should walk away with the core idea.
@@ -131,7 +148,14 @@ Here is the mental model:
   provides  does        after
 \`\`\`
 
-The system takes what you give it, transforms it through a predictable set of rules, and produces a result you can rely on. The rules are deterministic — the same input always produces the same output, which makes debugging and reasoning about behavior straightforward.
+The system takes what you give it, transforms it through a predictable set of rules, and produces a result you can rely on. The rules are deterministic, the same input always produces the same output, which makes debugging and reasoning about behavior straightforward.
+
+In code, the flow looks like this:
+
+\`\`\`ts
+const result = pipeline(input)
+//    ^^^^^^ always the same shape for the same input
+\`\`\`
 
 Three properties are worth remembering:
 
@@ -165,6 +189,7 @@ In those cases, the overhead of setting up a deterministic flow outweighs the be
     description: "Diagnose a problem and walk the user to a fix",
     defaultCategory: "troubleshooting",
     defaultTitle: "Fix [problem]",
+    defaultTags: ["troubleshooting"],
     body: `## Overview
 
 Describe the problem your users are experiencing and what they should expect after following these steps.
@@ -179,11 +204,20 @@ Check for the most common causes first:
 2. Check the error logs for specific messages
 3. Confirm your environment meets the requirements
 
+A quick sanity check from the command line:
+
+\`\`\`bash
+your-product doctor
+\`\`\`
+
 ## Solution
 
 <Steps>
   <Step title="Identify the error">
-    Look for the specific error message in your logs or console output. Note down the exact wording — this helps narrow the root cause.
+    Look for the specific error message in your logs or console output. Note down the exact wording, this helps narrow the root cause. For example:
+    \`\`\`
+    Error: configuration file not found at ./your-product.config.js
+    \`\`\`
   </Step>
   <Step title="Apply the fix">
     Based on the error message, apply the appropriate fix from the table below. If your error is not listed, check the related articles at the bottom of this page.

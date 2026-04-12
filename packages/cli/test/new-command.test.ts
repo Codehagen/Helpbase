@@ -66,30 +66,35 @@ describe("helpbase new — templates", () => {
     type: string
     category: string
     signatureComponents: string[]
+    defaultTag: string
   }> = [
     {
       type: "getting-started",
       category: "getting-started",
       signatureComponents: ["<Steps>", "<Callout", "<CardGroup"],
+      defaultTag: "getting-started",
     },
     {
       type: "how-to",
       category: "how-to-guides",
-      signatureComponents: ["<Steps>", '<Callout type="info"', '<Callout type="warning"', "<CardGroup"],
+      signatureComponents: ["<Steps>", "## Prerequisites", '<Callout type="warning"', "<CardGroup"],
+      defaultTag: "how-to",
     },
     {
       type: "concept",
       category: "concepts",
       signatureComponents: ['<Callout type="tip"', "<CardGroup"],
+      defaultTag: "concepts",
     },
     {
       type: "troubleshooting",
       category: "troubleshooting",
       signatureComponents: ["<Steps>", "<Callout", "<CardGroup"],
+      defaultTag: "troubleshooting",
     },
   ]
 
-  for (const { type, category, signatureComponents } of cases) {
+  for (const { type, category, signatureComponents, defaultTag } of cases) {
     it(`creates a ${type} article with its signature MDX components`, () => {
       const result = run(`new --type ${type} --title "Test Article" --dir content`, tmpDir)
       expect(result.exitCode).toBe(0)
@@ -102,6 +107,12 @@ describe("helpbase new — templates", () => {
         expect(content).toContain(component)
       }
       expect(content).toContain("schemaVersion: 1")
+      // H1 matches frontmatter.title, per apps/web/content/ convention
+      expect(content).toContain("# Test Article")
+      // Default tag seeds the frontmatter so new articles are searchable
+      expect(content).toContain(`tags: ["${defaultTag}"]`)
+      // Every template ships a code block to model good help-center writing
+      expect(content).toMatch(/```[a-z]*\n/)
     })
 
     it(`creates an asset directory for ${type}`, () => {

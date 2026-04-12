@@ -11,7 +11,9 @@
     "dev": "tsup src/index.ts --format esm --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "mint:token": "node scripts/mint-test-token.mjs"
+    "mint:token": "node scripts/mint-test-token.mjs",
+    "docs:cli": "node scripts/generate-cli-docs.mjs",
+    "docs:cli:check": "node scripts/generate-cli-docs.mjs --check"
   },
   "keywords": [
     "helpbase",

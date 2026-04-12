@@ -59,6 +59,14 @@ export const newCommand = new Command("new")
   .option("-c, --category <category>", "Category slug", "troubleshooting")
   .option("--title <title>", "Article title")
   .option("--slug <slug>", "Article slug (derived from title if omitted)")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ helpbase new --type troubleshooting --title "Fix broken builds"
+  $ helpbase new --type troubleshooting --title "Reset password" --category account
+`,
+  )
   .action((opts) => {
     if (!TEMPLATES[opts.type]) {
       console.error(

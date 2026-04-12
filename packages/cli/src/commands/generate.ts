@@ -46,6 +46,18 @@ export const generateCommand = new Command("generate")
   )
   .option("--yes", "Skip interactive confirmations (for CI/scripted use)")
   .option("--no-overwrite", "Error instead of overwriting existing image assets")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ helpbase generate --url https://myproduct.com
+  $ helpbase generate --url https://myproduct.com --test           # cheap model
+  $ helpbase generate --screenshots ./flow --title "How to invite a teammate"
+  $ helpbase generate --url https://myproduct.com --dry-run        # preview without spending tokens
+
+Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
+`,
+  )
   .action(async (opts) => {
     if (!opts.url && !opts.repo && !opts.screenshots) {
       console.error(

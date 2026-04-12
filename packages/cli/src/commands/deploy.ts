@@ -24,6 +24,15 @@ const RESERVED_SLUGS = new Set([
 export const deployCommand = new Command("deploy")
   .description("Deploy your help center to helpbase cloud")
   .option("--slug <slug>", "Subdomain slug (e.g., my-product)")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ helpbase deploy
+  $ helpbase deploy --slug acme-docs
+  $ HELPBASE_TOKEN=xxx helpbase deploy --slug acme-docs        # CI / non-interactive
+`,
+  )
   .action(async (opts: { slug?: string }) => {
     intro(pc.bgCyan(pc.black(" helpbase deploy ")))
 

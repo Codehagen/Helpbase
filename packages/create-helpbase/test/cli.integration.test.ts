@@ -85,6 +85,22 @@ describe("create-helpbase non-interactive mode (regression)", () => {
     ).toBe(true)
   })
 
+  // Non-interactive runs must not write an .env.local from the AI-key
+  // prompt — that prompt only runs in TTY mode, and scripted/CI runs
+  // should stay untouched so they can inject the key themselves.
+  it("non-interactive scaffold does not create .env.local", () => {
+    const tmp = mkTempDir()
+    tempDirs.push(tmp)
+
+    const { exitCode } = runNonInteractive(
+      "my-app --no-install --no-open",
+      tmp,
+    )
+    expect(exitCode).toBe(0)
+    const envPath = path.join(tmp, "my-app", ".env.local")
+    expect(fs.existsSync(envPath)).toBe(false)
+  })
+
   // Regression: ISSUE-002 edge case — non-TTY with no directory arg should
   // error with exit 1 (can't prompt for project name non-interactively).
   it("ISSUE-002: non-TTY without directory arg exits 1", () => {

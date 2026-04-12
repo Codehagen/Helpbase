@@ -18,6 +18,7 @@ import {
   generateArticlesFromContent,
 } from "@workspace/shared/ai-text"
 import { scaffoldProject, clearSampleContent } from "./scaffold.js"
+import { writeAiGatewayKey } from "./env-local.js"
 
 interface RunOptions {
   url?: string
@@ -132,11 +133,39 @@ async function run(directory: string | undefined, opts: RunOptions) {
     }
   }
 
-  // 3. Scaffold the project
+  // 3. Optional AI gateway key.
+  //    We prompt but never require — users can skip and wire it later via
+  //    `helpbase config set ai-gateway-key` or by exporting AI_GATEWAY_API_KEY.
+  //    Non-interactive runs skip this entirely; scripted setups are expected
+  //    to inject AI_GATEWAY_API_KEY via env or .env.local directly.
+  let aiGatewayKey: string | undefined
+  if (isInteractive) {
+    const keyResponse = await text({
+      message:
+        "Paste your AI gateway key (optional — get one at https://vercel.com/ai-gateway, or skip and set it later with `helpbase config set ai-gateway-key`)",
+      placeholder: "skip",
+    })
+
+    if (isCancel(keyResponse)) {
+      cancel("Setup cancelled.")
+      process.exit(0)
+    }
+
+    const trimmed = (keyResponse as string | undefined)?.trim()
+    if (trimmed && trimmed.length > 0 && trimmed !== "skip") {
+      aiGatewayKey = trimmed
+    }
+  }
+
+  // 4. Scaffold the project
   const s = spinner()
   s.start("Creating your help center...")
 
   scaffoldProject({ projectName: projectName as string, projectDir })
+
+  if (aiGatewayKey) {
+    writeAiGatewayKey(projectDir, aiGatewayKey)
+  }
 
   s.stop("Project scaffolded!")
 

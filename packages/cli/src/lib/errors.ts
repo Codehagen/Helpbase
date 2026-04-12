@@ -20,11 +20,15 @@ export type ErrorCode =
   | "E_AUTH_SEND_OTP"
   | "E_AUTH_VERIFY_OTP"
   | "E_AUTH_TOKEN_INVALID"
+  | "E_AUTH_EXPIRED"
   | "E_SLUG_TAKEN"
   | "E_SLUG_RESERVED"
   | "E_TENANT_NOT_FOUND"
   | "E_MISSING_API_KEY"
   | "E_NOT_A_PROJECT"
+  | "E_NETWORK"
+  | "E_MISSING_FLAG"
+  | "E_FILE_EXISTS"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode
@@ -71,6 +75,65 @@ export function formatError(err: HelpbaseError): string {
   }
   lines.push(`  ${pc.dim("docs:")}  ${err.docUrl()}`)
   return lines.join("\n") + "\n"
+}
+
+/**
+ * Best-effort detection of network-layer failures from fetch/undici.
+ * Matches node's AggregateError/Error causes, fetch TypeError, and the
+ * undici cause chain (ECONNREFUSED, ENOTFOUND, ETIMEDOUT, UND_ERR_*).
+ * Keep the matcher loose — false positives here just mean a slightly
+ * friendlier error message, not broken behavior.
+ */
+export function isNetworkError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false
+  const candidates: unknown[] = [err]
+  const withCause = err as { cause?: unknown }
+  if (withCause.cause) candidates.push(withCause.cause)
+  for (const c of candidates) {
+    if (!c || typeof c !== "object") continue
+    const code = (c as { code?: string }).code
+    const name = (c as { name?: string }).name
+    const message = (c as { message?: string }).message ?? ""
+    if (
+      code === "ECONNREFUSED" ||
+      code === "ENOTFOUND" ||
+      code === "ETIMEDOUT" ||
+      code === "EAI_AGAIN" ||
+      code === "ECONNRESET" ||
+      (typeof code === "string" && code.startsWith("UND_ERR_"))
+    ) {
+      return true
+    }
+    if (
+      name === "FetchError" ||
+      /fetch failed/i.test(message) ||
+      /network request failed/i.test(message)
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Wrap an unknown thrown value into a HelpbaseError if it looks like a
+ * network failure. Returns the wrapped error or the original value.
+ * Use at known HTTP/Supabase call sites:
+ *   try { await fetch(...) } catch (e) { throw toNetworkError(e, "deploy") }
+ */
+export function toNetworkError(err: unknown, operation: string): HelpbaseError | unknown {
+  if (err instanceof HelpbaseError) return err
+  if (!isNetworkError(err)) return err
+  const detail = err instanceof Error ? err.message : String(err)
+  return new HelpbaseError({
+    code: "E_NETWORK",
+    problem: `Could not reach helpbase while running '${operation}'`,
+    cause: detail,
+    fix: [
+      "Check your internet connection.",
+      `Retry in a moment — '${operation}' is safe to re-run.`,
+    ],
+  })
 }
 
 /**

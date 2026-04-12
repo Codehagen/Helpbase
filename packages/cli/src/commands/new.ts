@@ -4,6 +4,7 @@ import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
 import { TEMPLATES, VALID_TYPES, slugify, type Template } from "../lib/templates.js"
+import { nextSteps } from "../lib/ui.js"
 
 export { VALID_TYPES }
 
@@ -98,6 +99,12 @@ ${template.body}`
     console.log(`\n  ${pc.green("+")} Created: ${categorySlug}/${slug}.mdx`)
     console.log(`  ${pc.green("+")} Created: ${categorySlug}/${slug}/ (asset directory)`)
     console.log()
+    nextSteps({
+      commands: [
+        "helpbase dev",
+        `$EDITOR ${path.relative(process.cwd(), filePath)}`,
+      ],
+    })
   })
 
 async function pickTemplate(): Promise<Template> {

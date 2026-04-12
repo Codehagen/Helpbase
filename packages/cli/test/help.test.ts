@@ -8,6 +8,13 @@ function run(args: string): string {
   return execSync(`node ${CLI_PATH} ${args}`, { encoding: "utf-8" })
 }
 
+function runNoColor(args: string): string {
+  return execSync(`node ${CLI_PATH} ${args}`, {
+    encoding: "utf-8",
+    env: { ...process.env, NO_COLOR: "1" },
+  })
+}
+
 describe("helpbase --help", () => {
   it("shows the main help text", () => {
     const output = run("--help")
@@ -16,6 +23,29 @@ describe("helpbase --help", () => {
     expect(output).toContain("generate")
     expect(output).toContain("audit")
     expect(output).toContain("new")
+  })
+
+  it("groups commands into named sections", () => {
+    const output = runNoColor("--help")
+    expect(output).toContain("Most common:")
+    expect(output).toContain("Get started")
+    expect(output).toContain("Ship")
+    expect(output).toContain("Author")
+    expect(output).toContain("Account")
+    expect(output).toContain("Diagnose")
+  })
+
+  it("surfaces the three canonical commands up top", () => {
+    const output = runNoColor("--help")
+    expect(output).toMatch(/Most common:[\s\S]*helpbase new/)
+    expect(output).toMatch(/Most common:[\s\S]*helpbase dev/)
+    expect(output).toMatch(/Most common:[\s\S]*helpbase deploy/)
+  })
+
+  it("advertises --json and --quiet as global options", () => {
+    const output = runNoColor("--help")
+    expect(output).toContain("--json")
+    expect(output).toContain("--quiet")
   })
 
   it("shows version", () => {

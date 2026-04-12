@@ -1,5 +1,6 @@
 import { Command } from "commander"
-import { intro, outro, select, text, cancel, isCancel, spinner, note } from "@clack/prompts"
+import { intro, outro, select, text, cancel, isCancel, note } from "@clack/prompts"
+import { spinner } from "../lib/ui.js"
 import pc from "picocolors"
 import { getCurrentSession, isNonInteractive } from "../lib/auth.js"
 import { getAuthedSupabase } from "../lib/supabase-client.js"

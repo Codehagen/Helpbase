@@ -1,5 +1,6 @@
 import { Command } from "commander"
-import { spinner, note } from "@clack/prompts"
+import { note } from "@clack/prompts"
+import { spinner } from "../lib/ui.js"
 import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
@@ -23,6 +24,7 @@ import {
   readCaptions,
   resizeForModel,
 } from "@workspace/shared/screenshots"
+import { HelpbaseError } from "../lib/errors.js"
 
 export const generateCommand = new Command("generate")
   .description("Generate help articles using AI")
@@ -246,10 +248,15 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
 
               // --no-overwrite check (commander's --no-X sets opts.overwrite=false)
               if (opts.overwrite === false && fs.existsSync(destPath)) {
-                throw new Error(
-                  `File exists: ${destPath}\n` +
-                    `  Fix: Remove --no-overwrite to allow overwriting, or delete the existing file.`,
-                )
+                throw new HelpbaseError({
+                  code: "E_FILE_EXISTS",
+                  problem: `File exists: ${destPath}`,
+                  cause: "`--no-overwrite` is set, and this image already lives at the destination.",
+                  fix: [
+                    "Remove `--no-overwrite` to allow overwriting.",
+                    "Or delete the existing file and re-run `helpbase generate`.",
+                  ],
+                })
               }
 
               fs.copyFileSync(img.sourcePath, destPath)

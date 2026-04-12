@@ -1,5 +1,6 @@
 import { Command } from "commander"
-import { intro, outro, text, spinner, cancel, isCancel, note, confirm } from "@clack/prompts"
+import { intro, outro, text, cancel, isCancel, note, confirm } from "@clack/prompts"
+import { spinner, nextSteps } from "../lib/ui.js"
 import pc from "picocolors"
 import {
   getCurrentSession,
@@ -86,6 +87,7 @@ export const loginCommand = new Command("login")
       const session = await verifyLoginCode(email, code as string)
       await maybeAskTelemetryConsent()
       outro(`Logged in as ${pc.cyan(session.email)}`)
+      nextSteps({ commands: ["helpbase link", "helpbase new"] })
     } catch (err) {
       if (err instanceof HelpbaseError) {
         cancel(formatError(err).trimEnd())

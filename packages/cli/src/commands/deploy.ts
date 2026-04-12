@@ -1,5 +1,6 @@
 import { Command } from "commander"
-import { intro, outro, text, spinner, note, cancel, isCancel } from "@clack/prompts"
+import { intro, outro, text, note, cancel, isCancel } from "@clack/prompts"
+import { spinner, nextSteps } from "../lib/ui.js"
 import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
@@ -337,12 +338,12 @@ Examples:
     s.stop(`Uploaded ${articles.length} articles`)
 
     // 7. Done
-    outro(
-      `${pc.green("✓")} Deployed! Your help center is live:\n` +
-      `  ${pc.cyan(`https://${tenantSlug}.helpbase.dev`)}\n\n` +
-      `  Open it:   ${pc.dim("helpbase open")}\n` +
-      `  Redeploy:  ${pc.dim("helpbase deploy")}`
-    )
+    const liveUrl = `https://${tenantSlug}.helpbase.dev`
+    outro(`${pc.green("✓")} Deployed! Your help center is live.`)
+    nextSteps({
+      commands: ["helpbase open", "helpbase deploy"],
+      urls: [{ label: "live:", url: liveUrl }],
+    })
   })
 
 async function ensureAuthenticated(): Promise<AuthSession> {

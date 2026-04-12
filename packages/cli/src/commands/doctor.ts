@@ -8,102 +8,185 @@ import { readProjectConfig } from "../lib/project-config.js"
 import { readConfig } from "../lib/config.js"
 
 /**
- * `helpbase doctor` — one-shot diagnostic. Dumps everything a user or
- * maintainer would want to know when something misbehaves, without
- * leaking secrets.
+ * `helpbase doctor` — one-shot diagnostic.
+ *
+ * Each check lives in a category (environment / project / account / network)
+ * so users can scan by concern. Failing checks carry a `fix` command the user
+ * can copy-paste. Network checks run with a 2s timeout and downgrade to
+ * warnings instead of errors — flaky wifi shouldn't look like broken code.
+ *
+ * Stays scoped to Phase 1: Node version + project linked + auth + content
+ * shape + telemetry. Supabase reachability, package-manager versions, and
+ * Next version checks are reserved for Phase 2 once the category shape has
+ * proven itself in the wild.
  */
+
+type Category = "environment" | "project" | "account" | "network"
+type Severity = "ok" | "warn" | "error" | "info"
 
 interface Check {
   label: string
+  category: Category
+  severity: Severity
   value: string
-  status: "ok" | "warn" | "info"
+  /** Exact shell command or action the user can copy-paste to fix the issue. */
+  fix?: string
+}
+
+interface CheckOptions {
+  /** Skip network category checks. For corp nets, captive portals, flights. */
+  offline: boolean
 }
 
 export const doctorCommand = new Command("doctor")
   .description("Print diagnostic info about your helpbase install and project")
   .option("-f, --format <format>", "Output format: text or json", "text")
-  .action(async (opts: { format: string }) => {
-    const checks = await collectChecks()
+  .option("--offline", "Skip network checks (useful on planes and behind corp proxies)")
+  .action(async (opts: { format: string; offline?: boolean }) => {
+    const checks = await collectChecks({ offline: Boolean(opts.offline) })
 
     if (opts.format === "json") {
       console.log(JSON.stringify(checks, null, 2))
       return
     }
 
-    console.log()
-    console.log(pc.bold("helpbase doctor"))
-    console.log(pc.dim("─".repeat(60)))
-    const labelWidth = Math.max(...checks.map((c) => c.label.length))
-    for (const c of checks) {
-      const icon =
-        c.status === "ok"
-          ? pc.green("✓")
-          : c.status === "warn"
-            ? pc.yellow("⚠")
-            : pc.dim("›")
-      console.log(`  ${icon} ${c.label.padEnd(labelWidth)}  ${c.value}`)
-    }
-    console.log()
-    console.log(
-      pc.dim(
-        "If something looks wrong, share this output when reporting the issue.\n" +
-        "  Redact ~/.helpbase/auth.json contents — that's where tokens live.",
-      ),
-    )
-    console.log()
+    renderText(checks)
   })
 
-async function collectChecks(): Promise<Check[]> {
+function renderText(checks: Check[]): void {
+  console.log()
+  console.log(pc.bold("helpbase doctor"))
+  console.log(pc.dim("─".repeat(60)))
+
+  const categoryOrder: Category[] = ["environment", "project", "account", "network"]
+  const byCategory = new Map<Category, Check[]>()
+  for (const c of checks) {
+    const list = byCategory.get(c.category) ?? []
+    list.push(c)
+    byCategory.set(c.category, list)
+  }
+
+  for (const cat of categoryOrder) {
+    const list = byCategory.get(cat)
+    if (!list?.length) continue
+
+    console.log()
+    console.log(`  ${pc.dim(categoryLabel(cat))}`)
+    const labelWidth = Math.max(...list.map((c) => c.label.length))
+    for (const c of list) {
+      const icon = severityIcon(c.severity)
+      console.log(`  ${icon} ${c.label.padEnd(labelWidth)}  ${c.value}`)
+      if (c.fix && c.severity !== "ok") {
+        console.log(`      ${pc.dim("fix:")} ${pc.cyan(c.fix)}`)
+      }
+    }
+  }
+
+  console.log()
+  console.log(
+    pc.dim(
+      "If something looks wrong, share this output when reporting the issue.\n" +
+      "  Redact ~/.helpbase/auth.json contents — that's where tokens live.",
+    ),
+  )
+  console.log()
+}
+
+function severityIcon(s: Severity): string {
+  switch (s) {
+    case "ok":
+      return pc.green("✓")
+    case "warn":
+      return pc.yellow("⚠")
+    case "error":
+      return pc.red("✖")
+    case "info":
+      return pc.dim("›")
+  }
+}
+
+function categoryLabel(c: Category): string {
+  return c === "environment"
+    ? "Environment"
+    : c === "project"
+      ? "Project"
+      : c === "account"
+        ? "Account"
+        : "Network"
+}
+
+async function collectChecks(opts: CheckOptions): Promise<Check[]> {
   const checks: Check[] = []
 
-  // Environment
-  checks.push({ label: "helpbase CLI", value: cliVersion(), status: "info" })
-  checks.push({ label: "Node.js", value: process.version, status: nodeOk() })
+  // ── Environment ─────────────────────────────────────────────────
+  checks.push({
+    label: "helpbase CLI",
+    category: "environment",
+    severity: "info",
+    value: cliVersion(),
+  })
+  const nodeSeverity = nodeOk() ? "ok" : "warn"
+  checks.push({
+    label: "Node.js",
+    category: "environment",
+    severity: nodeSeverity,
+    value: process.version,
+    fix: nodeSeverity === "warn" ? "Install Node 20+ from https://nodejs.org" : undefined,
+  })
   checks.push({
     label: "Platform",
+    category: "environment",
+    severity: "info",
     value: `${process.platform} (${process.arch}), ${os.release()}`,
-    status: "info",
   })
 
-  // Auth state
+  // ── Account ─────────────────────────────────────────────────────
   const session = await getCurrentSession().catch(() => null)
   const tokenSet = Boolean(process.env.HELPBASE_TOKEN)
   if (session) {
     checks.push({
       label: "Logged in",
+      category: "account",
+      severity: "ok",
       value: `${session.email || "(no email)"} ${pc.dim(tokenSet ? "(via HELPBASE_TOKEN)" : "(via ~/.helpbase/auth.json)")}`,
-      status: "ok",
     })
   } else if (tokenSet) {
     checks.push({
       label: "Logged in",
+      category: "account",
+      severity: "warn",
       value: "HELPBASE_TOKEN is set but did not resolve to a session",
-      status: "warn",
+      fix: "Regenerate the token and re-export HELPBASE_TOKEN, or run `helpbase login` locally",
     })
   } else {
     checks.push({
       label: "Logged in",
-      value: "no — run `helpbase login`",
-      status: "info",
+      category: "account",
+      severity: "info",
+      value: "no (not logged in)",
+      fix: "helpbase login",
     })
   }
 
-  // Project binding
+  // ── Project ─────────────────────────────────────────────────────
   const linked = readProjectConfig()
   checks.push({
     label: "Project link",
+    category: "project",
+    severity: linked ? "ok" : "info",
     value: linked
       ? `${linked.slug}.helpbase.dev ${pc.dim(`(${path.relative(process.cwd(), ".helpbase/project.json") || ".helpbase/project.json"})`)}`
-      : "not linked — run `helpbase link` or `helpbase deploy`",
-    status: linked ? "ok" : "info",
+      : "not linked",
+    fix: linked ? undefined : "helpbase link",
   })
 
-  // Project shape
   const hasContentDir = fs.existsSync(path.resolve("content"))
   checks.push({
     label: "content/",
-    value: hasContentDir ? "found" : "missing — this isn't a helpbase project",
-    status: hasContentDir ? "ok" : "warn",
+    category: "project",
+    severity: hasContentDir ? "ok" : "warn",
+    value: hasContentDir ? "found" : "missing",
+    fix: hasContentDir ? undefined : "mkdir content && helpbase new",
   })
 
   const pkgPath = path.resolve("package.json")
@@ -116,40 +199,93 @@ async function collectChecks(): Promise<Check[]> {
       const nextDep = pkg.dependencies?.next ?? pkg.devDependencies?.next
       checks.push({
         label: "next dep",
-        value: nextDep ? nextDep : "not found",
-        status: nextDep ? "ok" : "warn",
+        category: "project",
+        severity: nextDep ? "ok" : "warn",
+        value: nextDep ?? "not found",
+        fix: nextDep ? undefined : "pnpm add next",
       })
     } catch {
       checks.push({
         label: "package.json",
+        category: "project",
+        severity: "warn",
         value: "invalid JSON",
-        status: "warn",
+        fix: "Inspect package.json — something is malformed",
       })
     }
   } else {
     checks.push({
       label: "package.json",
+      category: "project",
+      severity: "warn",
       value: "missing",
-      status: "warn",
+      fix: "Run from a project root, or scaffold with `npx create-helpbase`",
     })
   }
 
-  // Preferences
+  // ── Account preferences ────────────────────────────────────────
   const cfg = readConfig()
   checks.push({
     label: "telemetry",
+    category: "account",
+    severity: "info",
     value: cfg.telemetry ?? "(unset — will prompt on next login)",
-    status: "info",
   })
   if (cfg.anonId) {
     checks.push({
       label: "anon id",
+      category: "account",
+      severity: "info",
       value: cfg.anonId,
-      status: "info",
     })
   }
 
+  // ── Network (opt-out via --offline) ─────────────────────────────
+  if (!opts.offline) {
+    checks.push(await checkApiReachable())
+  }
+
   return checks
+}
+
+/**
+ * Soft reachability check: HEAD the marketing origin. Never fails the command.
+ * If something is truly broken end-to-end, subsequent commands will surface
+ * the specific error via HelpbaseError + formatError. This is a heads-up only.
+ */
+async function checkApiReachable(): Promise<Check> {
+  const url = "https://helpbase.dev"
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 2000)
+  try {
+    const res = await fetch(url, { method: "HEAD", signal: controller.signal })
+    if (res.ok) {
+      return {
+        label: "helpbase.dev",
+        category: "network",
+        severity: "ok",
+        value: `reachable (${res.status})`,
+      }
+    }
+    return {
+      label: "helpbase.dev",
+      category: "network",
+      severity: "warn",
+      value: `status ${res.status}`,
+      fix: "Retry in a moment; or run `helpbase doctor --offline` to skip",
+    }
+  } catch (err) {
+    const aborted = (err as { name?: string }).name === "AbortError"
+    return {
+      label: "helpbase.dev",
+      category: "network",
+      severity: "warn",
+      value: aborted ? "timed out after 2s" : "unreachable",
+      fix: "Check your connection, or run `helpbase doctor --offline`",
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 function cliVersion(): string {
@@ -172,7 +308,7 @@ function cliVersion(): string {
   return "unknown"
 }
 
-function nodeOk(): "ok" | "warn" {
+function nodeOk(): boolean {
   const major = parseInt(process.version.replace(/^v/, "").split(".")[0] ?? "0", 10)
-  return major >= 20 ? "ok" : "warn"
+  return major >= 20
 }

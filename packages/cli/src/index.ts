@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 
 import { Command } from "commander"
+import updateNotifier from "update-notifier"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
+import { dirname, join } from "node:path"
 import { devCommand } from "./commands/dev.js"
 import { generateCommand } from "./commands/generate.js"
 import { auditCommand } from "./commands/audit.js"
@@ -13,10 +17,22 @@ import { whoamiCommand } from "./commands/whoami.js"
 import { linkCommand } from "./commands/link.js"
 import { openCommand } from "./commands/open.js"
 
+// Load package.json at runtime so the version and update check track the
+// installed CLI, not a build-time snapshot. dist/ sits next to package.json
+// after bundling; src/ is two levels up during development.
+const pkg = loadPackageJson()
+
+// Notify users of stale installs. Silent when up to date; boxed message
+// on stderr otherwise. Disabled if NO_UPDATE_NOTIFIER or CI is set.
+updateNotifier({ pkg, updateCheckInterval: 1000 * 60 * 60 * 24 }).notify({
+  defer: false,
+  isGlobal: true,
+})
+
 const program = new Command()
   .name("helpbase")
   .description("CLI for managing your Helpbase help center")
-  .version("0.0.1")
+  .version(pkg.version)
 
 program.addCommand(devCommand)
 program.addCommand(generateCommand)
@@ -31,3 +47,17 @@ program.addCommand(linkCommand)
 program.addCommand(openCommand)
 
 program.parse()
+
+function loadPackageJson(): { name: string; version: string } {
+  const here = dirname(fileURLToPath(import.meta.url))
+  // Try dist/../package.json first (bundled), then src/../../package.json (dev).
+  for (const candidate of [join(here, "../package.json"), join(here, "../../package.json")]) {
+    try {
+      return JSON.parse(readFileSync(candidate, "utf-8"))
+    } catch {
+      // try next
+    }
+  }
+  // Last-resort fallback so a missing package.json never crashes the CLI.
+  return { name: "helpbase", version: "0.0.0" }
+}

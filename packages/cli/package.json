@@ -22,6 +22,15 @@
   ],
   "author": "CodeHagen",
   "license": "AGPL-3.0-only",
+  "homepage": "https://helpbase.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Codehagen/helpbase.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/Codehagen/helpbase/issues"
+  },
   "dependencies": {
     "@clack/prompts": "^0.10.0",
     "@supabase/supabase-js": "^2.103.0",
@@ -29,6 +38,7 @@
     "commander": "^13.1.0",
     "gray-matter": "^4.0.3",
     "picocolors": "^1.1.1",
+    "update-notifier": "^7.3.1",
     "zod": "^4.3.6"
   },
   "peerDependencies": {
@@ -41,6 +51,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.1.0",
+    "@types/update-notifier": "^6.0.8",
     "@workspace/shared": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "tsup": "^8.5.0",

@@ -1,6 +1,6 @@
 import { Command } from "commander"
 import { note } from "@clack/prompts"
-import { spinner, nextSteps } from "../lib/ui.js"
+import { spinner, nextSteps, summaryTable } from "../lib/ui.js"
 import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
@@ -301,6 +301,11 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
         process.exit(1)
       }
 
+      summaryTable([
+        ["Articles", String(plans.length)],
+        ["Categories", String(new Set(plans.map((p) => p.categorySlug)).size)],
+        ["Output", path.relative(process.cwd(), outputDir) || outputDir],
+      ])
       nextSteps({
         commands: ["helpbase dev", "helpbase audit", "helpbase deploy"],
       })
@@ -412,6 +417,11 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
         )
       }
 
+      summaryTable([
+        ["Articles", String(plans.length)],
+        ["Categories", String(new Set(plans.map((p) => p.categorySlug)).size)],
+        ["Output", path.relative(process.cwd(), outputDir) || outputDir],
+      ])
       nextSteps({
         commands: ["helpbase dev", "helpbase audit", "helpbase deploy"],
       })

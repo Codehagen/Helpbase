@@ -116,4 +116,63 @@ describe("env-loader", () => {
     const files = loadEnvFiles(root)
     expect(files).toEqual([])
   })
+
+  it("falls back to ~/.helpbase/config.json aiGatewayApiKey when nothing else sets it", () => {
+    // Override HOME so we don't touch the real user config during tests.
+    const fakeHome = tmpRoot()
+    setKey("HOME", fakeHome)
+    const hbDir = path.join(fakeHome, ".helpbase")
+    fs.mkdirSync(hbDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(hbDir, "config.json"),
+      JSON.stringify({ aiGatewayApiKey: "cfg-fallback-value" }),
+    )
+
+    const root = tmpRoot()
+    fs.writeFileSync(path.join(root, "package.json"), "{}")
+    setKey("AI_GATEWAY_API_KEY", undefined)
+
+    loadEnvFiles(root)
+    expect(process.env.AI_GATEWAY_API_KEY).toBe("cfg-fallback-value")
+  })
+
+  it("config fallback does NOT override shell env", () => {
+    const fakeHome = tmpRoot()
+    setKey("HOME", fakeHome)
+    const hbDir = path.join(fakeHome, ".helpbase")
+    fs.mkdirSync(hbDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(hbDir, "config.json"),
+      JSON.stringify({ aiGatewayApiKey: "from_config" }),
+    )
+
+    const root = tmpRoot()
+    fs.writeFileSync(path.join(root, "package.json"), "{}")
+    setKey("AI_GATEWAY_API_KEY", "from_shell")
+
+    loadEnvFiles(root)
+    expect(process.env.AI_GATEWAY_API_KEY).toBe("from_shell")
+  })
+
+  it("config fallback does NOT override .env.local", () => {
+    const fakeHome = tmpRoot()
+    setKey("HOME", fakeHome)
+    const hbDir = path.join(fakeHome, ".helpbase")
+    fs.mkdirSync(hbDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(hbDir, "config.json"),
+      JSON.stringify({ aiGatewayApiKey: "from_config" }),
+    )
+
+    const root = tmpRoot()
+    fs.writeFileSync(path.join(root, "package.json"), "{}")
+    fs.writeFileSync(
+      path.join(root, ".env.local"),
+      "AI_GATEWAY_API_KEY=from_envlocal\n",
+    )
+    setKey("AI_GATEWAY_API_KEY", undefined)
+
+    loadEnvFiles(root)
+    expect(process.env.AI_GATEWAY_API_KEY).toBe("from_envlocal")
+  })
 })

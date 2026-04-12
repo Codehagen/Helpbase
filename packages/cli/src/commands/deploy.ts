@@ -1,6 +1,6 @@
 import { Command } from "commander"
 import { intro, outro, text, note, cancel, isCancel } from "@clack/prompts"
-import { spinner, nextSteps } from "../lib/ui.js"
+import { spinner, nextSteps, summaryTable } from "../lib/ui.js"
 import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
@@ -340,6 +340,12 @@ Examples:
     // 7. Done
     const liveUrl = `https://${tenantSlug}.helpbase.dev`
     outro(`${pc.green("✓")} Deployed! Your help center is live.`)
+    summaryTable([
+      ["Tenant", `${tenantSlug}.helpbase.dev`],
+      ["Articles", String(articles.length)],
+      ["Categories", String(categories.length)],
+      ["Live URL", liveUrl],
+    ])
     nextSteps({
       commands: ["helpbase open", "helpbase deploy"],
       urls: [{ label: "live:", url: liveUrl }],

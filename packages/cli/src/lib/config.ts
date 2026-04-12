@@ -16,6 +16,13 @@ export interface CliConfig {
   telemetry?: "on" | "off"
   /** Random UUID generated on first write. Lets us count unique installs. */
   anonId?: string
+  /**
+   * Optional AI gateway key stored in the user config. Shell env and
+   * .env.local both take precedence (see lib/env-loader.ts); this is the
+   * last-resort fallback so users without a project don't hit the wall of
+   * "set this env var first" before trying `helpbase generate`.
+   */
+  aiGatewayApiKey?: string
 }
 
 // Resolve at call time so tests can override via $HOME. os.homedir() on

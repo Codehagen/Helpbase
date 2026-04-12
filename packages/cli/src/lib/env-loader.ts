@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+import { readConfig } from "./config.js"
 
 /**
  * Auto-load .env.local then .env, walking up from cwd until we find a
@@ -44,7 +45,26 @@ export function loadEnvFiles(startDir: string = process.cwd()): LoadedEnvFile[] 
       loaded.push({ path: file, loaded: applied })
     }
   }
+
+  // Last-resort fallback: ~/.helpbase/config.json. Only fills keys that
+  // shell env + .env files didn't already provide. Lets users run
+  // `helpbase generate` from any directory after a one-time
+  // `helpbase config set ai-gateway-key <key>`.
+  applyConfigFallback()
+
   return loaded
+}
+
+function applyConfigFallback(): void {
+  try {
+    const cfg = readConfig()
+    if (cfg.aiGatewayApiKey && process.env.AI_GATEWAY_API_KEY === undefined) {
+      process.env.AI_GATEWAY_API_KEY = cfg.aiGatewayApiKey
+    }
+  } catch {
+    // A corrupt config shouldn't break the CLI. readConfig() already
+    // swallows parse errors; this catch is just belt-and-suspenders.
+  }
 }
 
 /** Walk up from `start` until we find a package.json or hit `/`. */

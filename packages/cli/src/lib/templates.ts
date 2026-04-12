@@ -54,10 +54,10 @@ Before you begin, make sure you have:
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card icon="book-open" title="Core concepts" href="/concepts/overview">Learn the mental model behind how the product works.</Card>
-  <Card icon="zap" title="How-to guides" href="/how-to-guides">Step-by-step guides for the most common tasks.</Card>
-  <Card icon="settings" title="Configuration" href="/getting-started/configuration">Tune the app to match how your team works.</Card>
-  <Card icon="life-buoy" title="Troubleshooting" href="/troubleshooting">Stuck? Check here first.</Card>
+  <Card icon="book-open" title="Why it works this way" href="/concepts/overview">The mental model behind the product, in 5 minutes.</Card>
+  <Card icon="zap" title="Do something specific" href="/how-to-guides">Task-focused how-to guides for the everyday stuff.</Card>
+  <Card icon="settings" title="Make it yours" href="/getting-started/configuration">Tune the defaults to match how your team works.</Card>
+  <Card icon="life-buoy" title="Something not working?" href="/troubleshooting">Common issues with quick fixes.</Card>
 </CardGroup>
 `,
   },
@@ -115,8 +115,10 @@ After saving, confirm the change took effect:
 ## Related articles
 
 <CardGroup cols={2}>
-  <Card icon="book-open" title="Core concepts" href="/concepts/overview">Understand the mental model behind this feature.</Card>
-  <Card icon="life-buoy" title="Troubleshooting" href="/troubleshooting">More common issues and their fixes.</Card>
+  <Card icon="list-checks" title="More how-to guides" href="/how-to-guides">Other step-by-step guides for common tasks.</Card>
+  <Card icon="book-open" title="The concept behind this" href="/concepts/overview">Understand the mental model so you can adapt these steps.</Card>
+  <Card icon="file-code" title="API / CLI reference" href="/reference">Exact flags, fields, and return shapes.</Card>
+  <Card icon="life-buoy" title="Stuck?" href="/troubleshooting">Common failure modes and their fixes.</Card>
 </CardGroup>
 `,
   },
@@ -178,8 +180,9 @@ In those cases, the overhead of setting up a deterministic flow outweighs the be
 ## Related
 
 <CardGroup cols={2}>
-  <Card icon="book-open" title="Getting started" href="/getting-started/introduction">New here? Start with the basics.</Card>
-  <Card icon="zap" title="How-to guides" href="/how-to-guides">Apply this concept in a concrete task.</Card>
+  <Card icon="compass" title="Other core concepts" href="/concepts/overview">Related mental models that compose with this one.</Card>
+  <Card icon="zap" title="Apply it: how-to guides" href="/how-to-guides">Step-by-step tasks that put this concept to work.</Card>
+  <Card icon="file-code" title="API / CLI reference" href="/reference">See the exact surface area this concept describes.</Card>
 </CardGroup>
 `,
   },
@@ -236,8 +239,10 @@ Describe any fallback approaches or workarounds here.
 ## Related articles
 
 <CardGroup cols={2}>
-  <Card icon="book-open" title="Getting Started" href="/getting-started/introduction">Review the basics if you are new to the product.</Card>
-  <Card icon="settings" title="Configuration" href="/getting-started/configuration">Check your configuration settings for common issues.</Card>
+  <Card icon="life-buoy" title="More troubleshooting" href="/troubleshooting">Other common failure modes and their fixes.</Card>
+  <Card icon="list-checks" title="The setup how-to" href="/how-to-guides">Walk through the correct setup from scratch.</Card>
+  <Card icon="activity" title="Run helpbase doctor" href="/reference/doctor">Let the CLI auto-diagnose common misconfigurations.</Card>
+  <Card icon="message-circle" title="Still stuck? Get help" href="/community">Open an issue or ask in the community channel.</Card>
 </CardGroup>
 `,
   },

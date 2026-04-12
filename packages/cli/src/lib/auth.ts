@@ -2,6 +2,7 @@ import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
 import { getAnonSupabase } from "./supabase-client.js"
+import { HelpbaseError } from "./errors.js"
 
 /**
  * Provider-agnostic auth layer.
@@ -25,16 +26,6 @@ export interface AuthSession {
 const AUTH_DIR = path.join(os.homedir(), ".helpbase")
 const AUTH_FILE = path.join(AUTH_DIR, "auth.json")
 const TOKEN_ENV = "HELPBASE_TOKEN"
-
-export class AuthError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-  ) {
-    super(message)
-    this.name = "AuthError"
-  }
-}
 
 /**
  * Resolve the current auth session.
@@ -87,7 +78,16 @@ export async function sendLoginCode(email: string): Promise<void> {
   const client = getAnonSupabase()
   const { error } = await client.auth.signInWithOtp({ email })
   if (error) {
-    throw new AuthError(error.message, "E_AUTH_SEND_OTP")
+    throw new HelpbaseError({
+      code: "E_AUTH_SEND_OTP",
+      problem: "Could not send the login code",
+      cause: error.message,
+      fix: [
+        "Check the email address for typos",
+        "Wait a minute if you just requested a code — rate limits apply",
+        "Try `helpbase login` again",
+      ],
+    })
   }
 }
 
@@ -104,10 +104,16 @@ export async function verifyLoginCode(email: string, code: string): Promise<Auth
   })
 
   if (error || !data.session) {
-    throw new AuthError(
-      error?.message ?? "Invalid or expired code",
-      "E_AUTH_VERIFY_OTP",
-    )
+    throw new HelpbaseError({
+      code: "E_AUTH_VERIFY_OTP",
+      problem: "The login code didn't verify",
+      cause: error?.message ?? "Invalid or expired code",
+      fix: [
+        "Run `helpbase login` again to get a fresh code",
+        "Check your spam folder for the latest email",
+        "Codes expire after a few minutes — use the newest one",
+      ],
+    })
   }
 
   const session: AuthSession = {

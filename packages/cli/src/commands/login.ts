@@ -2,12 +2,12 @@ import { Command } from "commander"
 import { intro, outro, text, spinner, cancel, isCancel, note } from "@clack/prompts"
 import pc from "picocolors"
 import {
-  AuthError,
   getCurrentSession,
   isNonInteractive,
   sendLoginCode,
   verifyLoginCode,
 } from "../lib/auth.js"
+import { HelpbaseError, formatError } from "../lib/errors.js"
 
 export const loginCommand = new Command("login")
   .description("Log in to helpbase cloud")
@@ -57,8 +57,11 @@ export const loginCommand = new Command("login")
       s.stop("Magic link sent!")
     } catch (err) {
       s.stop("Failed to send magic link")
-      const msg = err instanceof AuthError ? err.message : String(err)
-      cancel(`Authentication error: ${msg}`)
+      if (err instanceof HelpbaseError) {
+        cancel(formatError(err).trimEnd())
+      } else {
+        cancel(`Authentication error: ${String(err)}`)
+      }
       process.exit(1)
     }
 
@@ -79,11 +82,11 @@ export const loginCommand = new Command("login")
       const session = await verifyLoginCode(email, code as string)
       outro(`Logged in as ${pc.cyan(session.email)}`)
     } catch (err) {
-      const msg = err instanceof AuthError ? err.message : String(err)
-      cancel(
-        `Verification failed: ${msg}\n` +
-        `  Run ${pc.cyan("helpbase login")} again to get a new code, or check your spam folder.`,
-      )
+      if (err instanceof HelpbaseError) {
+        cancel(formatError(err).trimEnd())
+      } else {
+        cancel(`Verification failed: ${String(err)}`)
+      }
       process.exit(1)
     }
   })

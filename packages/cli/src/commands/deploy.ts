@@ -7,7 +7,6 @@ import matter from "gray-matter"
 import { frontmatterSchema, categoryMetaSchema } from "@workspace/shared/schemas"
 import { getAuthedSupabase } from "../lib/supabase-client.js"
 import {
-  AuthError,
   getCurrentSession,
   isNonInteractive,
   sendLoginCode,
@@ -15,6 +14,7 @@ import {
   type AuthSession,
 } from "../lib/auth.js"
 import { readProjectConfig, writeProjectConfig } from "../lib/project-config.js"
+import { HelpbaseError, formatError } from "../lib/errors.js"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
 const RESERVED_SLUGS = new Set([
@@ -376,8 +376,11 @@ async function ensureAuthenticated(): Promise<AuthSession> {
     s.stop("Magic link sent!")
   } catch (err) {
     s.stop("Failed to send magic link")
-    const msg = err instanceof AuthError ? err.message : String(err)
-    cancel(`Authentication error: ${msg}`)
+    if (err instanceof HelpbaseError) {
+      cancel(formatError(err).trimEnd())
+    } else {
+      cancel(`Authentication error: ${String(err)}`)
+    }
     process.exit(1)
   }
 
@@ -399,11 +402,11 @@ async function ensureAuthenticated(): Promise<AuthSession> {
     note(`Authenticated as ${pc.cyan(session.email)}`, "Success")
     return session
   } catch (err) {
-    const msg = err instanceof AuthError ? err.message : String(err)
-    cancel(
-      `Verification failed: ${msg}\n` +
-      `  Run \`helpbase deploy\` again to get a new code, or check your spam folder.`,
-    )
+    if (err instanceof HelpbaseError) {
+      cancel(formatError(err).trimEnd())
+    } else {
+      cancel(`Verification failed: ${String(err)}`)
+    }
     process.exit(1)
   }
 }

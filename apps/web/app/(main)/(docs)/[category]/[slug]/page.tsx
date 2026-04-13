@@ -48,7 +48,7 @@ export default async function ArticlePage({
   return (
     <div className="flex">
       {/* Main content area */}
-      <div className="min-w-0 flex-1 px-8 py-10 lg:px-12">
+      <div className="min-w-0 flex-1 px-8 py-10 lg:px-12 xl:max-w-4xl">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
           <Link href="/" className="transition-colors hover:text-foreground">

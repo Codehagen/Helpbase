@@ -19,7 +19,7 @@ export default async function CategoryPage({
   if (!category) notFound()
 
   return (
-    <div className="px-8 py-10 lg:px-12">
+    <div className="max-w-5xl px-8 py-10 lg:px-12">
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
         <Link href="/" className="transition-colors hover:text-foreground">

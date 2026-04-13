@@ -4,8 +4,11 @@
   "description": "CLI for managing your Helpbase help center",
   "type": "module",
   "bin": {
-    "helpbase": "./dist/index.js"
+    "helpbase": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --watch",
@@ -27,7 +30,7 @@
   "homepage": "https://helpbase.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Codehagen/helpbase.git",
+    "url": "git+https://github.com/Codehagen/helpbase.git",
     "directory": "packages/cli"
   },
   "bugs": {

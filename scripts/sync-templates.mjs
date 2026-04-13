@@ -63,6 +63,7 @@ const APPS_WEB_DIRS = ["app", "components", "lib", "content"]
 const HOSTED_TIER_EXCLUDES = [
   "app/(tenant)/",
   "app/(main)/errors/",
+  "app/api/",
   "lib/tenant-content.ts",
   "lib/hosted-mdx-components.tsx",
   "lib/supabase.ts",
@@ -424,7 +425,10 @@ dist
 .vscode
 .idea
 `
-  writeFile(join(TEMPLATES, ".gitignore"), content)
+  // npm strips files literally named `.gitignore` from package tarballs, so
+  // we ship as `_gitignore` and the scaffolder renames it on write. Same
+  // convention as create-next-app, create-vite, etc.
+  writeFile(join(TEMPLATES, "_gitignore"), content)
 }
 
 function generateTemplatesPackageJson() {

@@ -61,7 +61,10 @@ function copyDirWithTokenReplace(src: string, dest: string, projectName: string)
   const entries = fs.readdirSync(src, { withFileTypes: true })
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name)
-    const destPath = path.join(dest, entry.name)
+    // npm strips files named `.gitignore` from package tarballs; the sync
+    // script ships it as `_gitignore` and we rename on write.
+    const destName = entry.name === "_gitignore" ? ".gitignore" : entry.name
+    const destPath = path.join(dest, destName)
 
     if (entry.isDirectory()) {
       fs.mkdirSync(destPath, { recursive: true })
@@ -117,8 +120,8 @@ const TEXT_EXTENSIONS = new Set([
 ])
 
 function isTextFile(filename: string): boolean {
-  // Files without extensions (like .gitignore) are treated as text.
-  if (filename.startsWith(".")) return true
+  // Files without extensions (like .gitignore, _gitignore) are treated as text.
+  if (filename.startsWith(".") || filename === "_gitignore") return true
   const ext = path.extname(filename)
   return TEXT_EXTENSIONS.has(ext)
 }

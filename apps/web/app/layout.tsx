@@ -1,4 +1,4 @@
-import { Geist, Geist_Mono } from "next/font/google"
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google"
 
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -9,6 +9,13 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+})
+
+const fontSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-serif",
 })
 
 export default function RootLayout({
@@ -23,6 +30,7 @@ export default function RootLayout({
       className={cn(
         "antialiased",
         fontMono.variable,
+        fontSerif.variable,
         "font-sans",
         geist.variable
       )}

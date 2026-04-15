@@ -89,3 +89,38 @@ _All P2 items shipped on 2026-04-09. See the Completed section._
 
 ### TODO-002: Prompt v0.0.3 — fix word floor + article count drift on markdown sources
 **Completed:** 93a2de8 (2026-04-09) — tightened structure rule to require markdown ## H2 headings explicitly, added word-count self-check with source-density warning, expanded code-example trigger list, inlined banned marketing words into the title rule. Verified with four smoke runs on Gemini Flash Lite against vercel.com + resend.com: 8/8 articles hit 3+ headings (was 4/9 on v0.0.2), 8/8 hit 150+ words (was 1/9). Residual: 1-of-16 titles still contained "streamline" — baseline noise rate, not a rule failure.
+
+## Surfaced by /plan-eng-review (2026-04-15, design rebuild)
+
+### Contact support CTA destination
+- **What:** Wire the "Contact support" button in the home page Still-Need-Help block to a real destination.
+- **Why:** The button is rendered as part of the variant-H design approval but the destination (mailto, GitHub issue template, dedicated support form) is a product decision we haven't made.
+- **Pros:** Gives users a path to help when self-serve fails. Shadcn promotion wave will surface real users.
+- **Cons:** Requires a product call on the support model. mailto is simplest; GitHub issue is most contributor-friendly; a form requires backend.
+- **Context:** Ship the design pass with the button either disabled/ghost-styled or linking to `https://github.com/Codehagen/helpbase/issues/new?template=support.md` as a safe default. Revisit when hosted tier ships (hosted customers may need a separate support queue).
+- **Effort:** S (with CC: XS)
+- **Priority:** P2
+- **Depends on / blocked by:** Product decision on support model.
+- **Source:** /plan-eng-review 2026-04-15
+
+### Visual regression infrastructure
+- **What:** Set up Chromatic (or Percy, or Storybook snapshot tests) for `apps/web` so the DESIGN.md direction is protected from accidental drift.
+- **Why:** DESIGN.md is thorough but documentation alone doesn't prevent a future refactor from reverting to centered hero + blue accent + 3-col icon grid. Visual regression enforces the design at CI time.
+- **Pros:** Catches design drift automatically; turns DESIGN.md rules into verifiable assertions.
+- **Cons:** Requires CI budget (Chromatic free tier is ~5000 snapshots/month). Flaky if not tuned.
+- **Context:** After the design rebuild ships and stabilizes, add a small set of critical-path snapshots: home (light + dark), article page (light + dark), category page, search palette open. `apps/web/test/` already has vitest infra; can co-locate.
+- **Effort:** M (with CC: S)
+- **Priority:** P3
+- **Depends on / blocked by:** Design rebuild shipped first.
+- **Source:** /plan-eng-review 2026-04-15
+
+### Copy-as-markdown on article pages
+- **What:** Add a "Copy page as Markdown" button on article pages that copies the raw MDX (or a cleaned plain-markdown version) to the clipboard.
+- **Why:** Developers using LLMs (Cursor, Claude, ChatGPT) frequently paste documentation into chat. A one-click copy makes helpbase friendlier to that workflow. Mintlify ships this as a signature feature and it gets praised.
+- **Pros:** Distinctive, low-cost, high-signal feature for dev audience. Differentiates vs. plain docs sites.
+- **Cons:** Requires either exposing raw MDX (might include internal components that don't render in pasted context) or a plain-text rendering path.
+- **Context:** `apps/web/lib/content.ts` already loads MDX; add a `getArticleRaw()` that returns the unprocessed source. Add a small client button component. Consider stripping custom components or replacing with semantic markdown. ~30 lines total.
+- **Effort:** S (with CC: XS)
+- **Priority:** P3
+- **Depends on / blocked by:** Design rebuild shipped first.
+- **Source:** /plan-eng-review 2026-04-15

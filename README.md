@@ -39,8 +39,8 @@ monorepo.
 - **Docs site** — a full Next.js + shadcn/ui help center in your repo
 - **MCP server** — `@helpbase/mcp` runs next to your app, not in a vendor's cloud
 - **`llms.txt` + `llms-full.txt`** — generated at your build time, served from your origin
-- **Doc sync** (shipping next) — codebase-grounded doc diffs opened as PRs in your repo via your CI
-- **Workflows** (shipping next) — plain GitHub Actions calling your own CLI, not a managed sandbox
+- **Doc sync** — `helpbase sync` proposes codebase-grounded doc diffs with mandatory citations, opens them as PRs in your repo via your CI
+- **Workflows** — `shadcn add helpbase-workflow` drops a plain GitHub Action that runs `helpbase sync` in your Actions minutes, with your secrets
 
 Everything lives in your repo. You keep your stack, your deploy pipeline,
 your secrets, and your control over the UX. No vendor in the loop when
@@ -51,7 +51,7 @@ log into.
 
 - **One command to ship** — `npx create-helpbase` scaffolds a working help center in under two minutes
 - **Drop into existing apps** — `npx shadcn add https://helpbase.dev/r/help-center.json` adds the full block to any Next.js + shadcn/ui project
-- **AI article generation** — point the CLI at any URL and get real MDX articles back, grounded in the scraped content
+- **AI article generation** — point the CLI at a URL, a local repo, or a folder of screenshots and get real MDX articles back, grounded in the source
 - **MDX content pipeline** — gray-matter frontmatter, remark-gfm, rehype-slug, syntax highlighting, zero config
 - **Docs-style layout** — sidebar with active states, sticky header, command-palette search, table of contents with scroll-spy
 - **Dark mode + light mode** — next-themes baked in, respects system preference, no flash on load
@@ -59,7 +59,7 @@ log into.
 - **Type-safe content** — Zod schemas validate frontmatter at build time, catch missing fields before deploy
 - **Content audit CLI** — `helpbase audit` catches missing titles, broken schemas, and empty categories in CI
 - **Reduced-motion aware** — animations respect `prefers-reduced-motion`
-- **Production-tested** — 94 tests across the CLI, scaffolder, and content pipeline, plus an install-path smoke test in CI
+- **Production-tested** — 300+ tests across the CLI, scaffolder, MCP server, and content pipeline, plus an install-path smoke test in CI
 
 ## Quick start
 
@@ -392,7 +392,7 @@ cd helpbase
 pnpm install
 pnpm dev                 # runs apps/web on :3000
 pnpm build               # builds everything
-pnpm test                # runs the full test suite (94 tests)
+pnpm test                # runs the full test suite (300+ tests)
 pnpm typecheck           # checks types across all packages
 ```
 

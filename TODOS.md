@@ -155,28 +155,12 @@ _All P2 items shipped on 2026-04-09. See the Completed section._
 
 ---
 
-### TODO-012: Pre-publish check — claim `@helpbase` npm scope
-
-**What:** Before first publish of `@helpbase/mcp`, verify the `@helpbase` scope is available on npm and claim it. Publish an empty placeholder if needed to prevent squatting.
-
-**Why:** The architecture decision (2026-04-15) committed to `@helpbase/mcp` and a scope-based family naming strategy. Losing the scope to a squatter kills the naming plan and forces rebranding.
-
-**Pros:** Claims the naming space. Cheap insurance.
-**Cons:** Need an npm org and 2FA. Minor publish ceremony.
-
-**Context:**
-- Run: `npm access list packages @helpbase 2>&1` — 404 means available
-- If available: create npm org, publish placeholder `@helpbase/placeholder` (or similar) with a README pointing at helpbase.dev
-- If taken: evaluate alternatives (`@helpbasedev`, `helpbase-mcp` unscoped, etc.) — revise design
-
-**Effort:** S (human ~30 min / CC ~5min)
-**Priority:** P1 (do before first MCP PR lands)
-**Depends on:** None
-**Source:** /plan-eng-review 2026-04-15
-
 ---
 
 ## Completed
+
+### TODO-012: Claim `@helpbase` npm scope and ship v0.0.1
+**Completed:** 2026-04-15 — `@helpbase` org created on npmjs.com (free tier, public packages). `@helpbase/mcp@0.0.1` published to the registry (17.3 kB tarball, 50.2 kB unpacked, 8 files). End-to-end verified: `HELPBASE_CONTENT_DIR=./docs npx -y @helpbase/mcp` spawns, handshakes MCP protocol, returns all three tools with valid schemas, keeps stdout clean of non-JSON-RPC. Scope-family naming reserved for future `@helpbase/cli`, `@helpbase/sync`, etc.
 
 ### TODO-008: Add link checker to `helpbase audit`
 **Completed:** 416ff8d (2026-04-11) — internal link validation for markdown links and href props. Strips code blocks before checking, skips placeholder paths. Also fixed MDX component validation to strip code blocks (prevents false positives like `<ThemeProvider>` in examples). Fixed broken link in reference/card-group.mdx. 6 new tests.

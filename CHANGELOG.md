@@ -26,6 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   AI crawlers (via the static text files) and by agent tools (via MCP), with
   the server running on your own infrastructure and your docs never leaving
   your filesystem.
+- **`llms.txt` in every `create-helpbase` scaffold.** The customer template
+  now ships `scripts/generate-llms.mjs` and wires it into `prebuild` +
+  `predev`, so every newly scaffolded helpbase project emits `llms.txt` and
+  `llms-full.txt` on every build without any setup. Configuration via
+  `HELPBASE_SITE_URL`, `HELPBASE_PROJECT_NAME`, and `HELPBASE_SUMMARY` env
+  vars, with fallbacks to the customer's `package.json` fields. Absent a
+  site URL, emits relative paths with a stderr warning. Generator source
+  lives at `packages/create-helpbase/template-assets/` and is copied into
+  the templates tree by `scripts/sync-templates.mjs`.
 - Three new templates for `helpbase new`: `getting-started` (intro
   walkthrough), `how-to` (task guide), and `concept` (explainer). Each is
   MDX-native with `<Steps>`, `<Callout>`, and `<CardGroup>` and ~40-80 lines

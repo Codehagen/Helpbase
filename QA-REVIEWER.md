@@ -87,10 +87,13 @@ Flag any visual or behavioral diff between the scratch project and the repo's
 
 ---
 
-## Pass 3 — shadcn registry smoke (`shadcn add`) (10 min)
+## Pass 3 — shadcn registry install (10 min)
 
 This simulates what happens when someone runs `shadcn add helpbase/help-center`
-in their own Next.js + shadcn project.
+in their own Next.js + shadcn project. Two ways to test — automated for a
+pass/fail signal, manual to catch UX issues.
+
+### 3A. Automated smoke (60-120s)
 
 ```bash
 pnpm smoke:registry
@@ -102,12 +105,22 @@ Expected output ends with:
 ✓ Registry smoke test passed
 ```
 
-If it passes, the shadcn install path still drops a working help center into
-an arbitrary Next.js project. If it fails, the scratch project is kept at
-`/tmp/helpbase-registry-smoke-*` — share the path or the build error.
+If it passes, the shadcn install path still produces a working help center.
+If it fails, the scratch project is kept at `/tmp/helpbase-registry-smoke-*`
+for inspection.
 
-**Bonus:** the scratch Next.js project is a real installation surface. `cd` in
-and `pnpm dev`, poke around.
+### 3B. Manual walkthrough (5-10 min, RECOMMENDED)
+
+Follow the end-to-end install guide in **[`docs/shadcn-install.md`](docs/shadcn-install.md)**.
+
+That doc walks through creating a fresh Next.js project, running `shadcn init`,
+running `shadcn add` against the built `public/r/help-center.json`, and
+verifying the installed help center in a real browser. 5-10 minutes.
+
+**You want to do 3B at least once.** The automated smoke catches build
+failures; the manual walkthrough catches everything else — confusing prompts,
+weird post-install state, broken dark mode, sample articles that render wrong.
+A real user does 3B, not 3A.
 
 ---
 

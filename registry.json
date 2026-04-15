@@ -170,11 +170,6 @@
           "target": "content/getting-started/introduction.mdx"
         },
         {
-          "path": "registry/helpbase/content/getting-started/configuration.mdx",
-          "type": "registry:file",
-          "target": "content/getting-started/configuration.mdx"
-        },
-        {
           "path": "registry/helpbase/content/customization/_category.json",
           "type": "registry:file",
           "target": "content/customization/_category.json"

@@ -83,18 +83,13 @@ function SidebarSection({
                 <Link
                   href={articlePath}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors duration-150 ease-out",
+                    "block border-l py-1.5 pl-3 text-[13px] transition-colors duration-150 ease-out",
                     isActive
-                      ? "bg-muted font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                      ? "border-primary font-medium text-primary"
+                      : "border-transparent text-muted-foreground hover:border-border-strong hover:text-foreground"
                   )}
                 >
-                  {isActive && (
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground" />
-                  )}
-                  <span className={cn(!isActive && "pl-[14px]")}>
-                    {article.title}
-                  </span>
+                  {article.title}
                 </Link>
               </li>
             )

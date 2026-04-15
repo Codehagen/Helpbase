@@ -86,40 +86,49 @@ export function SearchDialog({ items }: SearchDialogProps) {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — warm near-black, subtle */}
       <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        role="presentation"
+        className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm"
         onClick={() => setOpen(false)}
       />
 
       {/* Dialog */}
-      <div className="fixed inset-x-0 top-[20%] z-50 mx-auto w-full max-w-lg px-4">
-        <div className="animate-scale-fade-in overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search documentation"
+        className="fixed inset-x-0 top-[18%] z-50 mx-auto w-full max-w-xl px-4"
+      >
+        <div className="animate-scale-fade-in overflow-hidden rounded-xl border border-border bg-background shadow-[0_20px_60px_-12px_rgba(28,25,23,0.25)]">
           {/* Search input */}
           <div className="flex items-center gap-3 border-b border-border px-4">
             <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search articles..."
+              placeholder="Search articles, guides, commands…"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value)
                 setSelectedIndex(0)
               }}
               onKeyDown={onKeyDown}
-              className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="h-14 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
-            <kbd className="hidden h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground sm:flex">
+            <kbd className="hidden h-5 items-center rounded border border-border bg-surface px-1.5 font-mono text-[10px] text-muted-foreground sm:flex">
               ESC
             </kbd>
           </div>
 
           {/* Results */}
-          <div ref={listRef} className="max-h-72 overflow-y-auto p-2">
+          <div ref={listRef} className="max-h-80 overflow-y-auto p-1.5">
             {results.length === 0 ? (
-              <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-                No results found for &ldquo;{query}&rdquo;
+              <div className="px-3 py-10 text-center text-sm text-muted-foreground">
+                No results for{" "}
+                <span className="italic text-foreground">
+                  &ldquo;{query}&rdquo;
+                </span>
               </div>
             ) : (
               results.map((item, index) => (
@@ -129,20 +138,17 @@ export function SearchDialog({ items }: SearchDialogProps) {
                   data-selected={index === selectedIndex}
                   onClick={() => navigate(item.href)}
                   onMouseEnter={() => setSelectedIndex(index)}
-                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors data-[selected=true]:bg-muted"
+                  className="group flex w-full items-start gap-3 rounded-md border-l-2 border-transparent px-3 py-2.5 text-left transition-colors data-[selected=true]:border-primary data-[selected=true]:bg-surface"
                 >
-                  <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-muted data-[selected=true]:bg-background">
-                    <FileIcon className="size-3.5 text-muted-foreground" />
-                  </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium">{item.title}</div>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="text-sm font-medium text-foreground group-data-[selected=true]:text-primary">
+                      {item.title}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                       <span>{item.categoryTitle}</span>
-                      <span className="text-border">·</span>
-                      <span className="line-clamp-1">{item.description}</span>
                     </div>
                   </div>
-                  <ReturnIcon className="mt-1 size-3.5 shrink-0 text-muted-foreground opacity-0 data-[selected=true]:opacity-100" />
+                  <ReturnIcon className="mt-1 size-3.5 shrink-0 text-primary opacity-0 group-data-[selected=true]:opacity-100" />
                 </button>
               ))
             )}
@@ -174,15 +180,6 @@ function SearchIcon({ className }: { className?: string }) {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.3-4.3" />
-    </svg>
-  )
-}
-
-function FileIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
     </svg>
   )
 }

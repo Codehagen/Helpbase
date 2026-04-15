@@ -140,6 +140,11 @@
           "target": "lib/search.ts"
         },
         {
+          "path": "registry/helpbase/lib/search-index.ts",
+          "type": "registry:lib",
+          "target": "lib/search-index.ts"
+        },
+        {
           "path": "registry/helpbase/lib/toc.ts",
           "type": "registry:lib",
           "target": "lib/toc.ts"
@@ -170,11 +175,6 @@
           "target": "content/getting-started/introduction.mdx"
         },
         {
-          "path": "registry/helpbase/content/getting-started/configuration.mdx",
-          "type": "registry:file",
-          "target": "content/getting-started/configuration.mdx"
-        },
-        {
           "path": "registry/helpbase/content/customization/_category.json",
           "type": "registry:file",
           "target": "content/customization/_category.json"
@@ -187,27 +187,27 @@
       ],
       "cssVars": {
         "theme": {
-          "font-heading": "var(--font-sans)"
+          "font-heading": "var(--font-serif)"
         },
         "light": {
-          "sidebar": "oklch(0.988 0.003 106.5)",
-          "sidebar-foreground": "oklch(0.153 0.006 107.1)",
-          "sidebar-primary": "oklch(0.228 0.013 107.4)",
-          "sidebar-primary-foreground": "oklch(0.988 0.003 106.5)",
-          "sidebar-accent": "oklch(0.966 0.005 106.5)",
-          "sidebar-accent-foreground": "oklch(0.228 0.013 107.4)",
-          "sidebar-border": "oklch(0.93 0.007 106.5)",
-          "sidebar-ring": "oklch(0.737 0.021 106.9)"
+          "sidebar": "#FAF9F6",
+          "sidebar-foreground": "#1C1917",
+          "sidebar-primary": "#C2410C",
+          "sidebar-primary-foreground": "#FAF9F6",
+          "sidebar-accent": "#F5F4F0",
+          "sidebar-accent-foreground": "#1C1917",
+          "sidebar-border": "#E7E5E4",
+          "sidebar-ring": "#C2410C"
         },
         "dark": {
-          "sidebar": "oklch(0.228 0.013 107.4)",
-          "sidebar-foreground": "oklch(0.988 0.003 106.5)",
-          "sidebar-primary": "oklch(0.488 0.243 264.376)",
-          "sidebar-primary-foreground": "oklch(0.988 0.003 106.5)",
-          "sidebar-accent": "oklch(0.286 0.016 107.4)",
-          "sidebar-accent-foreground": "oklch(0.988 0.003 106.5)",
-          "sidebar-border": "oklch(1 0 0 / 10%)",
-          "sidebar-ring": "oklch(0.58 0.031 107.3)"
+          "sidebar": "#0C0A09",
+          "sidebar-foreground": "#FAFAF9",
+          "sidebar-primary": "#EA580C",
+          "sidebar-primary-foreground": "#0C0A09",
+          "sidebar-accent": "#1C1917",
+          "sidebar-accent-foreground": "#FAFAF9",
+          "sidebar-border": "#292524",
+          "sidebar-ring": "#EA580C"
         }
       }
     },
@@ -231,6 +231,11 @@
           "path": "registry/helpbase/lib/search.ts",
           "type": "registry:lib",
           "target": "lib/search.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/search-index.ts",
+          "type": "registry:lib",
+          "target": "lib/search-index.ts"
         }
       ]
     },

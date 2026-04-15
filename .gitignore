@@ -38,3 +38,7 @@ npm-debug.log*
 
 # Helpbase managed assets (rebuilt from content/ by sync-content-assets)
 public/_helpbase-assets/
+
+# Generated docs artifacts for AI agents (rebuilt by generate-llms.mjs on prebuild)
+apps/web/public/llms.txt
+apps/web/public/llms-full.txt

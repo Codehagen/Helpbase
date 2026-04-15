@@ -13,6 +13,7 @@
     "smoke": "bash scripts/smoke-test.sh",
     "smoke:install": "bash scripts/smoke-install.sh",
     "smoke:registry": "bash scripts/smoke-registry.sh",
+    "smoke:llms": "bash scripts/smoke-llms.sh",
     "sync:templates": "node scripts/sync-templates.mjs"
   },
   "devDependencies": {

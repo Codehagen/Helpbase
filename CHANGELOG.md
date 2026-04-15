@@ -26,6 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   AI crawlers (via the static text files) and by agent tools (via MCP), with
   the server running on your own infrastructure and your docs never leaving
   your filesystem.
+- **`shadcn add helpbase-mcp` — MCP server as code in your repo.** New shadcn
+  registry item ships the MCP server source (not a vendored binary) at `mcp/`
+  in the user's tree. One command:
+  `npx shadcn@latest add https://helpbase.dev/r/helpbase-mcp.json` drops
+  `mcp/index.ts`, `mcp/server.ts`, `mcp/content/*`, `mcp/tools/*`, and
+  `mcp/README.md`, installs `@modelcontextprotocol/sdk` + `gray-matter` +
+  `zod`, adds `tsx` as a devDep, and creates `.env.local` with a
+  `HELPBASE_CONTENT_DIR=` placeholder. The code-ownership path alongside
+  the `npm i @helpbase/mcp` zero-config path — same server, opposite
+  posture. Registry source at `registry/helpbase-mcp/`.
 - **`llms.txt` in every `create-helpbase` scaffold.** The customer template
   now ships `scripts/generate-llms.mjs` and wires it into `prebuild` +
   `predev`, so every newly scaffolded helpbase project emits `llms.txt` and

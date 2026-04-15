@@ -260,6 +260,63 @@
           "target": "components/mobile-sidebar.tsx"
         }
       ]
+    },
+    {
+      "name": "helpbase-mcp",
+      "type": "registry:item",
+      "title": "Helpbase MCP Server",
+      "description": "Self-hosted Model Context Protocol server for your docs. Drops as source code into your repo (mcp/ directory). Exposes three tools (search_docs, get_doc, list_docs) over stdio so AI agents like Claude Desktop, Cursor, and Zed can query your MDX content. Your docs never leave your filesystem.",
+      "dependencies": [
+        "@modelcontextprotocol/sdk",
+        "gray-matter",
+        "zod"
+      ],
+      "devDependencies": ["tsx"],
+      "envVars": {
+        "HELPBASE_CONTENT_DIR": ""
+      },
+      "files": [
+        {
+          "path": "registry/helpbase-mcp/index.ts",
+          "type": "registry:file",
+          "target": "mcp/index.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/server.ts",
+          "type": "registry:file",
+          "target": "mcp/server.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/content/loader.ts",
+          "type": "registry:file",
+          "target": "mcp/content/loader.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/content/index.ts",
+          "type": "registry:file",
+          "target": "mcp/content/index.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/search-docs.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/search-docs.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/get-doc.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/get-doc.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/list-docs.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/list-docs.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/README.md",
+          "type": "registry:file",
+          "target": "mcp/README.md"
+        }
+      ]
     }
   ]
 }

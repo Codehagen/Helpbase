@@ -50,6 +50,7 @@ const APPS_WEB = join(REPO_ROOT, "apps/web")
 const SHARED_SRC = join(REPO_ROOT, "packages/shared/src")
 const UI_SRC = join(REPO_ROOT, "packages/ui/src")
 const TEMPLATES = join(REPO_ROOT, "packages/create-helpbase/templates")
+const TEMPLATE_ASSETS = join(REPO_ROOT, "packages/create-helpbase/template-assets")
 const REGISTRY = join(REPO_ROOT, "registry/helpbase")
 
 // Directories to walk in apps/web for the templates target. Allowlist:
@@ -412,6 +413,10 @@ out
 # build output
 dist
 
+# generated docs artifacts (rebuilt by generate-llms.mjs on prebuild)
+public/llms.txt
+public/llms-full.txt
+
 # env
 .env
 .env.local
@@ -438,10 +443,13 @@ function generateTemplatesPackageJson() {
     private: true,
     type: "module",
     scripts: {
+      predev: "node scripts/generate-llms.mjs",
+      prebuild: "node scripts/generate-llms.mjs",
       dev: "next dev --turbopack",
       build: "next build",
       start: "next start",
       lint: "eslint",
+      "generate:llms": "node scripts/generate-llms.mjs",
       generate: "helpbase generate",
       audit: "helpbase audit",
     },
@@ -477,6 +485,25 @@ function generateTemplatesPackageJson() {
     },
   }
   writeFile(join(TEMPLATES, "package.json"), JSON.stringify(pkg, null, 2) + "\n")
+}
+
+/**
+ * Copy files from packages/create-helpbase/template-assets/ into the
+ * regenerated templates/ tree. This is how we ship customer-facing scripts
+ * (generate-llms.mjs, etc.) that aren't derived from apps/web but still need
+ * to survive sync-templates wiping and rebuilding the templates/ dir.
+ */
+function copyTemplateAssets() {
+  if (!existsSync(TEMPLATE_ASSETS)) return
+  const files = walkFiles(TEMPLATE_ASSETS)
+  for (const rel of files) {
+    const src = join(TEMPLATE_ASSETS, rel)
+    // template-assets files live at the root of the assets dir but target
+    // templates/scripts/ — prefix the destination path.
+    const dest = join(TEMPLATES, "scripts", rel)
+    const content = readFileSync(src, "utf-8")
+    writeFile(dest, content)
+  }
 }
 
 function syncTemplates() {
@@ -522,7 +549,9 @@ function syncTemplates() {
   generateTemplatesGitignore()
   generateTemplatesPackageJson()
   writeTemplatesHelpbaseMd()
+  copyTemplateAssets()
   console.log("  ✓ Generated 8 config files (tsconfig, next, postcss, components, eslint, gitignore, package, HELPBASE.md)")
+  console.log("  ✓ Copied template assets (scripts/generate-llms.mjs)")
 
   validateNoWorkspaceImportsRemain(TEMPLATES, "Templates")
   console.log("  ✓ Validation passed: no @workspace/* references in templates")

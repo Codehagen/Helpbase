@@ -8,6 +8,10 @@ out
 # build output
 dist
 
+# generated docs artifacts (rebuilt by generate-llms.mjs on prebuild)
+public/llms.txt
+public/llms-full.txt
+
 # env
 .env
 .env.local

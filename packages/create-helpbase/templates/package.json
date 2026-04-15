@@ -4,10 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node scripts/generate-llms.mjs",
+    "prebuild": "node scripts/generate-llms.mjs",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "generate:llms": "node scripts/generate-llms.mjs",
     "generate": "helpbase generate",
     "audit": "helpbase audit"
   },

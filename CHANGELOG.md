@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`@helpbase/mcp` — self-hosted MCP server for AI agents.** New package at
+  `packages/mcp/`. Runs over stdio, reads MDX from your repo, exposes three
+  tools (`search_docs`, `get_doc`, `list_docs`) to any MCP client (Claude
+  Desktop, Cursor, Zed, Windsurf). Auto-detects `apps/web/content/` and
+  `./content/` layouts; `HELPBASE_CONTENT_DIR` env var overrides. Malformed
+  frontmatter is skipped with a stderr warning rather than crashing the server.
+  Ships with a stdout-pollution regression test that spawns the real binary
+  and asserts every stdout line is valid JSON-RPC.
+- **`llms.txt` + `llms-full.txt` auto-generation.** Every `pnpm build`
+  emits `apps/web/public/llms.txt` (navigation summary, one bullet per doc)
+  and `apps/web/public/llms-full.txt` (full content concatenation) per the
+  published spec. Generated from the same MDX source as the rendered site.
+  New `pnpm smoke:llms` validates both artifacts after build.
+- **Documentation as AI-native knowledge layer.** The combination of the MCP
+  server and `llms.txt` means every helpbase site becomes queryable both by
+  AI crawlers (via the static text files) and by agent tools (via MCP), with
+  the server running on your own infrastructure and your docs never leaving
+  your filesystem.
 - Three new templates for `helpbase new`: `getting-started` (intro
   walkthrough), `how-to` (task guide), and `concept` (explainer). Each is
   MDX-native with `<Steps>`, `<Callout>`, and `<CardGroup>` and ~40-80 lines

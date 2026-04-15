@@ -2,9 +2,17 @@
 
 One command drops a full help center into any existing Next.js + shadcn/ui
 project: sidebar nav, ⌘K search, MDX content pipeline, dark mode, sample
-articles. This is the same path covered by `pnpm smoke:registry` — this doc
-walks it end-to-end so a human can reproduce (and catch) anything the
-automated smoke doesn't see.
+articles.
+
+**You do NOT need to clone the helpbase repo for this.** Node + pnpm and a
+clean directory is all you need — the registry is served from
+[helpbase.dev/r/help-center.json](https://helpbase.dev/r/help-center.json)
+over the public internet.
+
+This doc walks end-to-end through creating a brand-new Next.js project,
+running `shadcn init`, and installing helpbase from the live URL. Follow
+it verbatim — every command below has been verified against the live
+registry.
 
 ## Two install modes
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import path from "node:path"
+import fs from "node:fs"
 import { execSync } from "node:child_process"
 
 const CLI_PATH = path.resolve(__dirname, "../dist/index.js")
@@ -47,14 +48,56 @@ describe("helpbase generate", () => {
     expect(result.output).toContain("Docs:")
   })
 
-  // Regression: QA found --repo exited 0 with "coming soon" message.
-  // This is a silent CI failure — pipelines thought articles were generated
-  // when nothing happened. /qa on 2026-04-09 caught it.
-  // Report: .gstack/qa-reports/qa-report-helpbase-cli-2026-04-09.md
-  it("--repo exits 1 because repo generation is not yet implemented", () => {
-    const result = run("generate --repo /tmp/any-path")
+  it("--repo fails cleanly when the path does not exist", () => {
+    const result = run("generate --repo /tmp/definitely-does-not-exist-12345")
     expect(result.exitCode).toBe(1)
-    expect(result.output).toContain("not yet implemented")
-    expect(result.output).toContain("--url")
+    expect(result.output).toContain("Could not read repository")
+    expect(result.output).toContain("does not exist")
+  })
+
+  it("--repo fails cleanly when the directory has no markdown", () => {
+    const emptyDir = path.resolve(__dirname, "fixtures/.empty-repo")
+    try {
+      fs.mkdirSync(emptyDir, { recursive: true })
+      const result = run(`generate --repo ${emptyDir}`)
+      expect(result.exitCode).toBe(1)
+      expect(result.output).toContain("No markdown files found")
+    } finally {
+      try {
+        fs.rmSync(emptyDir, { recursive: true, force: true })
+      } catch {}
+    }
+  })
+
+  it("--repo --dry-run reads markdown and prints a plan without calling the LLM", () => {
+    const repoDir = path.resolve(__dirname, "fixtures/.sample-repo")
+    const outDir = path.resolve(__dirname, "fixtures/.out-repo-dry-run")
+    try {
+      fs.mkdirSync(repoDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(repoDir, "README.md"),
+        "# Sample Project\n\n" +
+          "This is a sample repository with enough content to pass the " +
+          "minimum-length gate. ".repeat(30),
+      )
+      fs.mkdirSync(path.join(repoDir, "docs"), { recursive: true })
+      fs.writeFileSync(
+        path.join(repoDir, "docs/usage.md"),
+        "# Usage\n\nInstall with npm and run the CLI. ".repeat(20),
+      )
+
+      const result = run(
+        `generate --repo ${repoDir} --dry-run --output ${outDir}`,
+      )
+      expect(result.exitCode).toBe(0)
+      expect(result.output).toContain("Dry run")
+      expect(result.output).toContain("Repository:")
+      expect(result.output).toContain("Markdown chars:")
+    } finally {
+      try {
+        fs.rmSync(repoDir, { recursive: true, force: true })
+        fs.rmSync(outDir, { recursive: true, force: true })
+      } catch {}
+    }
   })
 })

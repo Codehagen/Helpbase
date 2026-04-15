@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`helpbase generate --repo <path>` — generate articles from local repo markdown.**
+  Walks a directory, picks up `.md`/`.mdx`/`.markdown` files, skips build/VCS
+  dirs, README-first ordering, concatenates with per-file headers, and feeds
+  the same article-plan pipeline as `--url`. Supports `--dry-run`, `--debug`,
+  `--test`, `--model`, `--output`. Replaces the previous "not yet implemented"
+  stub. GitHub URL ingestion (public `owner/repo` via Contents API) deferred
+  until there's demand — local paths cover the dogfood flow.
 - **`@helpbase/mcp` — self-hosted MCP server for AI agents.** New package at
   `packages/mcp/`. Runs over stdio, reads MDX from your repo, exposes three
   tools (`search_docs`, `get_doc`, `list_docs`) to any MCP client (Claude

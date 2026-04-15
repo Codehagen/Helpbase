@@ -18,11 +18,37 @@ Each item:
 
 ---
 
+## P1
+
+_All P1 items for the 2026-04-15 knowledge-layer plan shipped. See Completed._
+
 ## P2
 
-_All P2 items shipped on 2026-04-09. See the Completed section._
+_All P2 items for the 2026-04-15 knowledge-layer plan shipped. See Completed._
 
-## P3
+## P3 (deferred)
+
+### TODO-017: `helpbase agent` — prompt-to-PR doc writer (deferred)
+
+**What:** CLI that takes a natural-language prompt and opens a doc PR. Parity with hosted-docs-SaaS prompt-to-PR features, but invokable from any CI or locally. No GitHub App phone-home.
+
+**Why:** Completes the prompt-to-PR capability as code-you-own. Ship AFTER `helpbase sync` has validated the citation-grounding approach in production — agent is the higher-hallucination surface.
+
+**Pros:** Closes the last major capability gap versus hosted docs SaaS.
+**Cons:** Freeform AI doc writing is the highest hallucination risk. Not shippable until sync has proven the grounding UX works.
+
+**Context:**
+- Plan: `~/.claude/plans/mellow-pondering-wilkes.md` (P3 item 7)
+- Deferred date: 2026-05-31 (reassess after P1 + P2 have shipped)
+- Builds on TODO-009 (sync) + TODO-010 (HTTP MCP)
+- Consider exposing as `helpbase agent "update the auth docs for the new OAuth flow"` → PR
+
+**Effort:** L (human ~2 weeks / CC ~2h)
+**Priority:** P3
+**Depends on:** TODO-009, TODO-010, plus real user feedback from sync
+**Source:** /plan-ceo-review 2026-04-15
+
+---
 
 ### TODO-004: Hero screenshot for README
 
@@ -45,71 +71,6 @@ _All P2 items shipped on 2026-04-09. See the Completed section._
 **Source:** Pre-existing TODO in README; surfaced in /plan-ceo-review 2026-04-09 system audit
 
 ---
-
-### TODO-007: Implement `helpbase generate --repo` for GitHub source ingestion
-
-**What:** The `--repo` flag is declared in the generate CLI but exits with "Repository-based generation is not yet implemented." Currently `--url` only scrapes rendered HTML pages, which doesn't work well for GitHub repo pages (scrapes the HTML shell, not the content).
-
-**Why:** Developers want to generate help center articles from their GitHub README and source files. The current workaround (pointing `--url` at rendered docs pages) misses repo-only content like code examples, API docs, and architecture docs.
-
-**Pros:** Enables the primary dogfooding workflow. Completes the CLI surface area.
-**Cons:** Requires GitHub API integration or raw content fetching. Token management for private repos.
-
-**Context:**
-- File: `packages/cli/src/commands/generate.ts` line 30 (the `--repo` flag declaration)
-- The exit-with-error is on the same file, inside the generate command handler
-- Approach: Use GitHub Contents API to fetch README.md and other markdown files, then feed to the existing generation pipeline
-- Could also support local repo paths: `helpbase generate --repo .` reads files from disk
-
-**Effort:** M (human ~1 week / CC ~30 min)
-**Priority:** P2
-**Depends on:** None
-**Source:** /plan-ceo-review 2026-04-11, surfaced by Codex outside voice
-
----
-
----
-
-### TODO-009: Codebase-grounded doc sync (AI proposes doc diffs from code changes)
-
-**What:** `helpbase sync` CLI command that diffs code since last sync, calls an LLM with code context + existing MDX docs, proposes doc updates as a reviewable diff. Explicitly NOT "AI writes docs from a prompt" — all proposed changes grounded in actual source.
-
-**Why:** Third priority in the 2026-04-15 strategy design doc. Matches the "reliable, continuously updated" knowledge-layer pitch without introducing hallucinated content. Deferred from the MCP/llms.txt PR to keep scope tight.
-
-**Pros:** Closes the "docs stay in sync with code" gap that competitors monetize. Reinforces the code-owned stance (sync is a tool you run, not a service that runs on you).
-**Cons:** Needs LLM provider abstraction, diff review UX, and git integration. Bigger design surface than MCP.
-
-**Context:**
-- Strategy doc: `~/.gstack/projects/help-center/christer-main-design-20260415-strategy-mintlify.md`
-- Natural home: new command in `packages/cli/src/commands/sync.ts`
-- Dependencies: existing generation pipeline in `packages/cli` + `packages/shared/src/ai-text.ts`
-- Run its own `/plan-eng-review` before implementation
-
-**Effort:** L (human ~2 weeks / CC ~2h)
-**Priority:** P2 (next-up after MCP lands)
-**Depends on:** MCP + llms.txt PR merged (so all three pillars of the strategy land in the right order)
-**Source:** Strategy design doc 2026-04-15, /plan-eng-review 2026-04-15
-
----
-
-### TODO-010: HTTP / Streamable transport for `@helpbase/mcp` (v2)
-
-**What:** Add the `StreamableHTTPServerTransport` option to the MCP server, plus auth (token-based), CORS config, and deployment docs. Enables remote AI agents to query a helpbase instance over HTTP without spawning a subprocess.
-
-**Why:** Stdio covers Claude Desktop, Cursor, Zed — the current high-leverage clients. HTTP is needed for: (a) hosted tier exposing an MCP endpoint automatically per customer, (b) serverless/edge agent deployments, (c) internal agents running separately from the doc content.
-
-**Pros:** Unlocks hosted-tier MCP exposure and remote agent use cases. Fills the v2 feature parity gap.
-**Cons:** Doubles test surface. Introduces auth decisions (API key? JWT? shadcn registry item shouldn't bake in a specific auth model). Requires deployment examples (Fly, Vercel, self-host).
-
-**Context:**
-- SDK support: `@modelcontextprotocol/sdk` exposes `StreamableHTTPServerTransport`
-- v1 MCP package structures `server.ts` transport-agnostic so this is additive, not a rewrite (decision 2A/2C from /plan-eng-review 2026-04-15)
-- Hosted-tier design doc (2026-04-11) may inform auth choices — check before landing
-
-**Effort:** M (human ~1 week / CC ~1h)
-**Priority:** P3
-**Depends on:** v1 MCP package (TODO-009 not required). Hosted-tier design direction finalized.
-**Source:** /plan-eng-review 2026-04-15, deferred from MCP v1 scope
 
 ---
 
@@ -134,30 +95,28 @@ _All P2 items shipped on 2026-04-09. See the Completed section._
 
 ---
 
-### TODO-013: Wire `generate-llms.mjs` into customer templates
-
-**What:** Copy `apps/web/scripts/generate-llms.mjs` into the scaffolder templates (via `scripts/sync-templates.mjs`) and add the `generate:llms` script to the template's `package.json`. Parameterize `SITE_URL` so customer scaffolds default to `__HELPBASE_SITE_URL__` (or read from their `DESIGN.md` / env) instead of hardcoded `https://helpbase.dev`.
-
-**Why:** Shipped in the v1 MCP/llms PR, but only wired into the helpbase.dev monorepo. Customers who scaffold a new help center don't get `llms.txt` generation yet. The code-ownership story ("your knowledge layer, your repo") is incomplete until every scaffolded project emits llms.txt by default.
-
-**Pros:** Completes the llms.txt story for customers. Every helpbase install contributes to the open knowledge-layer positioning.
-**Cons:** Need to decide how `SITE_URL` gets set on customer templates (env var in `.env.local`? placeholder in `__HELPBASE_SITE_URL__` replacement?).
-
-**Context:**
-- Source: `apps/web/scripts/generate-llms.mjs` — copy as-is with `SITE_URL` parameterized
-- Integration point: `scripts/sync-templates.mjs:440` (`generateTemplatesPackageJson`) — add `"generate:llms": "node scripts/generate-llms.mjs"` and wire into `prebuild` in the template's package.json
-- Smoke test: extend `scripts/smoke-install.sh` to assert both `public/llms.txt` and `public/llms-full.txt` exist after scaffold + build
-
-**Effort:** S (human ~1h / CC ~10min)
-**Priority:** P2 (ship soon after v1 MCP lands)
-**Depends on:** v1 MCP/llms PR merged
-**Source:** /review 2026-04-15
-
----
-
----
-
 ## Completed
+
+### TODO-007: Implement `helpbase generate --repo` for local repo markdown
+**Completed:** 2026-04-15 — `packages/shared/src/ai-text.ts` exports `readRepoContent(repoPath)` which walks a local directory, picks up `.md`/`.mdx`/`.markdown` files (skipping `node_modules`/`.git`/`dist`/`.next`/`build`/`out`/`.turbo`/`.vercel`/`.cache`/`coverage`/`.helpbase`), sorts README-like files first, concatenates with `===== <relpath> =====` headers, caps at 200k chars (shared `MAX_REPO_CONTENT_CHARS` / `MIN_SCRAPED_LENGTH`). `packages/cli/src/commands/generate.ts` wires `--repo` through the same article-plan pipeline as `--url` (supports `--debug`, `--dry-run`, `--test`, `--model`, `--output`). New `printRepoError` helper matches the existing problem/reason/fix/docs format. Generate test suite now covers missing-path, empty-dir, and dry-run-with-content paths; 305/305 CLI tests green + typecheck clean. GitHub URL ingestion (public `owner/repo` via Contents API) deferred — local paths cover the dogfooding flow and avoid token management for private repos.
+
+### TODO-010: HTTP / Streamable transport for `@helpbase/mcp` (v2)
+**Completed:** 2026-04-15 — `packages/mcp/src/http.ts` ships `StreamableHTTPServerTransport` with bearer token auth (`HELPBASE_MCP_TOKEN`) + CORS allowlist (`HELPBASE_MCP_ALLOWED_ORIGINS`) + `/health` endpoint + fail-fast on missing token. New binary `helpbase-mcp-http` ships in the package. New CLI subcommand `helpbase mcp start [--http]` wraps both transports via `npx -y --package @helpbase/mcp`. E_NO_MCP_TOKEN error code with docs page at `/errors/e-no-mcp-token`. 49/49 MCP tests green (19 new HTTP tests including live integration: 401 auth, CORS preflight, /health no-auth, 404 unknown paths, cross-origin rejection). Bearer NOT OAuth by design — OAuth would require an identity provider, breaking code-you-own stance.
+
+### TODO-014: `helpbase-workflow` shadcn registry item
+**Completed:** 2026-04-15 — `registry/helpbase-workflow/` ships a single `helpbase-sync.yml` that drops into `.github/workflows/` via `shadcn add helpbase-workflow`. Wired into `registry.json` + rebuilt `apps/web/public/r/helpbase-workflow.json`. The workflow runs `npx -y helpbase sync --apply --yes`, detects changes via `git status --porcelain`, creates a timestamped branch, and opens a PR via `gh pr create`. No separate GitHub Action repo to maintain — the YAML IS the primitive. Stance-pure: runs in the user's Actions minutes with their secrets. Passes `scripts/smoke-registry.sh`.
+
+### TODO-015: `create-helpbase --internal` variant
+**Completed:** 2026-04-15 — `packages/create-helpbase/internal-overlay/` holds handbook-style content seed (handbook/welcome.mdx, runbooks/on-call.mdx, decisions/adr-template.mdx) + auth-ready `.env.example` with `HELPBASE_MCP_TOKEN` / `HELPBASE_MCP_ALLOWED_ORIGINS` / `AI_GATEWAY_API_KEY` scaffolding. `scaffold.ts` applies the overlay after the base scaffold when `--internal` is passed, wiping the public-docs sample first. `scripts/smoke-install.sh --internal` asserts the handbook/runbooks/decisions routes + `.env.example` + `llms.txt` artifacts. Default smoke (no flag) still passes. One template, one example, same product — no separate product line.
+
+### TODO-009: `helpbase sync` — codebase-grounded doc proposals
+**Completed:** 2026-04-15 — `packages/shared/src/ai-sync.ts` + `packages/shared/src/schemas.ts` (SyncProposalSchema with mandatory citations) + `packages/cli/src/commands/sync.ts` (flags `--demo`, `--since`, `--content`, `--output`, `--model`, `--test`, `--dry-run`, `--apply`). Anti-hallucination gate proven by 200-mutation property test (`packages/cli/test/sync-schema.test.ts`). Bundled demo fixture at `packages/cli/fixtures/demo-repo/` delivers the 30-second magical moment (no API key, no config). Tier-2 error codes shipped: `E_NO_GH`, `E_NO_CITATIONS`, `E_NO_HISTORY`, `E_INVALID_REV`, `E_NO_CONTENT` with doc pages at `apps/web/app/(main)/errors/[code]/page.tsx`. 5-minute tutorial at `apps/web/content/guides/sync-in-5-minutes.mdx`. 303/303 CLI tests + 30/30 web tests green; smoke-install passes end-to-end with the new tutorial in the scaffolded output. Not in this PR: `--pr` gh integration (deferred), 10-fixture eval suite (P2 pre-prompt-change gate).
+
+### TODO-016: Positioning lockdown — home hero + README + registry copy
+**Completed:** 2026-04-15 — `apps/web/app/(main)/page.tsx` hero rewritten to "The AI-native knowledge layer, as code you own." `README.md` intro + Why section rewritten to stance-first framing with primitives list (MCP, llms.txt, sync, workflows). `registry.json` help-center description aligned. No competitor names in any shipped surface — confirmed by `grep -rn "[Mm]intlify"` returning zero hits across `apps/`, `packages/`, `registry/`, and top-level docs. Tests green across web + CLI packages.
+
+### TODO-013: Wire `generate-llms.mjs` into customer templates
+**Completed:** 2026-04-15 — `packages/create-helpbase/template-assets/generate-llms.mjs` is a parameterized variant (reads `HELPBASE_SITE_URL` / `HELPBASE_PROJECT_NAME` / `HELPBASE_SUMMARY` with package.json fallbacks, graceful MDX/frontmatter error recovery). `scripts/sync-templates.mjs` copies it via `copyTemplateAssets()`. Template `package.json` wires `predev` + `prebuild` + `generate:llms` scripts. `scripts/smoke-install.sh` now asserts both `public/llms.txt` and `public/llms-full.txt` exist after scaffold + build — smoke-install passes end-to-end.
 
 ### TODO-012: Claim `@helpbase` npm scope and ship v0.0.1
 **Completed:** 2026-04-15 — `@helpbase` org created on npmjs.com (free tier, public packages). `@helpbase/mcp@0.0.1` published to the registry (17.3 kB tarball, 50.2 kB unpacked, 8 files). End-to-end verified: `HELPBASE_CONTENT_DIR=./docs npx -y @helpbase/mcp` spawns, handshakes MCP protocol, returns all three tools with valid schemas, keeps stdout clean of non-JSON-RPC. Scope-family naming reserved for future `@helpbase/cli`, `@helpbase/sync`, etc.

@@ -1,3 +1,5 @@
+import fs from "node:fs"
+import path from "node:path"
 import { generatedArticlesSchema, type GeneratedArticle } from "./schemas.js"
 import {
   DEFAULT_MODEL,
@@ -67,6 +69,148 @@ export async function scrapeUrl(url: string): Promise<string> {
   }
 
   return stripped
+}
+
+// ── Repo reading ───────────────────────────────────────────────────
+
+/**
+ * Max total characters of repo content concatenated before it's sent to the
+ * LLM. Matches the cap used by `scrapeUrl` — most models handle ~200k chars
+ * of English text within a 1M context window, with room to spare for the
+ * system prompt and output.
+ */
+export const MAX_REPO_CONTENT_CHARS = 200_000
+
+const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx", ".markdown"])
+
+const SKIP_DIR_NAMES = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  "out",
+  ".next",
+  ".turbo",
+  ".vercel",
+  ".cache",
+  "coverage",
+  ".helpbase",
+])
+
+function walkMarkdownFiles(rootDir: string): string[] {
+  const results: string[] = []
+  const stack: string[] = [rootDir]
+  while (stack.length) {
+    const current = stack.pop()!
+    let entries: fs.Dirent[]
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith(".") && entry.name !== "." && entry.name !== "..") {
+        if (entry.isDirectory() && !SKIP_DIR_NAMES.has(entry.name)) continue
+      }
+      const full = path.join(current, entry.name)
+      if (entry.isDirectory()) {
+        if (SKIP_DIR_NAMES.has(entry.name)) continue
+        stack.push(full)
+      } else if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase()
+        if (MARKDOWN_EXTENSIONS.has(ext)) {
+          results.push(full)
+        }
+      }
+    }
+  }
+  return results
+}
+
+/**
+ * Read markdown files from a local repository path and concatenate them into
+ * a single string suitable for `generateArticlesFromContent`.
+ *
+ * - Walks the directory recursively, skipping build output and VCS dirs.
+ * - Picks up `.md`, `.mdx`, `.markdown` files.
+ * - Sorts README-like files first so the prompt leads with the repo overview.
+ * - Prefixes each file with a `===== <relative path> =====` header so the
+ *   LLM can tell where content boundaries are.
+ * - Caps total output at MAX_REPO_CONTENT_CHARS.
+ */
+export async function readRepoContent(repoPath: string): Promise<string> {
+  const abs = path.resolve(repoPath)
+  let stat: fs.Stats
+  try {
+    stat = fs.statSync(abs)
+  } catch {
+    throw new Error(
+      `Repository path does not exist: ${abs}. ` +
+        `Pass a path to a local directory containing markdown files.`,
+    )
+  }
+  if (!stat.isDirectory()) {
+    throw new Error(
+      `Repository path is not a directory: ${abs}. ` +
+        `Pass a path to a local directory, not a file.`,
+    )
+  }
+
+  const files = walkMarkdownFiles(abs)
+  if (files.length === 0) {
+    throw new Error(
+      `No markdown files found in ${abs}. ` +
+        `Helpbase reads .md, .mdx, and .markdown files — ` +
+        `check the path or add a README.`,
+    )
+  }
+
+  // README-style files first; then shallower paths; then alphabetical.
+  files.sort((a, b) => {
+    const aName = path.basename(a).toLowerCase()
+    const bName = path.basename(b).toLowerCase()
+    const aIsReadme = aName.startsWith("readme.")
+    const bIsReadme = bName.startsWith("readme.")
+    if (aIsReadme !== bIsReadme) return aIsReadme ? -1 : 1
+    const aDepth = a.split(path.sep).length
+    const bDepth = b.split(path.sep).length
+    if (aDepth !== bDepth) return aDepth - bDepth
+    return a.localeCompare(b)
+  })
+
+  const parts: string[] = []
+  let total = 0
+  for (const file of files) {
+    let body: string
+    try {
+      body = fs.readFileSync(file, "utf-8")
+    } catch {
+      continue
+    }
+    const rel = path.relative(abs, file)
+    const header = `\n===== ${rel} =====\n`
+    const chunk = header + body + "\n"
+    if (total + chunk.length > MAX_REPO_CONTENT_CHARS) {
+      const remaining = MAX_REPO_CONTENT_CHARS - total
+      if (remaining > header.length + 100) {
+        parts.push(chunk.slice(0, remaining))
+        total = MAX_REPO_CONTENT_CHARS
+      }
+      break
+    }
+    parts.push(chunk)
+    total += chunk.length
+  }
+
+  const combined = parts.join("").trim()
+  if (combined.length < MIN_SCRAPED_LENGTH) {
+    throw new Error(
+      `Repository has only ${combined.length} chars of markdown content ` +
+        `(need ${MIN_SCRAPED_LENGTH}+). Add a README or more docs, ` +
+        `then re-run.`,
+    )
+  }
+  return combined
 }
 
 // ── Text generation ────────────────────────────────────────────────

@@ -7,223 +7,264 @@
 
 ## Commands
 
-- [`helpbase dev`](#helpbase-dev)
-- [`helpbase generate`](#helpbase-generate)
-- [`helpbase audit`](#helpbase-audit)
-- [`helpbase new`](#helpbase-new)
-- [`helpbase deploy`](#helpbase-deploy)
-- [`helpbase login`](#helpbase-login)
-- [`helpbase logout`](#helpbase-logout)
-- [`helpbase whoami`](#helpbase-whoami)
-- [`helpbase link`](#helpbase-link)
-- [`helpbase open`](#helpbase-open)
-- [`helpbase feedback`](#helpbase-feedback)
-- [`helpbase config`](#helpbase-config)
-- [`helpbase doctor`](#helpbase-doctor)
+- [`helpbase Get`](#helpbase-Get)
+- [`helpbase Ship`](#helpbase-Ship)
+- [`helpbase Author`](#helpbase-Author)
+- [`helpbase Account`](#helpbase-Account)
+- [`helpbase Diagnose`](#helpbase-Diagnose)
 
-## `helpbase dev`
+## `helpbase Get`
 
 ```
-Usage: helpbase dev [options]
+helpbase v0.0.1
+CLI for managing your Helpbase help center
 
-Start the development server
+Most common:
+  helpbase new  ·  helpbase dev  ·  helpbase deploy
 
-Options:
-  -p, --port <port>  Port to run on (default: "3000")
-  -h, --help         display help for command
-```
+Usage:
+  helpbase [global-options] <command> [command-options]
 
-## `helpbase generate`
-
-```
-Usage: helpbase generate [options]
-
-Generate help articles using AI
-
-Options:
-  --url <url>          Scrape a website URL and generate articles
-  --repo <path>        Read a local repository and generate articles
-  --screenshots <dir>  Generate visual how-to articles from a folder of
-                       screenshots
-  --title <title>      Title for the generated how-to guide (required with
-                       --screenshots when no --url)
-  -o, --output <dir>   Output directory for generated articles (default:
-                       "content")
-  --test               Use the cheap test model
-                       (google/gemini-3.1-flash-lite-preview) and print model
-                       info
-  --model <id>         Override the model ID (e.g. anthropic/claude-sonnet-4.6)
-  --debug              Write the raw scraped text to <output>/_scrape.txt before
-                       calling the LLM (useful when debugging bad article
-                       quality)
-  --dry-run            Scrape the URL and print what would be sent to the LLM,
-                       without spending tokens
-  --yes                Skip interactive confirmations (for CI/scripted use)
-  --no-overwrite       Error instead of overwriting existing image assets
-  -h, --help           display help for command
-
-Examples:
-  $ helpbase generate --url https://myproduct.com
-  $ helpbase generate --url https://myproduct.com --test           # cheap model
-  $ helpbase generate --screenshots ./flow --title "How to invite a teammate"
-  $ helpbase generate --url https://myproduct.com --dry-run        # preview without spending tokens
-
-Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
-```
-
-## `helpbase audit`
-
-```
-Usage: helpbase audit [options]
-
-Check content health: missing fields, broken links, schema errors
-
-Options:
-  -d, --dir <dir>        Content directory to audit (default: "content")
-  -f, --format <format>  Output format: text or json (default: "text")
-  -h, --help             display help for command
-```
-
-## `helpbase new`
-
-```
-Usage: helpbase new [options]
-
-Create a new article from a template
-
-Options:
-  -t, --type <type>            Template type: getting-started, how-to, concept,
-                               troubleshooting
-  -d, --dir <dir>              Content directory (default: "content")
-  -c, --category <category>    Category slug (defaults to the template's
-                               default)
-  --title <title>              Article title
-  --description <description>  Short description for the article frontmatter
-  --slug <slug>                Article slug (derived from title if omitted)
-  -h, --help                   display help for command
-
-Examples:
-  $ helpbase new                                                # fully interactive
-  $ helpbase new --type how-to --title "Reset your password"
-  $ helpbase new --type getting-started --title "Get started" --category intro
-```
-
-## `helpbase deploy`
-
-```
-Usage: helpbase deploy [options]
-
-Deploy your help center to helpbase cloud
-
-Options:
-  --slug <slug>  Subdomain slug (e.g., my-product)
+Global options:
+  -V, --version  output the version number
+  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
+  --quiet        Suppress decorative output (spinners, next-steps, summaries)
   -h, --help     display help for command
-
-Examples:
-  $ helpbase deploy
-  $ helpbase deploy --slug acme-docs
-  $ HELPBASE_TOKEN=xxx helpbase deploy --slug acme-docs        # CI / non-interactive
-```
-
-## `helpbase login`
-
-```
-Usage: helpbase login [options]
-
-Log in to helpbase cloud
-
-Options:
-  -e, --email <email>  Email address (skips the prompt)
-  -h, --help           display help for command
-```
-
-## `helpbase logout`
-
-```
-Usage: helpbase logout [options]
-
-Log out of helpbase cloud
-
-Options:
-  -h, --help  display help for command
-```
-
-## `helpbase whoami`
-
-```
-Usage: helpbase whoami [options]
-
-Print the current login and linked tenant
-
-Options:
-  -f, --format <format>  Output format: text or json (default: "text")
-  -h, --help             display help for command
-```
-
-## `helpbase link`
-
-```
-Usage: helpbase link [options]
-
-Link this project to a helpbase cloud tenant
-
-Options:
-  --slug <slug>  Link directly to a tenant by slug (skips the picker)
-  --remove       Remove the existing .helpbase/project.json binding
-  -h, --help     display help for command
-```
-
-## `helpbase open`
-
-```
-Usage: helpbase open [options]
-
-Open this project's help center in the default browser
-
-Options:
-  --print     Print the URL instead of opening it (useful for CI / scripts)
-  -h, --help  display help for command
-```
-
-## `helpbase feedback`
-
-```
-Usage: helpbase feedback [options]
-
-Open a prefilled GitHub issue with your environment info
-
-Options:
-  --print              Print the URL instead of opening the browser
-  -t, --title <title>  Issue title to prefill (default: "Bug in helpbase CLI")
-  -h, --help           display help for command
-```
-
-## `helpbase config`
-
-```
-Usage: helpbase config [options] [command]
-
-Read or write CLI preferences (~/.helpbase/config.json)
-
-Options:
-  -h, --help         display help for command
 
 Commands:
-  get <key>          Print the current value of a config key
-  set <key> <value>  Set a config key
-  list               Print all known config keys and their current values
-  help [command]     display help for command
+
+  Get started
+    new         Create a new article from a template
+    dev         Start the development server
+
+  Ship
+    deploy      Deploy your help center to helpbase cloud
+    link        Link this project to a helpbase cloud tenant
+    open        Open this project's help center in the default browser
+
+  Author
+    generate    Generate help articles using AI
+    sync        Propose MDX edits grounded in a code diff (no writes by default)
+    mcp         Run the Helpbase MCP server (stdio or HTTP)
+    audit       Check content health: missing fields, broken links, schema errors
+
+  Account
+    login       Log in to helpbase cloud
+    logout      Log out of helpbase cloud
+    whoami      Print the current login and linked tenant
+    config      Read or write CLI preferences (~/.helpbase/config.json)
+
+  Diagnose
+    doctor      Print diagnostic info about your helpbase install and project
+    feedback    Open a prefilled GitHub issue with your environment info
+    completion  Print a shell completion script
+    upgrade     Print the command to upgrade helpbase (does not execute it)
+
+Run `helpbase <command> --help` for command-specific options.
+Docs: https://helpbase.dev
 ```
 
-## `helpbase doctor`
+## `helpbase Ship`
 
 ```
-Usage: helpbase doctor [options]
+helpbase v0.0.1
+CLI for managing your Helpbase help center
 
-Print diagnostic info about your helpbase install and project
+Most common:
+  helpbase new  ·  helpbase dev  ·  helpbase deploy
 
-Options:
-  -f, --format <format>  Output format: text or json (default: "text")
-  -h, --help             display help for command
+Usage:
+  helpbase [global-options] <command> [command-options]
+
+Global options:
+  -V, --version  output the version number
+  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
+  --quiet        Suppress decorative output (spinners, next-steps, summaries)
+  -h, --help     display help for command
+
+Commands:
+
+  Get started
+    new         Create a new article from a template
+    dev         Start the development server
+
+  Ship
+    deploy      Deploy your help center to helpbase cloud
+    link        Link this project to a helpbase cloud tenant
+    open        Open this project's help center in the default browser
+
+  Author
+    generate    Generate help articles using AI
+    sync        Propose MDX edits grounded in a code diff (no writes by default)
+    mcp         Run the Helpbase MCP server (stdio or HTTP)
+    audit       Check content health: missing fields, broken links, schema errors
+
+  Account
+    login       Log in to helpbase cloud
+    logout      Log out of helpbase cloud
+    whoami      Print the current login and linked tenant
+    config      Read or write CLI preferences (~/.helpbase/config.json)
+
+  Diagnose
+    doctor      Print diagnostic info about your helpbase install and project
+    feedback    Open a prefilled GitHub issue with your environment info
+    completion  Print a shell completion script
+    upgrade     Print the command to upgrade helpbase (does not execute it)
+
+Run `helpbase <command> --help` for command-specific options.
+Docs: https://helpbase.dev
+```
+
+## `helpbase Author`
+
+```
+helpbase v0.0.1
+CLI for managing your Helpbase help center
+
+Most common:
+  helpbase new  ·  helpbase dev  ·  helpbase deploy
+
+Usage:
+  helpbase [global-options] <command> [command-options]
+
+Global options:
+  -V, --version  output the version number
+  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
+  --quiet        Suppress decorative output (spinners, next-steps, summaries)
+  -h, --help     display help for command
+
+Commands:
+
+  Get started
+    new         Create a new article from a template
+    dev         Start the development server
+
+  Ship
+    deploy      Deploy your help center to helpbase cloud
+    link        Link this project to a helpbase cloud tenant
+    open        Open this project's help center in the default browser
+
+  Author
+    generate    Generate help articles using AI
+    sync        Propose MDX edits grounded in a code diff (no writes by default)
+    mcp         Run the Helpbase MCP server (stdio or HTTP)
+    audit       Check content health: missing fields, broken links, schema errors
+
+  Account
+    login       Log in to helpbase cloud
+    logout      Log out of helpbase cloud
+    whoami      Print the current login and linked tenant
+    config      Read or write CLI preferences (~/.helpbase/config.json)
+
+  Diagnose
+    doctor      Print diagnostic info about your helpbase install and project
+    feedback    Open a prefilled GitHub issue with your environment info
+    completion  Print a shell completion script
+    upgrade     Print the command to upgrade helpbase (does not execute it)
+
+Run `helpbase <command> --help` for command-specific options.
+Docs: https://helpbase.dev
+```
+
+## `helpbase Account`
+
+```
+helpbase v0.0.1
+CLI for managing your Helpbase help center
+
+Most common:
+  helpbase new  ·  helpbase dev  ·  helpbase deploy
+
+Usage:
+  helpbase [global-options] <command> [command-options]
+
+Global options:
+  -V, --version  output the version number
+  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
+  --quiet        Suppress decorative output (spinners, next-steps, summaries)
+  -h, --help     display help for command
+
+Commands:
+
+  Get started
+    new         Create a new article from a template
+    dev         Start the development server
+
+  Ship
+    deploy      Deploy your help center to helpbase cloud
+    link        Link this project to a helpbase cloud tenant
+    open        Open this project's help center in the default browser
+
+  Author
+    generate    Generate help articles using AI
+    sync        Propose MDX edits grounded in a code diff (no writes by default)
+    mcp         Run the Helpbase MCP server (stdio or HTTP)
+    audit       Check content health: missing fields, broken links, schema errors
+
+  Account
+    login       Log in to helpbase cloud
+    logout      Log out of helpbase cloud
+    whoami      Print the current login and linked tenant
+    config      Read or write CLI preferences (~/.helpbase/config.json)
+
+  Diagnose
+    doctor      Print diagnostic info about your helpbase install and project
+    feedback    Open a prefilled GitHub issue with your environment info
+    completion  Print a shell completion script
+    upgrade     Print the command to upgrade helpbase (does not execute it)
+
+Run `helpbase <command> --help` for command-specific options.
+Docs: https://helpbase.dev
+```
+
+## `helpbase Diagnose`
+
+```
+helpbase v0.0.1
+CLI for managing your Helpbase help center
+
+Most common:
+  helpbase new  ·  helpbase dev  ·  helpbase deploy
+
+Usage:
+  helpbase [global-options] <command> [command-options]
+
+Global options:
+  -V, --version  output the version number
+  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
+  --quiet        Suppress decorative output (spinners, next-steps, summaries)
+  -h, --help     display help for command
+
+Commands:
+
+  Get started
+    new         Create a new article from a template
+    dev         Start the development server
+
+  Ship
+    deploy      Deploy your help center to helpbase cloud
+    link        Link this project to a helpbase cloud tenant
+    open        Open this project's help center in the default browser
+
+  Author
+    generate    Generate help articles using AI
+    sync        Propose MDX edits grounded in a code diff (no writes by default)
+    mcp         Run the Helpbase MCP server (stdio or HTTP)
+    audit       Check content health: missing fields, broken links, schema errors
+
+  Account
+    login       Log in to helpbase cloud
+    logout      Log out of helpbase cloud
+    whoami      Print the current login and linked tenant
+    config      Read or write CLI preferences (~/.helpbase/config.json)
+
+  Diagnose
+    doctor      Print diagnostic info about your helpbase install and project
+    feedback    Open a prefilled GitHub issue with your environment info
+    completion  Print a shell completion script
+    upgrade     Print the command to upgrade helpbase (does not execute it)
+
+Run `helpbase <command> --help` for command-specific options.
+Docs: https://helpbase.dev
 ```
 

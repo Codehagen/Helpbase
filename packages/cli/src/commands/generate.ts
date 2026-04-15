@@ -14,6 +14,7 @@ import {
 } from "@workspace/shared/ai"
 import {
   scrapeUrl,
+  readRepoContent,
   generateArticlesFromContent,
 } from "@workspace/shared/ai-text"
 import {
@@ -54,6 +55,8 @@ export const generateCommand = new Command("generate")
 Examples:
   $ helpbase generate --url https://myproduct.com
   $ helpbase generate --url https://myproduct.com --test           # cheap model
+  $ helpbase generate --repo .                                     # read local repo markdown
+  $ helpbase generate --repo ./path/to/repo --dry-run              # preview without spending tokens
   $ helpbase generate --screenshots ./flow --title "How to invite a teammate"
   $ helpbase generate --url https://myproduct.com --dry-run        # preview without spending tokens
 
@@ -429,12 +432,119 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
     }
 
     if (opts.repo) {
-      console.error(
-        `\n${pc.red("✖")} Repository-based generation is not yet implemented.\n` +
-        `  Fix: Use ${pc.cyan("--url <url>")} for now.\n` +
-        `  Track: https://helpbase.dev/docs/troubleshooting#repo-generation\n`,
-      )
-      process.exit(1)
+      s.start(`Reading markdown from ${pc.cyan(opts.repo)}...`)
+
+      let markdown: string
+      let absRepoPath: string
+      try {
+        absRepoPath = path.resolve(process.cwd(), opts.repo)
+        markdown = await readRepoContent(absRepoPath)
+        s.stop("Repository read!")
+      } catch (err) {
+        s.stop(pc.red("Failed"))
+        printRepoError(opts.repo, err)
+        process.exit(1)
+      }
+
+      // Display-friendly identifier for the prompt's "generating for" line.
+      const relRepo = path.relative(process.cwd(), absRepoPath) || absRepoPath
+      const sourceLabel = `the repository at ${relRepo}`
+
+      if (opts.debug) {
+        const scrapePath = path.join(outputDir, "_scrape.txt")
+        fs.writeFileSync(scrapePath, markdown)
+        console.log(
+          `  ${pc.dim("›")} Wrote repo content to ${pc.cyan(scrapePath)} (${markdown.length.toLocaleString()} chars)`,
+        )
+      }
+
+      if (opts.dryRun) {
+        const estimatedTokens = Math.ceil(markdown.length / 4)
+        console.log("")
+        console.log(`${pc.dim("›")} ${pc.bold("Dry run — no LLM call")}`)
+        console.log(`  Model:            ${pc.cyan(model)}`)
+        console.log(`  Repository:       ${pc.cyan(relRepo)}`)
+        console.log(`  Markdown chars:   ${markdown.length.toLocaleString()}`)
+        console.log(
+          `  Prompt tokens ~:  ${estimatedTokens.toLocaleString()} (plus ~200 for instructions)`,
+        )
+        console.log(`  Output dir:       ${pc.cyan(outputDir)}`)
+        console.log("")
+        console.log(
+          `  ${pc.dim("Remove --dry-run to actually generate articles.")}`,
+        )
+        return
+      }
+
+      s.start("Generating help articles with AI...")
+      let articles
+      try {
+        articles = await generateArticlesFromContent({
+          content: markdown,
+          sourceUrl: sourceLabel,
+          model,
+        })
+      } catch (err) {
+        s.stop(pc.red("Failed"))
+        printGenerateError(err)
+        process.exit(1)
+      }
+      s.stop(`Generated ${pc.bold(String(articles.length))} articles!`)
+
+      const plans = planArticleWrites(articles, outputDir)
+      const categoriesWritten = new Set<string>()
+      for (const plan of plans) {
+        const categoryDir = path.join(outputDir, plan.categorySlug)
+        fs.mkdirSync(categoryDir, { recursive: true })
+
+        if (!categoriesWritten.has(plan.categorySlug)) {
+          const metaPath = path.join(categoryDir, "_category.json")
+          if (!fs.existsSync(metaPath)) {
+            fs.writeFileSync(
+              metaPath,
+              JSON.stringify(
+                {
+                  title: plan.categoryTitle,
+                  description: "",
+                  icon: "file-text",
+                  order: 1,
+                },
+                null,
+                2,
+              ),
+            )
+          }
+          categoriesWritten.add(plan.categorySlug)
+        }
+
+        fs.writeFileSync(plan.filePath, plan.mdx)
+
+        try {
+          matter(fs.readFileSync(plan.filePath, "utf-8"))
+        } catch (parseErr) {
+          console.error(
+            `\n${pc.red("✖")} Generated file has invalid frontmatter: ${plan.filePath}\n` +
+              `  Reason: ${parseErr instanceof Error ? parseErr.message : "parse error"}\n` +
+              `  Fix: This is a bug in articleToMdx — please file an issue with the file contents.\n` +
+              `  Docs: https://helpbase.dev/docs/troubleshooting#bad-frontmatter\n`,
+          )
+          process.exit(1)
+        }
+
+        console.log(
+          `  ${pc.green("+")} ${plan.categorySlug}/${plan.articleSlug}.mdx`,
+        )
+      }
+
+      summaryTable([
+        ["Articles", String(plans.length)],
+        ["Categories", String(new Set(plans.map((p) => p.categorySlug)).size)],
+        ["Output", path.relative(process.cwd(), outputDir) || outputDir],
+      ])
+      nextSteps({
+        commands: ["helpbase dev", "helpbase audit", "helpbase deploy"],
+      })
+      return
     }
   })
 
@@ -462,6 +572,16 @@ function printPrivacyWarning(): void {
 }
 
 // ── Error formatting ───────────────────────────────────────────────
+
+function printRepoError(repoPath: string, err: unknown): void {
+  const reason = err instanceof Error ? err.message : "Unknown error"
+  console.error(
+    `\n${pc.red("✖")} Could not read repository ${pc.cyan(repoPath)}\n` +
+    `  Reason: ${reason}\n` +
+    `  Fix: Pass a local path to a directory with markdown files (e.g. ${pc.cyan("--repo .")}).\n` +
+    `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
+  )
+}
 
 function printScrapeError(url: string, err: unknown): void {
   const reason = err instanceof Error ? err.message : "Unknown error"

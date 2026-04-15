@@ -33,7 +33,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 SMOKE_DIR="/tmp/helpbase-registry-smoke-$(date +%Y%m%d-%H%M%S)"
-REGISTRY_JSON="$REPO_ROOT/public/r/help-center.json"
+REGISTRY_JSON="$REPO_ROOT/apps/web/public/r/help-center.json"
 
 # Colors for legibility when run interactively
 if [ -t 1 ]; then
@@ -52,7 +52,7 @@ echo "${BLUE}→ Syncing templates + registry from apps/web${RESET}"
 pnpm sync:templates > /dev/null
 
 echo "${BLUE}→ Building shadcn registry JSON${RESET}"
-npx shadcn@latest build > /dev/null
+npx shadcn@latest build --output apps/web/public/r > /dev/null
 
 if [ ! -f "$REGISTRY_JSON" ]; then
   echo "${RED}✖ Registry JSON not found at $REGISTRY_JSON${RESET}"

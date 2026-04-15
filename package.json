@@ -9,7 +9,7 @@
     "format": "turbo format",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
-    "registry:build": "npx shadcn@latest build",
+    "registry:build": "npx shadcn@latest build --output apps/web/public/r",
     "smoke": "bash scripts/smoke-test.sh",
     "smoke:install": "bash scripts/smoke-install.sh",
     "smoke:registry": "bash scripts/smoke-registry.sh",

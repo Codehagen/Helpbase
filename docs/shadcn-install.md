@@ -6,10 +6,35 @@ articles. This is the same path covered by `pnpm smoke:registry` — this doc
 walks it end-to-end so a human can reproduce (and catch) anything the
 automated smoke doesn't see.
 
-**Note on the URL:** The canonical URL will be
-`https://helpbase.dev/r/help-center.json` once the site is deployed. Until
-then, you install from the local registry JSON built by `pnpm registry:build`.
-Steps below cover the local path; switch to the URL once deployed.
+## Two install modes
+
+**Mode 1 — by URL (simplest, no config):**
+
+```bash
+pnpm dlx shadcn@latest add https://helpbase.dev/r/help-center.json
+```
+
+**Mode 2 — by namespace (after one-time config):**
+
+Add this to your project's `components.json`:
+
+```json
+{
+  "registries": {
+    "@helpbase": "https://helpbase.dev/r/{name}.json"
+  }
+}
+```
+
+Then install with the shorter syntax:
+
+```bash
+pnpm dlx shadcn@latest add @helpbase/help-center
+```
+
+Both produce the same result. Mode 1 is one-shot; Mode 2 is nicer if you're
+going to pull multiple helpbase components (`@helpbase/help-center-search`,
+`@helpbase/help-center-sidebar`, `@helpbase/help-center-toc`).
 
 ---
 
@@ -71,29 +96,10 @@ content/customization/{_category.json,theming.mdx}
 
 ## Install walkthrough
 
-### 1. Get the registry JSON ready
+### 1. Create a scratch Next.js project
 
-The registry JSON is built into `public/r/help-center.json` from this repo.
-
-```bash
-# From the helpbase repo (this repo)
-pnpm install
-pnpm registry:build         # writes public/r/*.json
-```
-
-Note the absolute path to the built JSON:
-
-```bash
-REGISTRY_JSON="$(pwd)/public/r/help-center.json"
-echo "$REGISTRY_JSON"
-# e.g. /Users/you/code/helpbase/public/r/help-center.json
-```
-
-Keep this path handy — you'll point `shadcn add` at it in step 4.
-
-### 2. Create a scratch Next.js project
-
-Do this somewhere OUTSIDE the helpbase repo.
+Do this somewhere OUTSIDE the helpbase repo (you're simulating a real
+customer's project).
 
 ```bash
 cd /tmp
@@ -106,7 +112,7 @@ cd helpbase-install-test
 Expected: `pnpm create next-app` scaffolds a minimal Next.js app, installs
 dependencies, and leaves you in the new project directory.
 
-### 3. Initialize shadcn/ui
+### 2. Initialize shadcn/ui
 
 ```bash
 pnpm dlx shadcn@latest init -d -y
@@ -120,23 +126,24 @@ runtime shadcn dependencies (`class-variance-authority`, `clsx`, `tailwind-merge
 `lucide-react`, `@radix-ui/react-slot`), and writes default CSS variables into
 `app/globals.css`.
 
-### 4. Install helpbase
+### 3. Install helpbase
+
+Pick one of the two modes described at the top of this doc. For the first
+install, the URL mode is simplest:
 
 ```bash
-pnpm dlx shadcn@latest add "$REGISTRY_JSON" -y
+pnpm dlx shadcn@latest add https://helpbase.dev/r/help-center.json -y
 ```
 
-(Replace `$REGISTRY_JSON` with the absolute path you noted in step 1.)
-
-Expected: shadcn fetches the JSON, installs the `badge`, `accordion`, `tabs`
-shadcn components, installs the npm dependencies listed above, writes all the
-files listed in "What gets installed," and merges the helpbase sidebar CSS vars
-into `app/globals.css`.
+Expected: shadcn fetches the JSON from helpbase.dev, installs the `badge`,
+`accordion`, `tabs` shadcn components, installs the npm dependencies listed
+above, writes all the files listed in "What gets installed," and merges the
+helpbase sidebar CSS vars into `app/globals.css`.
 
 No prompts should appear when using `-y`. If prompts do appear (e.g. "file
 already exists, overwrite?"), that's something to flag — report the prompt text.
 
-### 5. Build and run
+### 4. Build and run
 
 ```bash
 pnpm build
@@ -167,7 +174,7 @@ Open http://localhost:3000/getting-started/introduction — you should see the
 sample article with a sidebar on the left, TOC on the right (wide viewports),
 and the introduction article body in the middle.
 
-### 6. Clean up
+### 5. Clean up
 
 ```bash
 cd ..

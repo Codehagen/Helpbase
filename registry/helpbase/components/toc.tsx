@@ -87,7 +87,7 @@ export function TableOfContents({ items }: TableOfContentsProps) {
       {/* Active indicator — slides along the track */}
       <div
         ref={indicatorRef}
-        className="toc-indicator absolute left-0 top-0 w-px bg-primary opacity-0"
+        className="toc-indicator absolute left-0 top-0 w-px bg-foreground opacity-0"
       />
 
       {/* Links */}
@@ -102,7 +102,7 @@ export function TableOfContents({ items }: TableOfContentsProps) {
               className={cn(
                 "block border-l border-transparent py-1 pl-3 text-[13px] leading-snug transition-colors duration-150",
                 isActive
-                  ? "font-medium text-primary"
+                  ? "font-medium text-foreground"
                   : "text-muted-foreground hover:text-foreground",
                 item.depth === 3 && "pl-6"
               )}

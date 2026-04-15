@@ -92,6 +92,7 @@ EXPECTED_ROUTES=(
   "/getting-started"
   "/customization"
   "/getting-started/introduction"
+  "/getting-started/configuration"
   "/customization/theming"
 )
 

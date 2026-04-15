@@ -133,10 +133,10 @@ export function Header() {
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <div className="size-6 rounded-md bg-primary" aria-hidden="true" />
-          <span className="font-serif text-lg font-normal text-primary">
-            helpbase
-          </span>
+          <div className="flex size-7 items-center justify-center rounded-lg bg-foreground">
+            <span className="text-xs font-bold text-background">?</span>
+          </div>
+          <span className="hidden sm:inline">helpbase</span>
         </Link>
 
         {/* Search */}

@@ -2,11 +2,13 @@
 
 # helpbase
 
-**The open-source help center for Next.js.**
+**The AI-native knowledge layer, as code you own.**
 
-Scaffold a beautiful, production-ready help center in under two minutes.
-Generate articles from any URL with AI. Drop it into an existing app with
-a single `shadcn add` command. Own every line.
+Helpbase ships MCP, `llms.txt`, and (soon) codebase-grounded doc sync as
+primitives that run in your repo, not services in someone else's cloud.
+Scaffold in two minutes with `npx create-helpbase`, or drop it into an
+existing Next.js app with `shadcn add`. Open source, self-hostable,
+built on shadcn/ui.
 
 [![npm version](https://img.shields.io/npm/v/helpbase.svg?color=111)](https://www.npmjs.com/package/helpbase)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-111)](./LICENSE)
@@ -27,15 +29,23 @@ a single `shadcn add` command. Own every line.
 
 ## Why helpbase
 
-Shipping a help center usually means picking between a hosted SaaS with a
-monthly bill and a blank Next.js project you still have to wire up. helpbase
-closes that gap. It is the full help center, built once, so you can scaffold
-a new project or drop it into the Next.js app you already have.
+Docs are becoming AI infrastructure. Agents query them, other systems depend
+on them, and the bar for "accurate and up to date" just went up. The common
+answer is a hosted SaaS that owns your knowledge layer, exposes an MCP
+endpoint on their cloud, and charges monthly. Helpbase is the opposite
+shape: the same capabilities, shipped as code that drops into your
+monorepo.
 
-Everything is yours. Every component, every route, every line of content
-lives in your repo. You keep your stack, your deploy pipeline, and your
-control over the UX. No vendor lock, no runtime fees, no dashboard to log
-into.
+- **Docs site** — a full Next.js + shadcn/ui help center in your repo
+- **MCP server** — `@helpbase/mcp` runs next to your app, not in a vendor's cloud
+- **`llms.txt` + `llms-full.txt`** — generated at your build time, served from your origin
+- **Doc sync** (shipping next) — codebase-grounded doc diffs opened as PRs in your repo via your CI
+- **Workflows** (shipping next) — plain GitHub Actions calling your own CLI, not a managed sandbox
+
+Everything lives in your repo. You keep your stack, your deploy pipeline,
+your secrets, and your control over the UX. No vendor in the loop when
+your AI agents need to read your docs. No runtime fees. No dashboard to
+log into.
 
 ## Features
 

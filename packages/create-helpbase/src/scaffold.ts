@@ -17,6 +17,13 @@ const __dirname = path.dirname(__filename)
 const TEMPLATES_DIR = path.resolve(__dirname, "../templates")
 
 /**
+ * Overlay applied on top of the base scaffold when --internal is passed.
+ * Contains the handbook-style content seed and an auth-ready `.env.example`
+ * scoped to private-repo / internal-KB use.
+ */
+const INTERNAL_OVERLAY_DIR = path.resolve(__dirname, "../internal-overlay")
+
+/**
  * Token in templates/ files that gets replaced with the user's project name.
  * Chosen to be invalid as a TypeScript identifier so it can never appear
  * in real code by accident. Literal string replace, not regex, so project
@@ -27,6 +34,12 @@ const PROJECT_NAME_TOKEN = "__HELPBASE_PROJECT_NAME__"
 export interface ScaffoldOptions {
   projectName: string
   projectDir: string
+  /**
+   * When true, apply the internal-overlay on top of the base scaffold:
+   * handbook-style sample content (replaces the default public-docs seed),
+   * auth-ready `.env.example` with `HELPBASE_MCP_TOKEN` scaffolding.
+   */
+  internal?: boolean
 }
 
 /**
@@ -38,7 +51,11 @@ export interface ScaffoldOptions {
  * package.json) — fail loudly with a clear message instead of a cryptic
  * ENOENT later.
  */
-export function scaffoldProject({ projectName, projectDir }: ScaffoldOptions): void {
+export function scaffoldProject({
+  projectName,
+  projectDir,
+  internal = false,
+}: ScaffoldOptions): void {
   if (!fs.existsSync(TEMPLATES_DIR)) {
     throw new Error(
       `Templates directory not found at ${TEMPLATES_DIR}.\n` +
@@ -50,6 +67,20 @@ export function scaffoldProject({ projectName, projectDir }: ScaffoldOptions): v
 
   fs.mkdirSync(projectDir, { recursive: true })
   copyDirWithTokenReplace(TEMPLATES_DIR, projectDir, projectName)
+
+  if (internal) {
+    if (!fs.existsSync(INTERNAL_OVERLAY_DIR)) {
+      throw new Error(
+        `Internal overlay not found at ${INTERNAL_OVERLAY_DIR}.\n` +
+        `  Cause: likely a packaging bug — --internal needs the internal-overlay/ dir.\n` +
+        `  Fix:   file an issue at https://github.com/Codehagen/helpbase/issues\n`,
+      )
+    }
+    // Wipe the public-docs sample content first so the handbook seed lands
+    // cleanly without mixed categories.
+    clearSampleContent(projectDir)
+    copyDirWithTokenReplace(INTERNAL_OVERLAY_DIR, projectDir, projectName)
+  }
 }
 
 /**

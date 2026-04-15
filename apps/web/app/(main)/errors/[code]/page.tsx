@@ -167,6 +167,102 @@ const ERRORS: Record<string, ErrorDoc> = {
       "Export it: `export AI_GATEWAY_API_KEY=<your-key>`.",
     ],
   },
+  "e-no-mcp-token": {
+    code: "E_NO_MCP_TOKEN",
+    title: "HELPBASE_MCP_TOKEN not set",
+    summary:
+      "The HTTP MCP transport refuses to run without a bearer token. An unauthenticated MCP endpoint on the open web is a footgun we don't ship.",
+    causes: [
+      "You ran `helpbase mcp start --http` without exporting `HELPBASE_MCP_TOKEN`.",
+      "The env var is set in your shell but not in the process you're launching from (e.g. inside a CI job or docker container).",
+    ],
+    fixes: [
+      "Generate a strong token: `export HELPBASE_MCP_TOKEN=\"$(openssl rand -hex 32)\"`.",
+      "In GitHub Actions: add it as a repo secret and pass it via `env:` on the job.",
+      "In Docker: pass it via `-e HELPBASE_MCP_TOKEN=...` on `docker run`.",
+      "For stdio mode (Claude Desktop / Cursor / Zed), no token is needed — drop the `--http` flag.",
+    ],
+  },
+  "e-no-gh": {
+    code: "E_NO_GH",
+    title: "GitHub CLI (`gh`) not found",
+    summary:
+      "`helpbase sync --pr` needs `gh` to open a pull request, and it isn't on your PATH.",
+    causes: [
+      "GitHub CLI isn't installed on this machine.",
+      "`gh` is installed but not on the PATH of this shell.",
+      "You're in a CI environment that doesn't preinstall `gh`.",
+    ],
+    fixes: [
+      "Install: https://cli.github.com/ (brew install gh / winget / apt).",
+      "In GitHub Actions, `gh` is preinstalled — make sure the workflow runs on `ubuntu-latest`.",
+      "Drop the `--pr` flag and open the PR manually from the written diff.",
+    ],
+  },
+  "e-no-citations": {
+    code: "E_NO_CITATIONS",
+    title: "Every proposal failed the citation gate",
+    summary:
+      "The model returned proposals, but none of them included valid citations into your source code. helpbase rejected them all.",
+    causes: [
+      "The prompt or model regressed and is emitting ungrounded suggestions.",
+      "The diff was too small for the model to ground an edit to it.",
+      "The docs don't match anything in the diff — unlikely but possible.",
+    ],
+    fixes: [
+      "Re-run the command — transient model behavior sometimes clears up.",
+      "Try `--test` to use the cheap gateway model and compare output.",
+      "If it keeps happening on a reproducible diff, open an issue with the diff attached.",
+    ],
+  },
+  "e-no-history": {
+    code: "E_NO_HISTORY",
+    title: "No code changes to sync against",
+    summary:
+      "helpbase sync asked git for a diff, and git returned nothing.",
+    causes: [
+      "The `--since` rev is identical to HEAD (no commits in between).",
+      "You just cloned the repo and haven't made changes yet.",
+      "The branch you're on hasn't diverged from the base branch.",
+    ],
+    fixes: [
+      "Make some code changes, commit them, and re-run.",
+      "Pass a deeper rev: `helpbase sync --since HEAD~20`.",
+      "Pass an explicit base: `helpbase sync --since origin/main`.",
+    ],
+  },
+  "e-invalid-rev": {
+    code: "E_INVALID_REV",
+    title: "Git couldn't resolve that revision",
+    summary:
+      "The `--since` value you passed doesn't refer to a real commit, branch, or tag.",
+    causes: [
+      "Typo in the rev (e.g. `HEAD-5` instead of `HEAD~5`).",
+      "The branch hasn't been fetched yet (e.g. `origin/main` where remote isn't set).",
+      "The ref was deleted.",
+    ],
+    fixes: [
+      "Check `git log --oneline -20` and pass a rev that exists.",
+      "Fetch first: `git fetch origin && helpbase sync --since origin/main`.",
+      "Use a relative rev: `helpbase sync --since HEAD~5`.",
+    ],
+  },
+  "e-no-content": {
+    code: "E_NO_CONTENT",
+    title: "No MDX content found",
+    summary:
+      "helpbase sync looked for MDX files in the content directory and came up empty.",
+    causes: [
+      "You're running it from the wrong directory.",
+      "This project scaffolded without any docs yet.",
+      "Docs live somewhere other than `content/`.",
+    ],
+    fixes: [
+      "cd into your helpbase project root.",
+      "Pass the right directory: `helpbase sync --content docs/`.",
+      "Add a doc first: `helpbase new` or `helpbase generate --url <site>`.",
+    ],
+  },
   "e-not-a-project": {
     code: "E_NOT_A_PROJECT",
     title: "Not a helpbase project",

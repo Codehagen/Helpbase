@@ -1,0 +1,43 @@
+---
+schemaVersion: 1
+title: "Welcome to the team handbook"
+description: "The canonical source for how we work — for humans and for the AI agents we build."
+tags: ["onboarding", "handbook"]
+order: 1
+featured: true
+---
+
+This is your team's internal knowledge layer. Every page in here is Markdown
+(MDX) living in your repo. Your engineers read it. Your AI agents read it
+through the same MCP endpoint that's guarded by `HELPBASE_MCP_TOKEN`.
+
+## How to use this space
+
+- **Write things down once.** If you explained something in Slack, promote
+  it to a handbook page. Future-you and future-agents will both thank you.
+- **Link aggressively.** Internal handbooks are valuable because they
+  cross-reference. Don't be shy.
+- **Keep it source-controlled.** Every change goes through the same PR
+  review as your code. That's the whole point.
+
+## What lives where
+
+- `content/handbook/` — people-facing docs: values, onboarding, org chart.
+- `content/runbooks/` — incident response, deploy procedures, on-call guides.
+- `content/decisions/` — architecture decision records (ADRs) and strategy docs.
+
+Add your own categories whenever a topic outgrows its section.
+
+## Exposing this to your agents
+
+The MCP server ships with your scaffold. To expose this handbook to a
+remote agent (internal Slack bot, Claude deployment, custom tooling), run:
+
+```bash
+export HELPBASE_MCP_TOKEN="$(openssl rand -hex 32)"
+helpbase mcp start --http
+```
+
+Then point your agent at `http://<host>/mcp` with the token in the
+`Authorization: Bearer` header. Agents get `search_docs`, `get_doc`, and
+`list_docs` tools scoped to the content in this repo — nothing else.

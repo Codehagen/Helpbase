@@ -1,0 +1,42 @@
+---
+schemaVersion: 1
+title: "On-call runbook"
+description: "What to do when you're paged. Replace this sample with your real escalation ladder."
+tags: ["on-call", "incident"]
+order: 1
+featured: false
+---
+
+<Callout type="warning">
+  This is a template. Replace every placeholder below with your real
+  escalation ladder before anyone goes on-call for the first time.
+</Callout>
+
+## First ten minutes
+
+1. **Acknowledge the page.** Don't start debugging before other people know
+   you've got it.
+2. **Open the incident channel.** Team convention here (e.g. `#inc-<date>`).
+3. **Check the health dashboard.** Link to your dashboard.
+4. **Declare severity.** Follow the severity ladder (SEV-1 through SEV-4).
+
+## Escalation ladder
+
+| Severity | Response time | Escalate to |
+| -------- | ------------- | ----------- |
+| SEV-1    | 5 min         | Engineering leadership + exec on-call |
+| SEV-2    | 15 min        | Engineering leadership |
+| SEV-3    | 1 hour        | Team lead (business hours only) |
+| SEV-4    | Next day      | Ticket in the triage queue |
+
+## During the incident
+
+- Update the incident channel every 15 minutes, even if there's nothing new.
+- Keep a timeline. Future-you writing the postmortem needs it.
+- Don't push fixes without a buddy review, even in wartime.
+
+## After the incident
+
+- Postmortem within 5 business days.
+- Action items filed as tickets, owner + due date.
+- Link the postmortem from this runbook if it changes any of the above.

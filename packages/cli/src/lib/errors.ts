@@ -29,6 +29,12 @@ export type ErrorCode =
   | "E_NETWORK"
   | "E_MISSING_FLAG"
   | "E_FILE_EXISTS"
+  | "E_NO_GH"
+  | "E_NO_CITATIONS"
+  | "E_NO_HISTORY"
+  | "E_INVALID_REV"
+  | "E_NO_CONTENT"
+  | "E_NO_MCP_TOKEN"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

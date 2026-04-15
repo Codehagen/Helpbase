@@ -1,0 +1,122 @@
+---
+schemaVersion: 1
+title: "Keep docs in sync with code in 5 minutes"
+description: "Run helpbase sync against your repo and open a grounded doc-update PR without touching a SaaS dashboard."
+tags: ["sync", "ai", "cli"]
+order: 2
+featured: true
+---
+
+`helpbase sync` reads your code diff, reads your MDX docs, and proposes
+targeted edits to the docs that are now wrong. Every proposal points at the
+exact lines of source code that justify the change. Nothing is committed
+unless you say so.
+
+This guide gets you from zero to your first proposal in five minutes.
+
+## Prerequisites
+
+- A helpbase project (run `npx create-helpbase` if you don't have one yet).
+- Node 20+.
+- An `AI_GATEWAY_API_KEY` from [vercel.com/ai-gateway](https://vercel.com/ai-gateway). Free tier is enough for this walkthrough.
+
+## Step 1 — See what a proposal looks like (30 seconds)
+
+Before touching your real repo, run the bundled demo. No key required.
+
+```bash
+helpbase sync --demo
+```
+
+You'll get a unified diff printed to your terminal that looks like a real
+doc update, complete with citations into fake source code and a short
+rationale. That output shape is exactly what you'll see when you run it
+against your own diff.
+
+<Callout type="note">
+The demo uses a fixture bundled with the CLI. It's the fastest way to check
+that `sync` is wired up correctly on your machine.
+</Callout>
+
+## Step 2 — Set your API key
+
+```bash
+export AI_GATEWAY_API_KEY=your_key_here
+```
+
+Drop it in `.env.local` next to your project if you don't want to export
+every session. The helpbase CLI picks up `.env.local` and `.env`
+automatically.
+
+## Step 3 — Make a code change worth documenting
+
+Sync only does something when code has moved. If you have uncommitted
+changes, commit them first. Then run:
+
+```bash
+helpbase sync --since HEAD~5
+```
+
+`--since` accepts any git rev: `HEAD~5`, `origin/main`, `v1.2.0`, a commit
+hash. The default is `origin/main` when it exists, falling back to
+`HEAD~10` so the command does something reasonable even on a fresh clone.
+
+## Step 4 — Read the diff
+
+The CLI prints a unified diff to stdout:
+
+```diff
+--- a/docs/authentication.mdx
++++ b/docs/authentication.mdx
+@@ proposal @@
+-Use the X-API-Token header
++Use the Authorization: Bearer header
+# rationale: The handler now reads req.headers.authorization.
+# citations: src/auth.ts:12-18
+```
+
+Every proposal carries at least one citation. The schema rejects proposals
+without citations before they ever reach you, so you never have to audit
+"is this AI hallucinating?" — if it's in the output, it's grounded.
+
+## Step 5 — Apply the changes
+
+Two options:
+
+**Review first, apply later** (recommended on your first run):
+
+```bash
+helpbase sync --since HEAD~5 --output proposals.diff
+# open proposals.diff in your editor, sanity check it
+git apply proposals.diff
+```
+
+**Apply in place** (once you trust the output):
+
+```bash
+helpbase sync --since HEAD~5 --apply
+git diff                      # see the changes
+git add -p && git commit      # stage what you want, discard the rest
+```
+
+Either way, the final commit is yours. Nothing touches your repo without
+you running `git add` or `git apply`.
+
+## What to do next
+
+- **Schedule it.** Drop the `helpbase-workflow` registry item into your
+  repo to run `helpbase sync` on a cron and open PRs automatically — all
+  in your own CI minutes, with your own secrets. See the guides section
+  on workflows.
+- **Tune the scope.** Pass `--content docs/` if your MDX lives outside
+  `content/`, or `--model anthropic/claude-sonnet-4.6` to swap to a
+  stronger model for tricky diffs.
+- **Hit an error?** Every error code links to a fix page. Example:
+  [E_NO_CITATIONS](https://helpbase.dev/errors/e-no-citations),
+  [E_INVALID_REV](https://helpbase.dev/errors/e-invalid-rev),
+  [E_NO_HISTORY](https://helpbase.dev/errors/e-no-history).
+
+<Callout type="tip">
+That's it. Your docs now have a continuous-update loop that runs on your
+infrastructure, grounded in your source code, with zero SaaS in the path.
+</Callout>

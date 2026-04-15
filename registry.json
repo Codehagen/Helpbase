@@ -7,7 +7,7 @@
       "name": "help-center",
       "type": "registry:block",
       "title": "Help Center",
-      "description": "A complete help center block with sidebar navigation, Cmd+K search, dark mode support, MDX content pipeline, and sample articles. Drops into any Next.js + shadcn/ui project.",
+      "description": "The AI-native knowledge layer as code you own. Drops a complete help center into any Next.js + shadcn/ui project: sidebar navigation, Cmd+K search, dark mode, MDX pipeline, and `llms.txt` generation at build time. Pair with the helpbase-mcp registry item to expose your docs to AI agents from your own infra.",
       "dependencies": [
         "next-mdx-remote",
         "next-themes",
@@ -315,6 +315,24 @@
           "path": "registry/helpbase-mcp/README.md",
           "type": "registry:file",
           "target": "mcp/README.md"
+        }
+      ]
+    },
+    {
+      "name": "helpbase-workflow",
+      "type": "registry:item",
+      "title": "Helpbase Sync Workflow",
+      "description": "Drop-in GitHub Actions workflow that runs `helpbase sync` on a schedule and on every push to main. Opens a PR with citation-grounded doc updates whenever a code change would make an MDX doc wrong. Runs in your Actions minutes with your secrets — no SaaS in the path. Requires AI_GATEWAY_API_KEY as a repo secret.",
+      "files": [
+        {
+          "path": "registry/helpbase-workflow/helpbase-sync.yml",
+          "type": "registry:file",
+          "target": ".github/workflows/helpbase-sync.yml"
+        },
+        {
+          "path": "registry/helpbase-workflow/README.md",
+          "type": "registry:file",
+          "target": ".github/workflows/helpbase-sync.README.md"
         }
       ]
     }

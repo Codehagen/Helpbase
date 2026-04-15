@@ -1,0 +1,11 @@
+[
+  {
+    "file": "docs/authentication.mdx",
+    "before": "Include your API key in the `X-API-Token` header on every request:\n\n```bash\ncurl https://api.example.com/v1/users \\\n  -H \"X-API-Token: your_api_key_here\"\n```",
+    "after": "Include your API key as a bearer token in the `Authorization` header on every request:\n\n```bash\ncurl https://api.example.com/v1/users \\\n  -H \"Authorization: Bearer your_api_key_here\"\n```",
+    "citations": [
+      { "sourceFile": "src/auth.ts", "lineStart": 12, "lineEnd": 18 }
+    ],
+    "rationale": "The authenticate() handler now reads req.headers.authorization and expects a 'Bearer ' prefix. The X-API-Token header is no longer accepted."
+  }
+]

@@ -10,6 +10,7 @@
     "./ai": "./src/ai.ts",
     "./ai-text": "./src/ai-text.ts",
     "./ai-visual": "./src/ai-visual.ts",
+    "./ai-sync": "./src/ai-sync.ts",
     "./screenshots": "./src/screenshots.ts",
     "./config": "./src/config.ts"
   },

@@ -45,13 +45,13 @@ describe("helpbase CLI integration", () => {
 
     it("each subcommand has help text", () => {
       for (const cmd of [
-        "dev", "generate", "audit", "new", "deploy",
+        "dev", "generate", "sync", "mcp", "audit", "new", "deploy",
         "login", "logout", "whoami", "link", "open", "feedback", "doctor",
       ]) {
         const { stdout } = exec(`${cmd} --help`)
         expect(stdout.length).toBeGreaterThan(20)
       }
-    })
+    }, 15_000)
   })
 
   describe("generate error handling", () => {

@@ -1,0 +1,65 @@
+name: helpbase sync
+
+# Keep docs in sync with code. Runs weekly and on every push to the base
+# branch. When a code change would make an existing MDX doc wrong,
+# `helpbase sync` proposes citation-grounded edits and this workflow opens
+# a PR you can review.
+#
+# Everything runs in *your* Actions minutes with *your* secrets. No SaaS
+# in the path. Swap the schedule or triggers to taste.
+
+on:
+  schedule:
+    # Monday 09:00 UTC — adjust to your timezone's start-of-week.
+    - cron: "0 9 * * 1"
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    name: Propose doc updates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch enough history for --since origin/main to find a real diff.
+          fetch-depth: 50
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run helpbase sync
+        env:
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+        run: |
+          npx -y helpbase sync \
+            --since origin/main \
+            --apply \
+            --yes
+
+      - name: Open PR if docs changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No doc updates proposed — nothing to PR."
+            exit 0
+          fi
+
+          BRANCH="helpbase-sync/$(date +%Y%m%d-%H%M%S)"
+          git config user.name "helpbase-sync"
+          git config user.email "helpbase-sync@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "docs: sync with codebase ($(date +%Y-%m-%d))"
+          git push origin "$BRANCH"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "docs: sync with codebase ($(date +%Y-%m-%d))" \
+            --body "Automated proposal from \`helpbase sync\`. Every change cites specific lines of source code — check the diff before merging."

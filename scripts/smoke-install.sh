@@ -31,9 +31,13 @@ set -euo pipefail
 # ---- Parse flags ------------------------------------------------------------
 
 PACK_MODE="false"
+INTERNAL_MODE="false"
 for arg in "$@"; do
   if [ "$arg" = "--pack" ]; then
     PACK_MODE="true"
+  fi
+  if [ "$arg" = "--internal" ]; then
+    INTERNAL_MODE="true"
   fi
 done
 
@@ -91,10 +95,15 @@ mkdir -p "$PROJECT_PARENT"
 cd "$PROJECT_PARENT"
 
 echo "→ Scaffolding $PROJECT_NAME..."
+SCAFFOLD_FLAGS=(--no-install --no-open)
+if [ "$INTERNAL_MODE" = "true" ]; then
+  SCAFFOLD_FLAGS+=(--internal)
+  echo "  (using --internal overlay: handbook + runbooks + decisions)"
+fi
 if [ "$PACK_MODE" = "true" ]; then
-  "$CLI_PATH" "$PROJECT_NAME" --no-install --no-open </dev/null > "$SMOKE_DIR/scaffold.log" 2>&1
+  "$CLI_PATH" "$PROJECT_NAME" "${SCAFFOLD_FLAGS[@]}" </dev/null > "$SMOKE_DIR/scaffold.log" 2>&1
 else
-  node "$CLI_PATH" "$PROJECT_NAME" --no-install --no-open </dev/null > "$SMOKE_DIR/scaffold.log" 2>&1
+  node "$CLI_PATH" "$PROJECT_NAME" "${SCAFFOLD_FLAGS[@]}" </dev/null > "$SMOKE_DIR/scaffold.log" 2>&1
 fi
 PROJECT_DIR="$PROJECT_PARENT/$PROJECT_NAME"
 
@@ -131,8 +140,19 @@ REQUIRED_FILES=(
   "lib/search.ts"
   "lib/utils.ts"
   "lib/schemas.ts"
-  "content/getting-started/introduction.mdx"
 )
+if [ "$INTERNAL_MODE" = "true" ]; then
+  REQUIRED_FILES+=(
+    "content/handbook/welcome.mdx"
+    "content/runbooks/on-call.mdx"
+    "content/decisions/adr-template.mdx"
+    ".env.example"
+  )
+else
+  REQUIRED_FILES+=(
+    "content/getting-started/introduction.mdx"
+  )
+fi
 
 echo "→ Verifying required files..."
 MISSING=()
@@ -188,15 +208,50 @@ else
 fi
 echo ""
 
+# ---- Verify llms.txt artifacts were generated -------------------------------
+
+echo "→ Verifying llms.txt artifacts..."
+LLMS_MISSING=()
+for artifact in "public/llms.txt" "public/llms-full.txt"; do
+  if [ ! -f "$PROJECT_DIR/$artifact" ]; then
+    LLMS_MISSING+=("$artifact")
+  fi
+done
+if [ ${#LLMS_MISSING[@]} -gt 0 ]; then
+  echo "✖ Missing llms.txt artifacts:"
+  for artifact in "${LLMS_MISSING[@]}"; do
+    echo "    $artifact"
+  done
+  echo ""
+  echo "  Cause: scripts/generate-llms.mjs did not run or did not write to public/."
+  echo "  Fix:   verify templates/package.json has 'prebuild: node scripts/generate-llms.mjs'"
+  echo "         and templates/scripts/generate-llms.mjs exists."
+  exit 1
+fi
+echo "  ✓ public/llms.txt and public/llms-full.txt emitted"
+echo ""
+
 # ---- Verify expected routes were generated ----------------------------------
 
-EXPECTED_ROUTES=(
-  "/_not-found"
-  "/getting-started"
-  "/customization"
-  "/getting-started/introduction"
-  "/customization/theming"
-)
+if [ "$INTERNAL_MODE" = "true" ]; then
+  EXPECTED_ROUTES=(
+    "/_not-found"
+    "/handbook"
+    "/runbooks"
+    "/decisions"
+    "/handbook/welcome"
+    "/runbooks/on-call"
+    "/decisions/adr-template"
+  )
+else
+  EXPECTED_ROUTES=(
+    "/_not-found"
+    "/getting-started"
+    "/customization"
+    "/getting-started/introduction"
+    "/customization/theming"
+  )
+fi
 
 echo "→ Verifying expected routes were generated..."
 for route in "${EXPECTED_ROUTES[@]}"; do

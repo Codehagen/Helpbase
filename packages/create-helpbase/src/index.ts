@@ -26,6 +26,7 @@ interface RunOptions {
   open?: boolean
   test?: boolean
   model?: string
+  internal?: boolean
 }
 
 const PROJECT_NAME_REGEX = /^[a-z0-9-]+$/
@@ -51,6 +52,10 @@ const program = new Command()
     `Use the cheap test model (${TEST_MODEL}) for AI generation`,
   )
   .option("--model <id>", "Override the AI model ID")
+  .option(
+    "--internal",
+    "Scaffold an internal-KB layout (handbook + runbooks + ADRs, auth-ready MCP via HELPBASE_MCP_TOKEN)",
+  )
   .action(run)
 
 program.parse()
@@ -161,7 +166,11 @@ async function run(directory: string | undefined, opts: RunOptions) {
   const s = spinner()
   s.start("Creating your help center...")
 
-  scaffoldProject({ projectName: projectName as string, projectDir })
+  scaffoldProject({
+    projectName: projectName as string,
+    projectDir,
+    internal: opts.internal,
+  })
 
   if (aiGatewayKey) {
     writeAiGatewayKey(projectDir, aiGatewayKey)

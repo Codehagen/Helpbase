@@ -102,6 +102,55 @@ export type GeneratedArticle = z.infer<typeof generatedArticleSchema>
  * `step` is treated as an ordinal position (Figure N inserted after
  * the Nth prose paragraph).
  */
+/**
+ * A citation pointing at the specific lines of source code that justify a
+ * proposed documentation edit. Every SyncProposal MUST carry at least one.
+ *
+ * This is the anti-hallucination gate: a proposal with zero citations cannot
+ * be trusted to reflect the actual code change, so the schema rejects it.
+ *
+ *   sourceFile  — repo-relative path, e.g. "src/server.ts"
+ *   lineStart   — 1-indexed inclusive
+ *   lineEnd     — 1-indexed inclusive, >= lineStart
+ */
+export const syncCitationSchema = z
+  .object({
+    sourceFile: z.string().min(1, "sourceFile is required"),
+    lineStart: z.number().int().positive("lineStart must be >= 1"),
+    lineEnd: z.number().int().positive("lineEnd must be >= 1"),
+  })
+  .refine((c) => c.lineEnd >= c.lineStart, {
+    message: "lineEnd must be >= lineStart",
+    path: ["lineEnd"],
+  })
+
+/**
+ * A proposed edit to a single MDX file, grounded in source code citations.
+ *
+ * The LLM returns an array of these; the CLI converts them into a unified
+ * diff locally. `before` and `after` are the exact string contents — the
+ * CLI does a literal find-and-replace when applying the proposal, so
+ * `before` must match the current file content byte-for-byte.
+ *
+ * A citations array with zero items is rejected by the schema. This is
+ * the property test invariant in `schemas.test.ts`.
+ */
+export const syncProposalSchema = z.object({
+  file: z.string().min(1, "file path is required"),
+  before: z.string(),
+  after: z.string(),
+  citations: z.array(syncCitationSchema).min(1, "at least one citation is required"),
+  rationale: z.string().optional(),
+})
+
+export const syncProposalsSchema = z.object({
+  proposals: z.array(syncProposalSchema),
+})
+
+export type SyncCitation = z.infer<typeof syncCitationSchema>
+export type SyncProposal = z.infer<typeof syncProposalSchema>
+export type SyncProposals = z.infer<typeof syncProposalsSchema>
+
 export interface ArticleImage {
   /** Source filename, e.g. "01-dashboard.png" */
   filename: string

@@ -95,7 +95,7 @@ Reduced-motion handler disables all entrance animations and clamps all transitio
 - Color palette — stays cool-neutral shadcn-default. We previously tried a terracotta-on-warm-paper editorial direction (see `design/new-abandoned` branch) and reverted after A/B feedback.
 - Display typography — stays Geist Sans. No serif display in headings.
 - Hero composition — stays centered with the grid + radial gradient backdrop.
-- 3-col category card grid — intentional. Not "AI-slop" in this product's context — it matches developer-tool docs conventions (Mintlify, Stripe, Vercel docs all use card grids for category navigation).
+- 3-col category card grid — intentional. Not "AI-slop" in this product's context — it matches developer-tool docs conventions (Stripe, Vercel docs all use card grids for category navigation).
 - Flush-left sidebar with `max-w-7xl` content cap was removed in commit 71060c8; sidebar is flush to viewport.
 
 ## Distribution

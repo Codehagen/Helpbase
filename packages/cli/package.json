@@ -7,7 +7,8 @@
     "helpbase": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "fixtures"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",

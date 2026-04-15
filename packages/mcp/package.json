@@ -4,15 +4,20 @@
   "description": "Self-hosted MCP server that exposes your Helpbase docs to AI agents. Runs from your repo, reads your MDX, serves it over the Model Context Protocol.",
   "type": "module",
   "bin": {
-    "helpbase-mcp": "dist/index.js"
+    "helpbase-mcp": "dist/index.js",
+    "helpbase-mcp-http": "dist/http-cli.js"
+  },
+  "exports": {
+    ".": "./dist/server.js",
+    "./http": "./dist/http.js"
   },
   "files": [
     "dist",
     "README.md"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/server.ts --format esm --dts --clean",
-    "dev": "tsup src/index.ts src/server.ts --format esm --watch",
+    "build": "tsup src/index.ts src/server.ts src/http.ts src/http-cli.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts src/server.ts src/http.ts src/http-cli.ts --format esm --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

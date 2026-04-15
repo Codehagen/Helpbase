@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import { devCommand } from "./commands/dev.js"
 import { generateCommand } from "./commands/generate.js"
+import { syncCommand } from "./commands/sync.js"
+import { mcpCommand } from "./commands/mcp.js"
 import { auditCommand } from "./commands/audit.js"
 import { newCommand } from "./commands/new.js"
 import { deployCommand } from "./commands/deploy.js"
@@ -69,6 +71,8 @@ program.helpInformation = () => renderGroupedHelp(program)
 
 program.addCommand(devCommand)
 program.addCommand(generateCommand)
+program.addCommand(syncCommand)
+program.addCommand(mcpCommand)
 program.addCommand(auditCommand)
 program.addCommand(newCommand)
 program.addCommand(deployCommand)

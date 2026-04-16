@@ -16,6 +16,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@helpbase/mcp": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@vercel/kv": "^3.0.0",
     "@supabase/supabase-js": "^2.103.0",
     "@workspace/shared": "workspace:*",
     "@workspace/ui": "workspace:*",

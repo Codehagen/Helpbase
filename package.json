@@ -14,6 +14,8 @@
     "smoke:install": "bash scripts/smoke-install.sh",
     "smoke:registry": "bash scripts/smoke-registry.sh",
     "smoke:llms": "bash scripts/smoke-llms.sh",
+    "smoke:deploy": "bash scripts/smoke-deploy.sh",
+    "check:supabase-types": "node scripts/check-supabase-types.mjs",
     "sync:templates": "node scripts/sync-templates.mjs"
   },
   "devDependencies": {

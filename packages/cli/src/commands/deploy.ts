@@ -1,11 +1,11 @@
 import { Command } from "commander"
-import { intro, outro, text, note, cancel, isCancel } from "@clack/prompts"
+import { intro, outro, text, note, cancel, isCancel, confirm } from "@clack/prompts"
 import { spinner, nextSteps, summaryTable } from "../lib/ui.js"
 import pc from "picocolors"
 import fs from "node:fs"
 import path from "node:path"
 import matter from "gray-matter"
-import { frontmatterSchema, categoryMetaSchema } from "@workspace/shared/schemas"
+import { frontmatterSchema, categoryMetaSchema, type TenantChunk, type DeployReport } from "@workspace/shared/schemas"
 import { getAuthedSupabase } from "../lib/supabase-client.js"
 import {
   getCurrentSession,
@@ -14,17 +14,34 @@ import {
   verifyLoginCode,
   type AuthSession,
 } from "../lib/auth.js"
-import { readProjectConfig, writeProjectConfig } from "../lib/project-config.js"
+import {
+  readProjectConfig,
+  removeProjectConfig,
+  writeProjectConfig,
+} from "../lib/project-config.js"
 import { HelpbaseError, formatError } from "../lib/errors.js"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
+// Kept in sync with RESERVED_SLUGS in link.ts and the subdomain-middleware allowlist.
+// Any subdomain that collides with a marketing page, auth surface, or infra path.
 const RESERVED_SLUGS = new Set([
   "www", "app", "api", "admin", "dashboard", "docs", "help", "blog", "status", "mail",
+  "mcp", "deploy", "login", "signup", "signin", "auth", "billing", "support",
+  "cdn", "static", "assets", "files", "media", "images", "img",
 ])
 
 export const deployCommand = new Command("deploy")
   .description("Deploy your help center to helpbase cloud")
   .option("--slug <slug>", "Subdomain slug (e.g., my-product)")
+  .option(
+    "--rotate-mcp-token",
+    "Rotate the tenant's MCP bearer token (invalidates all currently-active clients). Does not publish content.",
+  )
+  .option(
+    "--delete <slug>",
+    "Hard-delete a tenant and release its slug. Requires owner match. Cascades to articles, categories, chunks, deploys, and queries.",
+  )
+  .option("--yes", "Skip the confirmation prompt for --delete (required for non-interactive).")
   .addHelpText(
     "after",
     `
@@ -32,14 +49,25 @@ Examples:
   $ helpbase deploy
   $ helpbase deploy --slug acme-docs
   $ HELPBASE_TOKEN=xxx helpbase deploy --slug acme-docs        # CI / non-interactive
+  $ helpbase deploy --rotate-mcp-token                         # rotate MCP token only
+  $ helpbase deploy --delete acme-docs --yes                   # delete tenant + release slug
 `,
   )
-  .action(async (opts: { slug?: string }) => {
+  .action(async (opts: { slug?: string; rotateMcpToken?: boolean; delete?: string; yes?: boolean }) => {
     intro(pc.bgCyan(pc.black(" helpbase deploy ")))
 
-    // 1. Check we're in a helpbase project
+    // 0. --delete short-circuit: auth + delete + exit. Skips content checks
+    //    and tenant-by-link resolution because the target tenant is supplied
+    //    explicitly as --delete <slug>.
+    if (opts.delete) {
+      await handleDelete(opts.delete, { yes: opts.yes ?? false })
+      return
+    }
+
+    // 1. Check we're in a helpbase project (skipped for --rotate-mcp-token since
+    //    rotation only touches the tenant row; no content upload needed).
     const contentDir = path.resolve("content")
-    if (!fs.existsSync(contentDir)) {
+    if (!opts.rotateMcpToken && !fs.existsSync(contentDir)) {
       cancel(
         "No content/ directory found. Run this from a helpbase project root, or create one:\n" +
         pc.cyan("  npx create-helpbase")
@@ -174,6 +202,49 @@ Examples:
       )
     }
 
+    // 3.5. Handle --rotate-mcp-token early-exit: skip content read/upload,
+    //      mint a new public token, print it, and exit.
+    if (opts.rotateMcpToken) {
+      const rotateSpinner = spinner()
+      rotateSpinner.start("Rotating MCP token...")
+      // Generate a 32-byte hex token client-side so the CLI can print it
+      // without a second round-trip.
+      const newToken = Array.from(
+        crypto.getRandomValues(new Uint8Array(32)),
+        (b) => b.toString(16).padStart(2, "0"),
+      ).join("")
+      const { error: rotateErr } = await client
+        .from("tenants")
+        .update({ mcp_public_token: newToken })
+        .eq("id", tenantId)
+      if (rotateErr) {
+        rotateSpinner.stop("Rotation failed")
+        cancel(`Failed to rotate token: ${rotateErr.message}`)
+        process.exit(1)
+      }
+      rotateSpinner.stop(`Rotated MCP token for ${tenantSlug}`)
+      const mcpUrl = `https://${tenantSlug}.helpbase.dev/mcp`
+      const mcpConfig = JSON.stringify(
+        {
+          mcpServers: {
+            [tenantSlug]: {
+              url: mcpUrl,
+              headers: { Authorization: `Bearer ${newToken}` },
+            },
+          },
+        },
+        null,
+        2,
+      )
+      outro(`${pc.green("✓")} Token rotated.`)
+      note(
+        `${pc.yellow("⚠")}  All currently-active MCP clients have been invalidated.\n` +
+        `    Paste the new config into every client that queries this tenant:\n\n${pc.dim(mcpConfig)}`,
+        "New MCP config",
+      )
+      return
+    }
+
     // 4. Read and validate content
     const s = spinner()
     s.start("Reading content...")
@@ -280,40 +351,43 @@ Examples:
       process.exit(1)
     }
 
-    // 5. Upload categories
-    s.start("Uploading categories...")
+    // 5. Compute chunks (CLI-side chunking for MCP search_docs).
+    s.start("Chunking content for search...")
+    const chunks: TenantChunk[] = []
+    for (const a of articles) {
+      for (const chunk of chunkArticleContent(a.content)) {
+        chunks.push({
+          article_slug: a.slug,
+          article_category: a.category,
+          chunk_index: chunk.index,
+          content: chunk.content,
+          file_path: a.filePath,
+          line_start: chunk.lineStart,
+          line_end: chunk.lineEnd,
+          token_count: chunk.tokenCount,
+        })
+      }
+    }
+    s.stop(`Chunked into ${chunks.length} search chunks`)
 
-    // Delete existing categories for this tenant, then re-insert
-    await client.from("tenant_categories").delete().eq("tenant_id", tenantId)
-
-    const { error: catError } = await client.from("tenant_categories").insert(
-      categories.map((c) => ({
-        tenant_id: tenantId,
+    // 6. Atomic deploy via Supabase RPC — single transaction, no empty-page window.
+    s.start("Publishing (atomic)...")
+    const validationReport: DeployReport = {
+      kept_count: articles.length,
+      dropped_count: 0,
+      dropped: [],
+      ran_at: new Date().toISOString(),
+    }
+    const { data: deployId, error: rpcError } = await client.rpc("deploy_tenant", {
+      p_tenant_id: tenantId,
+      p_categories: categories.map((c) => ({
         slug: c.slug,
         title: c.title,
         description: c.description,
         icon: c.icon,
         order: c.order,
-      }))
-    )
-
-    if (catError) {
-      s.stop("Failed to upload categories")
-      cancel(`Category upload error: ${catError.message}`)
-      process.exit(1)
-    }
-
-    s.stop(`Uploaded ${categories.length} categories`)
-
-    // 6. Upload articles
-    s.start("Uploading articles...")
-
-    // Delete existing articles, then re-insert (full sync)
-    await client.from("tenant_articles").delete().eq("tenant_id", tenantId)
-
-    const { error: artError } = await client.from("tenant_articles").insert(
-      articles.map((a) => ({
-        tenant_id: tenantId,
+      })),
+      p_articles: articles.map((a) => ({
         slug: a.slug,
         category: a.category,
         title: a.title,
@@ -326,31 +400,160 @@ Examples:
         video_embed: a.videoEmbed,
         featured: a.featured,
         file_path: a.filePath,
-      }))
-    )
+      })),
+      p_chunks: chunks,
+      p_validation_report: validationReport,
+    })
 
-    if (artError) {
-      s.stop("Failed to upload articles")
-      cancel(`Article upload error: ${artError.message}`)
+    if (rpcError) {
+      s.stop("Deploy failed")
+      cancel(`Deploy RPC error: ${rpcError.message}`)
       process.exit(1)
     }
+    s.stop(`Published ${articles.length} articles, ${chunks.length} chunks (deploy ${String(deployId).slice(0, 8)})`)
 
-    s.stop(`Uploaded ${articles.length} articles`)
+    // 7. Fetch the tenant's MCP token for the copy-paste config snippet.
+    const { data: tenantAfter } = await client
+      .from("tenants")
+      .select("mcp_public_token")
+      .eq("id", tenantId)
+      .single()
+    const mcpToken = tenantAfter?.mcp_public_token ?? ""
 
-    // 7. Done
+    // 8. Trigger on-demand revalidation (fail-soft: warn but don't break the deploy).
+    try {
+      const revalUrl = `https://${tenantSlug}.helpbase.dev/api/revalidate`
+      const revalRes = await fetch(revalUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify({ tenant_id: tenantId }),
+      })
+      if (!revalRes.ok) {
+        note(
+          `Revalidation returned ${revalRes.status} — pages will catch up within 1h ISR window.`,
+          pc.yellow("Warning"),
+        )
+      }
+    } catch {
+      // network error or DNS not propagated; non-blocking
+    }
+
+    // 9. Done.
     const liveUrl = `https://${tenantSlug}.helpbase.dev`
+    const mcpUrl = `https://${tenantSlug}.helpbase.dev/mcp`
     outro(`${pc.green("✓")} Deployed! Your help center is live.`)
     summaryTable([
       ["Tenant", `${tenantSlug}.helpbase.dev`],
       ["Articles", String(articles.length)],
+      ["Chunks", String(chunks.length)],
       ["Categories", String(categories.length)],
       ["Live URL", liveUrl],
+      ["MCP URL", mcpUrl],
     ])
+
+    // MCP client config — paste into Claude Code, Cursor, or Claude Desktop.
+    if (mcpToken) {
+      const mcpConfig = JSON.stringify(
+        {
+          mcpServers: {
+            [tenantSlug]: {
+              url: mcpUrl,
+              headers: { Authorization: `Bearer ${mcpToken}` },
+            },
+          },
+        },
+        null,
+        2,
+      )
+      note(
+        `Paste this into your Claude Desktop / Claude Code / Cursor MCP config:\n\n${pc.dim(mcpConfig)}\n\n` +
+        `${pc.yellow("⚠")}  Anyone with this token has full MCP access to this tenant.\n` +
+        `    Rotate with ${pc.cyan("helpbase deploy --rotate-mcp-token")} (invalidates all active clients).`,
+        "MCP config",
+      )
+    }
+
     nextSteps({
       commands: ["helpbase open", "helpbase deploy"],
-      urls: [{ label: "live:", url: liveUrl }],
+      urls: [
+        { label: "docs:", url: liveUrl },
+        { label: "mcp:", url: mcpUrl },
+      ],
     })
   })
+
+/**
+ * Split article MDX into search chunks. Target: ~1600 chars per chunk
+ * (≈ 400 tokens at 4 chars/token). Splits on paragraph boundaries
+ * (`\n\n+`) so chunks stay semantically coherent. Simple + fast;
+ * header-aware/sentence-aware chunking is a v1.5 upgrade if FTS quality
+ * flags it as a gap during the week-1 query-log review.
+ *
+ * Exported for testability.
+ */
+export function chunkArticleContent(content: string): Array<{
+  index: number
+  content: string
+  lineStart: number
+  lineEnd: number
+  tokenCount: number
+}> {
+  const MAX_CHARS = 1600
+  const paragraphs = content.split(/\n\n+/)
+  const chunks: Array<{
+    index: number
+    content: string
+    lineStart: number
+    lineEnd: number
+    tokenCount: number
+  }> = []
+
+  let buf = ""
+  let bufStartLine = 1
+  let lineCursor = 1
+  let chunkIndex = 0
+
+  const flush = (endLine: number) => {
+    const trimmed = buf.trim()
+    if (!trimmed) return
+    chunks.push({
+      index: chunkIndex++,
+      content: trimmed,
+      lineStart: bufStartLine,
+      lineEnd: endLine,
+      tokenCount: Math.ceil(trimmed.length / 4),
+    })
+    buf = ""
+  }
+
+  for (const paragraph of paragraphs) {
+    const pLines = paragraph.split("\n").length
+    if (buf.length > 0 && buf.length + paragraph.length > MAX_CHARS) {
+      flush(lineCursor - 1)
+      bufStartLine = lineCursor
+    }
+    if (buf.length > 0) buf += "\n\n"
+    buf += paragraph
+    lineCursor += pLines + 1 // paragraph lines + the blank separator line
+  }
+  flush(lineCursor - 1)
+
+  // An article with no paragraphs still deserves a chunk (edge case: tiny docs).
+  if (chunks.length === 0 && content.trim().length > 0) {
+    chunks.push({
+      index: 0,
+      content: content.trim(),
+      lineStart: 1,
+      lineEnd: content.split("\n").length,
+      tokenCount: Math.ceil(content.trim().length / 4),
+    })
+  }
+
+  return chunks
+}
 
 async function ensureAuthenticated(): Promise<AuthSession> {
   const existing = await getCurrentSession()
@@ -425,4 +628,101 @@ async function ensureAuthenticated(): Promise<AuthSession> {
     }
     process.exit(1)
   }
+}
+
+/**
+ * Handle `helpbase deploy --delete <slug>`.
+ *
+ * Authenticates, resolves the target tenant by slug, confirms ownership,
+ * prompts for confirmation (unless --yes), and hard-deletes the tenant.
+ * Cascading FKs on articles/categories/chunks/deploys/queries drop the
+ * rest.
+ *
+ * If the deleted tenant was the current project's linked tenant, the
+ * local `.helpbase/project.json` is removed so the next `helpbase deploy`
+ * starts fresh.
+ *
+ * Non-interactive (HELPBASE_TOKEN set) requires --yes. Missing --yes
+ * aborts with a clear message rather than silently skipping confirmation.
+ */
+async function handleDelete(
+  slug: string,
+  { yes }: { yes: boolean },
+): Promise<void> {
+  // Validate slug shape so we don't ship a typo'd curl to Supabase.
+  if (!SLUG_REGEX.test(slug)) {
+    cancel(`Invalid slug: "${slug}". Slugs are lowercase letters, numbers, and hyphens.`)
+    process.exit(1)
+  }
+
+  const session = await ensureAuthenticated()
+  const client = await getAuthedSupabase(session)
+
+  // Resolve tenant + verify ownership.
+  const { data: tenant, error: lookupError } = await client
+    .from("tenants")
+    .select("id, slug, owner_id")
+    .eq("slug", slug)
+    .maybeSingle()
+
+  if (lookupError) {
+    cancel(`Failed to look up tenant: ${lookupError.message}`)
+    process.exit(1)
+  }
+  if (!tenant) {
+    cancel(`Tenant "${slug}" not found.`)
+    process.exit(1)
+  }
+  if (tenant.owner_id !== session.userId) {
+    cancel(
+      `Tenant "${slug}" is not owned by the current user.\n` +
+      `  Only the owner can delete a tenant.`,
+    )
+    process.exit(1)
+  }
+
+  // Confirm — unless --yes or non-interactive (in which case --yes is required
+  // as a failsafe against accidental CI deletions).
+  if (!yes) {
+    if (isNonInteractive()) {
+      cancel(
+        "Non-interactive mode requires --yes to confirm deletion.\n" +
+        pc.dim("  helpbase deploy --delete " + slug + " --yes"),
+      )
+      process.exit(1)
+    }
+    const proceed = await confirm({
+      message: `Hard-delete tenant "${slug}"? This drops all articles, chunks, and the live URL. Cannot be undone.`,
+      initialValue: false,
+    })
+    if (isCancel(proceed) || !proceed) {
+      cancel("Cancelled — nothing deleted.")
+      process.exit(0)
+    }
+  }
+
+  const s = spinner()
+  s.start(`Deleting "${slug}"...`)
+
+  const { error: deleteError } = await client
+    .from("tenants")
+    .delete()
+    .eq("id", tenant.id)
+
+  if (deleteError) {
+    s.stop("Delete failed")
+    cancel(`Failed to delete tenant: ${deleteError.message}`)
+    process.exit(1)
+  }
+
+  // Clean up local project.json if it pointed at this tenant.
+  const linked = readProjectConfig()
+  if (linked && linked.tenantId === tenant.id) {
+    removeProjectConfig()
+    s.stop(`Deleted "${slug}" and removed local .helpbase/project.json`)
+  } else {
+    s.stop(`Deleted "${slug}"`)
+  }
+
+  outro(`${pc.green("✓")} Tenant "${slug}" deleted. Slug is now available.`)
 }

@@ -70,6 +70,14 @@ jobs:
           fi
           echo "✓ public/r/*.json is in sync"
 
+      # Supabase types drift gate: table-level check that apps/web/types/supabase.ts
+      # still declares the tenants / tenant_articles / tenant_categories /
+      # tenant_chunks / tenant_deploys / tenant_mcp_queries tables plus the
+      # deploy_tenant RPC signature. Catches the "added a migration, forgot to
+      # regen types" drift class. Column-level check against a live DB is v1.5.
+      - name: Verify Supabase types are in sync with schema
+        run: pnpm check:supabase-types
+
       # Install-path smoke test: scaffolds a fresh project via
       # create-helpbase, installs deps, runs the production build, asserts
       # expected routes generated. Would have caught the 2026-04-09 dogfood
@@ -84,3 +92,16 @@ jobs:
       # in the README is actually honored. Cost: $0. Runtime: ~60-120s.
       - name: Registry smoke test (shadcn add)
         run: pnpm smoke:registry
+
+      # Hosted-tier deploy smoke test: end-to-end CLI → RPC → (optional)
+      # hosted URL + MCP handshake. Skipped gracefully when the required
+      # secrets are not available (local dev, forked PRs). When secrets
+      # are present, this is the ship-gate for hosted tier v1 — if it
+      # fails, the Vegard install path is broken.
+      - name: Hosted-tier deploy smoke test
+        env:
+          HELPBASE_TOKEN: ${{ secrets.HELPBASE_SMOKE_TOKEN }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SMOKE_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SMOKE_SUPABASE_ANON_KEY }}
+          SMOKE_DEPLOY_SKIP_HTTP_CHECKS: "1"
+        run: pnpm smoke:deploy

@@ -11,8 +11,11 @@ import {
 } from "../lib/project-config.js"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
+// Kept in sync with RESERVED_SLUGS in deploy.ts and the subdomain-middleware allowlist.
 const RESERVED_SLUGS = new Set([
   "www", "app", "api", "admin", "dashboard", "docs", "help", "blog", "status", "mail",
+  "mcp", "deploy", "login", "signup", "signin", "auth", "billing", "support",
+  "cdn", "static", "assets", "files", "media", "images", "img",
 ])
 
 export const linkCommand = new Command("link")

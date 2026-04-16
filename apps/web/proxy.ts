@@ -3,6 +3,9 @@ import type { NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
 
+// Kept in sync with RESERVED_SLUGS in packages/cli/src/commands/deploy.ts
+// and packages/cli/src/commands/link.ts. Any change here must happen in
+// all three places (drift guard is a v1.5 CI check).
 const RESERVED_SLUGS = new Set([
   "www",
   "app",
@@ -14,41 +17,79 @@ const RESERVED_SLUGS = new Set([
   "blog",
   "status",
   "mail",
+  "mcp",
+  "deploy",
+  "login",
+  "signup",
+  "signin",
+  "auth",
+  "billing",
+  "support",
+  "cdn",
+  "static",
+  "assets",
+  "files",
+  "media",
+  "images",
+  "img",
 ])
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "helpbase.dev"
+// .trim() guards against copy-paste of env values that carry a trailing
+// newline (we've been bitten by this once already on 2026-04-16 — a stray
+// '\n' in NEXT_PUBLIC_ROOT_DOMAIN broke subdomain matching in production).
+const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "helpbase.dev").trim()
 
-function extractSubdomain(request: NextRequest): string | null {
-  const host = request.headers.get("host") ?? ""
-  const hostname = host.split(":")[0]!
+/**
+ * Pure-string subdomain extractor — consumes a raw Host header (with or
+ * without a port) and returns the tenant slug, or null if the request
+ * targets the apex, www, or an unknown domain. Exported for unit tests.
+ *
+ * The NextRequest variant below wraps this for use in the Proxy runtime.
+ *
+ * Resolution order:
+ *   1. IPs and IPv6 → null (never tenant-routed)
+ *   2. *.localhost[:port] → first label (dev)
+ *   3. *---*.vercel.app → first chunk before --- (Vercel preview tenants)
+ *   4. *.vercel.app (no ---) → null (shared preview, not tenant-routed)
+ *   5. *.<ROOT_DOMAIN> → subdomain, unless www / apex
+ *   6. Anything else → null (don't guess on unknown apex domains)
+ */
+function extractSubdomainFromHost(rawHost: string | null | undefined): string | null {
+  if (!rawHost) return null
+  const host = rawHost.split(":")[0]!.toLowerCase()
 
-  // Local development: tenant.localhost
-  if (hostname.includes("localhost") || hostname.includes("127.0.0.1")) {
-    const match = hostname.match(/^([^.]+)\.localhost/)
-    if (match?.[1] && match[1] !== "localhost") {
-      return match[1]
-    }
-    return null
+  // IP addresses never host tenants.
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return null
+  if (host.includes("::")) return null
+
+  // Local dev: tenant.localhost[:port]
+  if (host === "localhost" || host.endsWith(".localhost")) {
+    if (host === "localhost") return null
+    const first = host.split(".")[0]!
+    return first.length > 0 ? first : null
   }
 
-  // Vercel preview: tenant---branch.vercel.app
-  if (hostname.includes("---") && hostname.endsWith(".vercel.app")) {
-    const parts = hostname.split("---")
-    return parts.length > 0 ? parts[0]! : null
+  // Vercel preview tenant: tenant---branch.vercel.app
+  if (host.includes("---") && host.endsWith(".vercel.app")) {
+    const parts = host.split("---")
+    return parts.length > 0 && parts[0]!.length > 0 ? parts[0]! : null
   }
 
-  // Production: tenant.helpbase.dev
-  const rootDomain = ROOT_DOMAIN.split(":")[0]!
-  const isSubdomain =
-    hostname !== rootDomain &&
-    hostname !== `www.${rootDomain}` &&
-    hostname.endsWith(`.${rootDomain}`)
+  // Other vercel.app (bare preview hostname, no tenant routing).
+  if (host.endsWith(".vercel.app")) return null
 
-  if (isSubdomain) {
-    return hostname.replace(`.${rootDomain}`, "")
+  // Production: *.{ROOT_DOMAIN}
+  const rootDomain = ROOT_DOMAIN.split(":")[0]!.toLowerCase()
+  if (host === rootDomain || host === `www.${rootDomain}`) return null
+  if (host.endsWith(`.${rootDomain}`)) {
+    return host.slice(0, host.length - rootDomain.length - 1)
   }
 
   return null
+}
+
+function extractSubdomain(request: NextRequest): string | null {
+  return extractSubdomainFromHost(request.headers.get("host"))
 }
 
 export async function proxy(request: NextRequest) {
@@ -110,4 +151,4 @@ export const config = {
   ],
 }
 
-export { extractSubdomain, RESERVED_SLUGS }
+export { extractSubdomain, extractSubdomainFromHost, RESERVED_SLUGS }

@@ -39,6 +39,17 @@ export interface BuildServerOptions {
    * force keyword-only mode regardless of env/defaults.
    */
   searchIndexPath?: string | null
+  /**
+   * Pre-loaded docs. If provided, skips filesystem loading entirely —
+   * contentDir and searchIndexPath are ignored. Used by the hosted tier
+   * Vercel route to serve Supabase-backed content to the same tool
+   * surface without duplicating tool definitions.
+   */
+  preloadedDocs?: Doc[]
+  /**
+   * Pre-loaded categories. Required when `preloadedDocs` is set.
+   */
+  preloadedCategories?: CategoryMeta[]
 }
 
 /**
@@ -56,13 +67,28 @@ export function buildServer(options: BuildServerOptions = {}): {
   server: McpServer
   deps: ServerDeps
 } {
-  const contentDir = options.contentDir ?? findContentDir()
-  const docs = loadDocs(contentDir)
-  const categories = loadCategories(contentDir)
+  // Content source: either pre-loaded (hosted tier, Supabase) or filesystem
+  // (stdio, local). Filesystem loading is skipped entirely when preloaded
+  // docs are supplied — avoids relying on process.cwd() in serverless.
+  let contentDir: string
+  let docs: Doc[]
+  let categories: CategoryMeta[]
+  if (options.preloadedDocs) {
+    contentDir = options.contentDir ?? ""
+    docs = options.preloadedDocs
+    categories = options.preloadedCategories ?? []
+  } else {
+    contentDir = options.contentDir ?? findContentDir()
+    docs = loadDocs(contentDir)
+    categories = loadCategories(contentDir)
+  }
 
   let searchIndex: SearchIndex | null = null
   let searchIndexPath = ""
-  if (options.searchIndexPath !== null) {
+  // Semantic search index is filesystem-backed (see content/semantic.ts) and
+  // only makes sense for the stdio path. Hosted tier does keyword FTS in
+  // Postgres, so we skip semantic loading when preloaded docs are supplied.
+  if (!options.preloadedDocs && options.searchIndexPath !== null) {
     searchIndexPath =
       options.searchIndexPath ?? resolveDefaultIndexPath(contentDir)
     searchIndex = loadSearchIndex(searchIndexPath)

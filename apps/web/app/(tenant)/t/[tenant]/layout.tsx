@@ -96,8 +96,12 @@ export default async function TenantLayout({
         </div>
       </main>
 
-      {/* Powered by Helpbase footer */}
-      <footer className="border-t border-border/50 py-6 text-center">
+      {/* Footer: AI-synthesized disclosure + powered-by */}
+      <footer className="border-t border-border/50 py-6 text-center space-y-2">
+        <p className="text-xs text-muted-foreground px-4">
+          ⓘ This content is AI-synthesized from the underlying codebase.
+          Verify before acting on it.
+        </p>
         <a
           href={`https://helpbase.dev?ref=${slug}`}
           target="_blank"

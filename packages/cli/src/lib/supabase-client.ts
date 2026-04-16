@@ -6,10 +6,13 @@ import type { AuthSession } from "./auth.js"
  * knows how to produce a client given (or not given) a session.
  */
 
-// Public Supabase credentials (safe to embed in CLI)
-const SUPABASE_URL = "https://yamxvyexqxpdrnoymwhv.supabase.co"
+// Public Supabase credentials (safe to embed in CLI). This must match the
+// project apps/web and the hosted-tier tables live on — otherwise the CLI
+// authenticates against one project while the web app reads from another,
+// so deploys go nowhere and logins look "expired" against the wrong audience.
+const SUPABASE_URL = "https://rrlqttgjynfgxbhjkxnm.supabase.co"
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhbXh2eWV4cXhwZHJub3ltd2h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NTI5MjUsImV4cCI6MjA5MTQyODkyNX0.CIV8-oRqCCfTrAIyq0iTLYpEnJHkUkqQ4VU3ImwLUFo"
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJybHF0dGdqeW5mZ3hiaGpreG5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNTUzMTEsImV4cCI6MjA5MTkzMTMxMX0.EhBxN3v_RuTqorh6vETR7k6rZxfhJPKCA12JLmMVNO4"
 
 export function getAnonSupabase(): SupabaseClient {
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY)

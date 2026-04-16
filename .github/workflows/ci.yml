@@ -103,5 +103,4 @@ jobs:
           HELPBASE_TOKEN: ${{ secrets.HELPBASE_SMOKE_TOKEN }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SMOKE_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SMOKE_SUPABASE_ANON_KEY }}
-          SMOKE_DEPLOY_SKIP_HTTP_CHECKS: "1"
         run: pnpm smoke:deploy

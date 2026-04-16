@@ -131,11 +131,20 @@ echo "✓ MCP token printed in deploy output (${MCP_TOKEN:0:8}...)"
 if [[ "${SMOKE_DEPLOY_SKIP_HTTP_CHECKS:-}" == "1" ]]; then
   echo "⊘ SMOKE_DEPLOY_SKIP_HTTP_CHECKS=1 — skipping live-URL + MCP asserts"
 else
-  MCP_URL="${BASE_URL/https:\/\//https:\/\/${SMOKE_SLUG}.}/mcp"
-  # SMOKE_DEPLOY_BASE may omit subdomain; in that case we stitch it in above.
-  # If BASE_URL already has {slug}. baked in (rare), just use BASE_URL/mcp.
+  # Splice the tenant slug into the base URL's hostname. Bash parameter
+  # substitution with escaped slashes in the REPLACEMENT half leaks the
+  # backslashes into the output on some bash versions — producing URLs
+  # like "https:\/\/smoke-abc.helpbase.dev/mcp". Do the splice with a
+  # plain scheme-prefix match instead; no escaping drama.
   if [[ "${BASE_URL}" == *"${SMOKE_SLUG}"* ]]; then
+    # Preview deployment where BASE_URL already includes {slug}.
     MCP_URL="${BASE_URL}/mcp"
+  elif [[ "${BASE_URL}" == https://* ]]; then
+    MCP_URL="https://${SMOKE_SLUG}.${BASE_URL#https://}/mcp"
+  elif [[ "${BASE_URL}" == http://* ]]; then
+    MCP_URL="http://${SMOKE_SLUG}.${BASE_URL#http://}/mcp"
+  else
+    MCP_URL="${SMOKE_SLUG}.${BASE_URL}/mcp"
   fi
   echo "→ hitting MCP endpoint at ${MCP_URL}"
 

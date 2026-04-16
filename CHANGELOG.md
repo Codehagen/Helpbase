@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Semantic search for `@helpbase/mcp` (opt-in).** New `helpbase-mcp-build-index`
+  bin writes a `.search-index.json` beside your content dir using
+  `@xenova/transformers` (default model `Xenova/all-MiniLM-L6-v2`, 384-dim,
+  quantized). The MCP server auto-loads it at startup and swaps
+  `search_docs` from keyword match to embeddings-based ranking so
+  paraphrased queries ("authenticate my requests") resolve to the right
+  doc even when title/body don't share tokens. `@xenova/transformers` is
+  an **optional peer dep** — keyword search remains the zero-install
+  default. Stale/missing/malformed index logs to stderr and falls back to
+  keyword rather than crashing the server. 19 new semantic tests cover
+  cosine geometry, ranking correctness, round-trip save/load, and every
+  malformed-index path using an injected fake embedder (no model
+  download required in CI).
 - **`helpbase generate --repo <path>` — generate articles from local repo markdown.**
   Walks a directory, picks up `.md`/`.mdx`/`.markdown` files, skips build/VCS
   dirs, README-first ordering, concatenates with per-file headers, and feeds

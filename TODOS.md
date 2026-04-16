@@ -72,30 +72,10 @@ _All P2 items for the 2026-04-15 knowledge-layer plan shipped. See Completed._
 
 ---
 
----
+## Completed
 
 ### TODO-011: Semantic search inside MCP `search_docs` tool
-
-**What:** Upgrade `search_docs` from keyword/title match to embeddings-based semantic search. Adds a local embedding index built at `pnpm build` time (or on first MCP server start), stored alongside content.
-
-**Why:** Keyword match in v1 misses paraphrased queries. An agent asking "how do I authenticate my requests" should find `/guides/api-keys.mdx` even if "authenticate" isn't in the title. Semantic search closes that gap.
-
-**Pros:** Materially better search quality. Makes the MCP tool feel intelligent rather than grep-y. Still fully local (no external service).
-**Cons:** Adds an embeddings dependency and a local vector store. Model selection decision (ONNX local vs. API). Increases package size.
-
-**Context:**
-- Start with a small local model (e.g., minilm via `@xenova/transformers` or similar) to keep zero-network-at-runtime guarantee
-- Index file lives in `apps/web/public/search-index.bin` alongside `llms.txt`
-- Search tool prefers semantic, falls back to keyword if index missing
-
-**Effort:** M (human ~4-5 days / CC ~1h)
-**Priority:** P3
-**Depends on:** v1 MCP shipped and in use (need query data to know what fails)
-**Source:** /plan-eng-review 2026-04-15, deferred from MCP v1 scope
-
----
-
-## Completed
+**Completed:** 2026-04-16 — `packages/mcp/src/content/semantic.ts` ships `buildSearchIndex` / `saveSearchIndex` / `loadSearchIndex` / `semanticSearch` / `cosineSimilarity` backed by `@xenova/transformers` (default model `Xenova/all-MiniLM-L6-v2`, 384-dim, quantized). `@xenova/transformers` is an **optional peer dep** (`peerDependenciesMeta.optional = true`) so the default install stays light; dynamic import with an install-hint error keeps keyword search working when the peer dep is absent. Custom `Embedder` injection keeps tests fully offline (no model download). New bin `helpbase-mcp-build-index` writes `.search-index.json` beside the content dir (configurable via `--content-dir` / `--output` / `--model` flags or `HELPBASE_SEARCH_INDEX` env). `buildServer` auto-loads the default index path, logs a stderr warning on stale docs, and wires the index into `handleSearchDocs` while advertising the upgraded tool description. 68/68 mcp tests green (19 new semantic tests covering cosine geometry, ranking correctness on auth/install/intro clusters, save/load round-trip, all malformed-index paths, keyword fallback). Existing `content/index.ts` renamed internal ranker to `keywordSearch`; exported `searchDocs` is now an async dispatcher. MCP package README documents the opt-in flow end to end.
 
 ### TODO-007: Implement `helpbase generate --repo` for local repo markdown
 **Completed:** 2026-04-15 — `packages/shared/src/ai-text.ts` exports `readRepoContent(repoPath)` which walks a local directory, picks up `.md`/`.mdx`/`.markdown` files (skipping `node_modules`/`.git`/`dist`/`.next`/`build`/`out`/`.turbo`/`.vercel`/`.cache`/`coverage`/`.helpbase`), sorts README-like files first, concatenates with `===== <relpath> =====` headers, caps at 200k chars (shared `MAX_REPO_CONTENT_CHARS` / `MIN_SCRAPED_LENGTH`). `packages/cli/src/commands/generate.ts` wires `--repo` through the same article-plan pipeline as `--url` (supports `--debug`, `--dry-run`, `--test`, `--model`, `--output`). New `printRepoError` helper matches the existing problem/reason/fix/docs format. Generate test suite now covers missing-path, empty-dir, and dry-run-with-content paths; 305/305 CLI tests green + typecheck clean. GitHub URL ingestion (public `owner/repo` via Contents API) deferred — local paths cover the dogfooding flow and avoid token management for private repos.

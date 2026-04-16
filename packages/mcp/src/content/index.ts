@@ -1,8 +1,37 @@
 import type { Doc } from "./loader.js"
+import type { Embedder, SearchIndex } from "./semantic.js"
+import { semanticSearch } from "./semantic.js"
 
 export interface SearchHit {
   doc: Doc
   score: number
+}
+
+export interface SearchOptions {
+  /** When provided, the search dispatches to semanticSearch. */
+  index?: SearchIndex
+  /** Optional override for the embedder (used by tests and power users). */
+  embedder?: Embedder
+}
+
+/**
+ * Unified search entrypoint. Dispatches to semantic search when an index is
+ * provided, otherwise falls back to the small keyword ranker below.
+ *
+ * Returning a Promise always (even in the keyword path) keeps the call-site
+ * signature stable — the tool handler doesn't have to care which path ran.
+ */
+export async function searchDocs(
+  docs: Doc[],
+  query: string,
+  options: SearchOptions = {},
+): Promise<SearchHit[]> {
+  if (options.index) {
+    return semanticSearch(docs, query, options.index, {
+      embedder: options.embedder,
+    })
+  }
+  return keywordSearch(docs, query)
 }
 
 /**
@@ -12,9 +41,9 @@ export interface SearchHit {
  *   +3 per query term in description
  *   +1 per query term in body (capped at 5 occurrences to avoid term-spam boost)
  *
- * v1 ships with this intentionally simple ranker. Semantic search is TODO-011.
+ * This is the fallback path when no semantic index is loaded.
  */
-export function searchDocs(docs: Doc[], query: string): SearchHit[] {
+export function keywordSearch(docs: Doc[], query: string): SearchHit[] {
   const terms = query
     .toLowerCase()
     .split(/\s+/)

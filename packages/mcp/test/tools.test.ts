@@ -10,26 +10,33 @@ const docs = loadDocs(FIXTURE_ROOT)
 const categories = loadCategories(FIXTURE_ROOT)
 
 describe("search_docs tool", () => {
-  it("finds docs by title keyword", () => {
-    const result = handleSearchDocs(docs, { query: "installation" })
+  it("finds docs by title keyword", async () => {
+    const result = await handleSearchDocs(docs, { query: "installation" })
     const text = result.content[0]?.text ?? ""
     expect(text).toContain("installation")
   })
 
-  it("finds docs by body keyword", () => {
-    const result = handleSearchDocs(docs, { query: "authorization header" })
+  it("finds docs by body keyword", async () => {
+    const result = await handleSearchDocs(docs, {
+      query: "authorization header",
+    })
     const text = result.content[0]?.text ?? ""
     expect(text).toContain("authentication")
   })
 
-  it("returns a human-readable 'no matches' message for empty results", () => {
-    const result = handleSearchDocs(docs, { query: "xyzzy-nonexistent-term" })
+  it("returns a human-readable 'no matches' message for empty results", async () => {
+    const result = await handleSearchDocs(docs, {
+      query: "xyzzy-nonexistent-term",
+    })
     const text = result.content[0]?.text ?? ""
     expect(text).toMatch(/no docs matched/i)
   })
 
-  it("respects the limit parameter", () => {
-    const result = handleSearchDocs(docs, { query: "helpbase", limit: 1 })
+  it("respects the limit parameter", async () => {
+    const result = await handleSearchDocs(docs, {
+      query: "helpbase",
+      limit: 1,
+    })
     const text = result.content[0]?.text ?? ""
     // Only one bullet item should appear.
     const bulletCount = (text.match(/^-\s/gm) ?? []).length

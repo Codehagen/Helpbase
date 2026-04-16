@@ -50,9 +50,37 @@ same as above.
 
 | Tool | What it does |
 |------|--------------|
-| `search_docs` | Keyword/title search over your MDX. Returns ranked slugs. |
+| `search_docs` | Keyword search over your MDX, or semantic search when a prebuilt index is present. Returns ranked slugs. |
 | `get_doc` | Fetch a doc's full content by `category/slug` or just `slug`. |
 | `list_docs` | Index of all docs grouped by category. Optional category filter. |
+
+## Semantic search (optional)
+
+`search_docs` runs a small keyword ranker by default. To upgrade it to
+embeddings-based semantic search — so "how do I authenticate my requests"
+finds `guides/api-keys` even when "authenticate" isn't in the title —
+install the optional peer dep and build an index:
+
+```bash
+npm install @xenova/transformers
+npx -p @helpbase/mcp helpbase-mcp-build-index --content-dir ./content
+```
+
+The first build downloads the embedding model (~23 MB, cached locally) and
+writes `.search-index.json` next to your content directory. Subsequent runs
+are incremental from the same cache.
+
+Point the server at the index (or let it auto-discover the default path):
+
+```bash
+HELPBASE_SEARCH_INDEX=./content/.search-index.json npx @helpbase/mcp
+```
+
+If the index is missing, stale, or malformed, the server logs a line to
+stderr and falls back to keyword mode — it never takes down the server.
+
+Rebuild the index whenever your content changes (a `postbuild` script in
+your docs app is a good home for it).
 
 ## Content discovery
 

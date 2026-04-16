@@ -12,11 +12,20 @@ import {
 } from "./tools/search-docs.js"
 import { getDocInput, handleGetDoc } from "./tools/get-doc.js"
 import { handleListDocs, listDocsInput } from "./tools/list-docs.js"
+import {
+  loadSearchIndex,
+  resolveDefaultIndexPath,
+  type SearchIndex,
+} from "./content/semantic.js"
 
 export interface ServerDeps {
   contentDir: string
   docs: Doc[]
   categories: CategoryMeta[]
+  /** Semantic index, if one was loaded at startup. Null = keyword fallback. */
+  searchIndex: SearchIndex | null
+  /** Absolute path we tried to load from (useful for tests + diagnostics). */
+  searchIndexPath: string
 }
 
 export interface BuildServerOptions {
@@ -24,6 +33,12 @@ export interface BuildServerOptions {
   version?: string
   /** Override the content dir. If omitted, resolves via findContentDir(). */
   contentDir?: string
+  /**
+   * Override the search-index path. If omitted, resolves via
+   * HELPBASE_SEARCH_INDEX env or the default sibling file. Pass `null` to
+   * force keyword-only mode regardless of env/defaults.
+   */
+  searchIndexPath?: string | null
 }
 
 /**
@@ -45,6 +60,28 @@ export function buildServer(options: BuildServerOptions = {}): {
   const docs = loadDocs(contentDir)
   const categories = loadCategories(contentDir)
 
+  let searchIndex: SearchIndex | null = null
+  let searchIndexPath = ""
+  if (options.searchIndexPath !== null) {
+    searchIndexPath =
+      options.searchIndexPath ?? resolveDefaultIndexPath(contentDir)
+    searchIndex = loadSearchIndex(searchIndexPath)
+    if (searchIndex) {
+      const stale = docs.filter(
+        (d) =>
+          !searchIndex!.entries.some(
+            (e) => e.key === `${d.category}/${d.slug}`,
+          ),
+      )
+      if (stale.length > 0) {
+        process.stderr.write(
+          `[helpbase-mcp] Search index is missing ${stale.length} doc(s) — ` +
+            `rebuild with: helpbase-mcp-build-index\n`,
+        )
+      }
+    }
+  }
+
   const server = new McpServer({
     name: options.name ?? "helpbase-mcp",
     version: options.version ?? "0.0.1",
@@ -54,11 +91,15 @@ export function buildServer(options: BuildServerOptions = {}): {
     "search_docs",
     {
       title: "Search docs",
-      description:
-        "Search Helpbase docs by keyword. Matches titles, descriptions, and body. Returns ranked list of matching doc slugs.",
+      description: searchIndex
+        ? "Search Helpbase docs using semantic embeddings. Returns a ranked list of matching doc slugs."
+        : "Search Helpbase docs by keyword. Matches titles, descriptions, and body. Returns ranked list of matching doc slugs.",
       inputSchema: searchDocsInput.shape,
     },
-    async (input) => handleSearchDocs(docs, input),
+    async (input) =>
+      handleSearchDocs(docs, input, {
+        index: searchIndex ?? undefined,
+      }),
   )
 
   server.registerTool(
@@ -83,5 +124,8 @@ export function buildServer(options: BuildServerOptions = {}): {
     async (input) => handleListDocs(docs, categories, input),
   )
 
-  return { server, deps: { contentDir, docs, categories } }
+  return {
+    server,
+    deps: { contentDir, docs, categories, searchIndex, searchIndexPath },
+  }
 }

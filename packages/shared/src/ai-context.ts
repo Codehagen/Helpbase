@@ -30,6 +30,7 @@ import {
 } from "./schemas.js"
 import type { ContextSource } from "./context-reader.js"
 import { totalChars } from "./context-reader.js"
+import { readSnippet, type CitationFileCache } from "./citations.js"
 
 // ── Errors ────────────────────────────────────────────────────────────
 
@@ -67,15 +68,12 @@ export interface BuildContextPromptInput {
  * treat that content as data, not instructions. This is a mitigation
  * against prompt-injection from repo files; it is not a guarantee.
  *
- * Design notes:
- * - Per-file blocks carry their own `===== path (lines 1-N) =====`
- *   header so the model can cite line ranges without having to count
- *   across file boundaries.
- * - "How to log in / How to use X / How to do Y" phrasing steers the
- *   model toward task-oriented output instead of "Architecture overview"
- *   encyclopedia docs.
- * - The `snippet` contract is spelled out explicitly because that is
- *   the property the citation validator enforces at disk.
+ * v2 contract: the model returns only `{ file, startLine, endLine, reason }`
+ * per citation. The CLI reads literal bytes from disk at that range after
+ * the model returns — no paraphrase-drift failure mode. The old "snippet
+ * must be verbatim" rule was too brittle for cheaper models; dogfood on
+ * helpbase itself dropped 0/3 on Gemini Flash Lite and 7/13 on Sonnet
+ * before this change.
  */
 export function buildContextPrompt({
   sources,
@@ -93,7 +91,12 @@ export function buildContextPrompt({
 Rules — follow every one:
 
 1. Titles are phrased as action steps a human would search for: "How to log in", "How to create a workflow", "How to handle errors". Not "Auth overview", not "Architecture".
-2. Each doc cites 1–5 specific files from the repo. Each citation is {file, startLine, endLine, snippet}, where snippet is VERBATIM bytes from the cited line range — not paraphrased, not capitalized differently, not reformatted. The CLI will open each cited file and require the snippet to appear literally. Citations that fail that check are dropped.
+2. Each doc cites 1–5 specific files from the repo. Each citation is {file, startLine, endLine, reason}:
+   - file       — the repo-relative path exactly as it appears in the ===== path header.
+   - startLine  — 1-indexed inclusive, within the "lines 1-N" range in that file's header.
+   - endLine    — 1-indexed inclusive, >= startLine, <= N.
+   - reason     — one short sentence stating what this range shows (e.g. "defines the CLI flag" or "implements the retry").
+   The CLI will read the literal bytes at [startLine, endLine] from disk after you respond — do NOT include the snippet text yourself. Pick line ranges that will make sense when a human opens the file.
 3. Only claim what the repo actually supports. If you cannot cite a file+range for a claim, omit the claim. If you cannot cite anything, omit the entire doc.
 4. "category" is a human-readable grouping like "Getting Started" or "Authentication". The CLI slugifies it.
 5. "content" is MDX body without frontmatter. Use plain markdown; fenced code blocks get a language identifier. Minimum 3 ## H2 headings. Minimum 150 words of prose (code blocks don't count).
@@ -244,7 +247,7 @@ export function articleToMdxWithCitations(
   opts?: ArticleToMdxWithCitationsOptions,
 ): string {
   const source = opts?.source ?? "generated"
-  const version = opts?.helpbaseContextVersion ?? "1"
+  const version = opts?.helpbaseContextVersion ?? "2"
 
   const tagsYaml =
     article.tags.length > 0
@@ -281,42 +284,87 @@ ${sourcesSection}
 function renderCitationsYaml(citations: ContextCitation[]): string {
   return citations
     .map((c) => {
-      // Fold the snippet into a YAML block scalar (`|-` preserves \n,
-      // strips trailing newline). Indent each line by 6 spaces to sit
-      // inside the citation item.
-      const indented = c.snippet
-        .split("\n")
-        .map((line) => `      ${line}`)
-        .join("\n")
-      return [
+      const lines: string[] = [
         `  - file: ${JSON.stringify(c.file)}`,
         `    startLine: ${c.startLine}`,
         `    endLine: ${c.endLine}`,
-        `    snippet: |-`,
-        indented,
-      ].join("\n")
+      ]
+      if (c.reason) {
+        lines.push(`    reason: ${JSON.stringify(c.reason)}`)
+      }
+      if (c.snippet) {
+        // Fold the snippet into a YAML block scalar (`|-` preserves \n,
+        // strips trailing newline). Indent each line by 6 spaces to sit
+        // inside the citation item.
+        const indented = c.snippet
+          .split("\n")
+          .map((line) => `      ${line}`)
+          .join("\n")
+        lines.push(`    snippet: |-`, indented)
+      }
+      return lines.join("\n")
     })
     .join("\n")
+}
+
+/**
+ * Pick a fence length that won't collide with any backtick run inside the
+ * snippet. Markdown requires the opening fence to be at least one backtick
+ * longer than any ``` run in the body.
+ */
+function fenceFor(snippet: string): string {
+  const match = snippet.match(/`{3,}/g)
+  const longest = match ? match.reduce((n, s) => Math.max(n, s.length), 0) : 0
+  return "`".repeat(Math.max(3, longest + 1))
 }
 
 function renderSourcesSection(citations: ContextCitation[]): string {
   if (citations.length === 0) return ""
   const items = citations
     .map((c) => {
+      const header = c.reason
+        ? `- \`${c.file}\` (lines ${c.startLine}-${c.endLine}) — ${c.reason}`
+        : `- \`${c.file}\` (lines ${c.startLine}-${c.endLine})`
+      if (!c.snippet) {
+        // No on-disk bytes available. Keep the pointer; skip the code fence.
+        return header
+      }
       const lang = extToLang(c.file)
+      const fence = fenceFor(c.snippet)
       return [
-        `- \`${c.file}\` (lines ${c.startLine}-${c.endLine})`,
+        header,
         "",
-        "  ```" + lang,
+        "  " + fence + lang,
         c.snippet
           .split("\n")
           .map((line) => `  ${line}`)
           .join("\n"),
-        "  ```",
+        "  " + fence,
       ].join("\n")
     })
     .join("\n\n")
   return `## Sources\n\n${items}\n`
+}
+
+// ── Citation enrichment (v2 pipeline) ─────────────────────────────────
+
+/**
+ * Populate each citation's `snippet` field from disk bytes. v2 LLM output
+ * omits snippet; this runs after validateArticleCitations and before
+ * articleToMdxWithCitations so the written MDX carries real bytes, not
+ * model-paraphrased text. Citations whose on-disk read fails keep their
+ * file+line+reason and render in Sources without a code block.
+ */
+export function enrichCitationsFromDisk(
+  citations: ContextCitation[],
+  repoRoot: string,
+  cache: CitationFileCache,
+): ContextCitation[] {
+  return citations.map((c) => {
+    if (c.snippet && c.snippet.length > 0) return c
+    const bytes = readSnippet(repoRoot, c.file, c.startLine, c.endLine, cache)
+    return bytes === null ? c : { ...c, snippet: bytes }
+  })
 }
 
 function extToLang(filePath: string): string {

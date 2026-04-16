@@ -1,14 +1,15 @@
 /**
  * Citation validator for `helpbase context`.
  *
- * Every generated how-to doc must cite 1–5 specific file/line/snippet tuples.
+ * Every generated how-to doc cites 1–5 specific file/line-range tuples.
  * This module verifies each citation against the repo on disk:
  *
  *   1. The cited path stays inside the repo root (no `../../etc/passwd`).
- *   2. The line range is valid (startLine ≤ endLine ≤ file line count).
- *   3. The snippet appears verbatim in the file between those lines
- *      (whitespace-normalized: trim, collapse runs of whitespace, normalize
- *      CRLF → LF on read).
+ *   2. The line range is valid (1 ≤ startLine ≤ endLine ≤ file line count).
+ *   3. If a legacy `snippet` field is present (v1 committed docs), the
+ *      whitespace-normalized snippet must appear in the cited slice. v2
+ *      citations omit `snippet`; the CLI fills it from disk via readSnippet
+ *      after validation, so paraphrase drift is impossible by construction.
  *
  * A doc whose citations fully fail is dropped; a doc with some valid is
  * kept with only the passing citations. Disk is never read more than once
@@ -95,15 +96,36 @@ export interface ValidateResult {
 }
 
 /**
+ * Read the bytes of a cited line range from disk. 1-based inclusive on
+ * both ends, matching the citation schema. Returns null if the file can't
+ * be read or the line range is out of bounds — callers treat null as
+ * "drop this citation" and log the reason (surfaced via validateCitation).
+ *
+ * Path safety + CRLF normalization reuse readFileForCitation so disk
+ * access goes through the same guard and cache.
+ */
+export function readSnippet(
+  repoRoot: string,
+  relPath: string,
+  startLine: number,
+  endLine: number,
+  cache: CitationFileCache,
+): string | null {
+  const read = readFileForCitation(repoRoot, relPath, cache)
+  if (!read.ok) return null
+  const lines = read.content.split("\n")
+  if (startLine < 1 || startLine > lines.length) return null
+  if (endLine < startLine || endLine > lines.length) return null
+  return lines.slice(startLine - 1, endLine).join("\n")
+}
+
+/**
  * Validate a single citation against the repo.
  *
- *   - Read (or cache-hit) the cited file.
- *   - Assert startLine/endLine within file bounds.
- *   - Extract lines [startLine, endLine], whitespace-normalize, and assert
- *     the (whitespace-normalized) snippet appears as a substring.
- *
- * Case-sensitive on purpose — a snippet whose letters the model changed is
- * probably paraphrased, and a paraphrase is a hallucination of evidence.
+ * v2 contract: bounds-check the line range against the file on disk.
+ * Legacy v1 citations carrying a literal `snippet` field also get the
+ * whitespace-normalized substring check, so existing committed `.helpbase/`
+ * content keeps validating after the CLI upgrade.
  */
 export function validateCitation(
   repoRoot: string,
@@ -128,14 +150,18 @@ export function validateCitation(
   if (citation.endLine < citation.startLine) {
     return { ok: false, reason: `endLine < startLine` }
   }
-  const slice = lines.slice(citation.startLine - 1, citation.endLine).join("\n")
-  const haystack = normalizeWhitespace(slice)
-  const needle = normalizeWhitespace(citation.snippet)
-  if (!needle) return { ok: false, reason: "empty snippet" }
-  if (!haystack.includes(needle)) {
-    return {
-      ok: false,
-      reason: `snippet not found in ${citation.file}:${citation.startLine}-${citation.endLine}`,
+  // v1 legacy path: if the model shipped a `snippet`, keep enforcing the
+  // literal-text check so old committed docs don't silently degrade. v2
+  // citations omit `snippet` and the bounds check above is sufficient.
+  if (citation.snippet && citation.snippet.length > 0) {
+    const slice = lines.slice(citation.startLine - 1, citation.endLine).join("\n")
+    const haystack = normalizeWhitespace(slice)
+    const needle = normalizeWhitespace(citation.snippet)
+    if (!haystack.includes(needle)) {
+      return {
+        ok: false,
+        reason: `snippet not found in ${citation.file}:${citation.startLine}-${citation.endLine}`,
+      }
     }
   }
   return { ok: true }

@@ -16,6 +16,7 @@ import {
   buildLocalAskPrompt,
   generateHowtosFromRepo,
   articleToMdxWithCitations,
+  enrichCitationsFromDisk,
   sanitizeMdx,
   estimateTokens,
   TokenBudgetExceededError,
@@ -269,11 +270,14 @@ async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void>
         })),
       })
     }
-    kept.push({ ...sanitized, citations: v.kept })
+    // v2 citations omit `snippet` — enrich from disk so MDX carries real
+    // bytes, not model-paraphrased text. Reuses the validator's file cache.
+    const enriched = enrichCitationsFromDisk(v.kept, repoRoot, cache)
+    kept.push({ ...sanitized, citations: enriched })
     report.kept.push({
       title: sanitized.title,
       category: sanitized.category,
-      citationCount: v.kept.length,
+      citationCount: enriched.length,
     })
   }
 

@@ -43,3 +43,7 @@ public/_helpbase-assets/
 apps/web/public/llms.txt
 apps/web/public/llms-full.txt
 apps/web/public/_helpbase-assets/
+.helpbase
+
+# Eval harness output — per-run artifact, not committed
+packages/cli/eval/eval-report.json

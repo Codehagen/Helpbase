@@ -1,14 +1,19 @@
 import { describe, it, expect } from "vitest"
+import fs from "node:fs"
+import os from "node:os"
+import path from "node:path"
 import matter from "gray-matter"
 import {
   buildContextPrompt,
   buildLocalAskPrompt,
   sanitizeMdx,
   articleToMdxWithCitations,
+  enrichCitationsFromDisk,
   estimateTokens,
 } from "../ai-context.js"
+import { createFileCache } from "../citations.js"
 import type { ContextSource } from "../context-reader.js"
-import type { GeneratedContextDoc } from "../schemas.js"
+import type { ContextCitation, GeneratedContextDoc } from "../schemas.js"
 
 const sampleSources: ContextSource[] = [
   {
@@ -47,9 +52,13 @@ describe("buildContextPrompt", () => {
     expect(prompt).toMatch(/how to log in|how to use x|how to create/i)
   })
 
-  it("specifies the snippet contract is literal bytes, not paraphrased", () => {
-    expect(prompt.toLowerCase()).toContain("verbatim")
-    expect(prompt.toLowerCase()).toContain("literal")
+  it("instructs the model NOT to emit snippet text (v2 contract — CLI reads disk)", () => {
+    expect(prompt).toMatch(/do NOT include the snippet text yourself/i)
+    expect(prompt).toMatch(/read the literal bytes.*from disk/i)
+  })
+
+  it("spells out the citation shape as {file, startLine, endLine, reason}", () => {
+    expect(prompt).toContain("{file, startLine, endLine, reason}")
   })
 })
 
@@ -138,13 +147,18 @@ describe("articleToMdxWithCitations", () => {
     expect(parsed.data.schemaVersion).toBe(1)
     expect(parsed.data.title).toBe("How to log in")
     expect(parsed.data.source).toBe("generated")
-    expect(parsed.data.helpbaseContextVersion).toBe("1")
+    expect(parsed.data.helpbaseContextVersion).toBe("2")
     expect(parsed.data.citations).toHaveLength(1)
     const c = parsed.data.citations[0]
     expect(c.file).toBe("src/auth.ts")
     expect(c.startLine).toBe(1)
     expect(c.endLine).toBe(1)
     expect(c.snippet).toContain("export function login")
+  })
+
+  it("honors helpbaseContextVersion override (writes v1 shape for tooling)", () => {
+    const v1 = articleToMdxWithCitations(doc, 1, { helpbaseContextVersion: "1" })
+    expect(matter(v1).data.helpbaseContextVersion).toBe("1")
   })
 
   it("appends a ## Sources section so MCP get_doc surfaces citations", () => {
@@ -180,6 +194,86 @@ describe("articleToMdxWithCitations", () => {
   it("accepts source override for custom user-edited files", () => {
     const parsed = matter(articleToMdxWithCitations(doc, 1, { source: "custom" }))
     expect(parsed.data.source).toBe("custom")
+  })
+
+  it("uses a longer fence when the snippet itself contains triple-backticks (regression)", () => {
+    const snippetWithFence =
+      "Run the command:\n\n```bash\nhelpbase context .\n```\n\nDone."
+    const withBackticks: GeneratedContextDoc = {
+      ...doc,
+      citations: [
+        {
+          file: "README.md",
+          startLine: 10,
+          endLine: 14,
+          snippet: snippetWithFence,
+        },
+      ],
+    }
+    const out = articleToMdxWithCitations(withBackticks, 1)
+    // The Sources fence must be longer than any run inside the snippet.
+    expect(out).toContain("````")
+    // Round-trip: the inner ``` survives because the outer fence is longer.
+    const parsed = matter(out)
+    expect(parsed.content).toContain("```bash")
+    expect(parsed.content).toContain("helpbase context .")
+  })
+
+  it("renders Sources without a code fence when the snippet is missing", () => {
+    const noSnippet: GeneratedContextDoc = {
+      ...doc,
+      citations: [
+        { file: "src/auth.ts", startLine: 1, endLine: 1, reason: "defines login" },
+      ],
+    }
+    const out = articleToMdxWithCitations(noSnippet, 1)
+    expect(out).toContain("`src/auth.ts` (lines 1-1) — defines login")
+    // No code fence for this citation since there are no bytes to show.
+    const sourcesBlock = out.slice(out.indexOf("## Sources"))
+    expect(sourcesBlock).not.toContain("```")
+  })
+})
+
+describe("enrichCitationsFromDisk", () => {
+  it("fills snippet from disk bytes at the cited line range", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-enrich-"))
+    fs.writeFileSync(
+      path.join(tmp, "hello.ts"),
+      "// line 1\nexport const x = 1\nexport const y = 2\n",
+    )
+    const cache = createFileCache()
+    const citations: ContextCitation[] = [
+      { file: "hello.ts", startLine: 2, endLine: 2, reason: "defines x" },
+    ]
+    const out = enrichCitationsFromDisk(citations, tmp, cache)
+    expect(out).toHaveLength(1)
+    expect(out[0].snippet).toBe("export const x = 1")
+    expect(out[0].reason).toBe("defines x")
+    fs.rmSync(tmp, { recursive: true, force: true })
+  })
+
+  it("leaves an existing snippet alone (v1 committed docs stay byte-identical)", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-enrich-"))
+    fs.writeFileSync(path.join(tmp, "a.ts"), "line one\nline two\n")
+    const cache = createFileCache()
+    const citations: ContextCitation[] = [
+      { file: "a.ts", startLine: 1, endLine: 1, snippet: "literal preserved" },
+    ]
+    const out = enrichCitationsFromDisk(citations, tmp, cache)
+    expect(out[0].snippet).toBe("literal preserved")
+    fs.rmSync(tmp, { recursive: true, force: true })
+  })
+
+  it("leaves citation intact when the cited file is unreadable (no crash)", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-enrich-"))
+    const cache = createFileCache()
+    const citations: ContextCitation[] = [
+      { file: "missing.ts", startLine: 1, endLine: 1, reason: "ghost" },
+    ]
+    const out = enrichCitationsFromDisk(citations, tmp, cache)
+    expect(out[0].snippet).toBeUndefined()
+    expect(out[0].reason).toBe("ghost")
+    fs.rmSync(tmp, { recursive: true, force: true })
   })
 })
 

@@ -34,25 +34,30 @@ function isAllowedEmbedHost(url: string): boolean {
 
 /**
  * A citation produced by `helpbase context` — points at the specific file
- * + line range + snippet that justifies a generated how-to guide.
+ * + line range that justifies a generated how-to guide.
  *
- * Literal-text validated at disk: `snippet` must appear byte-for-byte in
- * the file between `startLine` and `endLine` (whitespace-normalized). Docs
- * whose citations fail this check are dropped before write.
+ * v2 contract: the LLM returns `{ file, startLine, endLine, reason? }` and
+ * the CLI reads literal bytes from disk at that line range. Decoupling the
+ * snippet from the model eliminates the paraphrase-drift failure mode that
+ * made v1 unusable on cheaper models (see context dogfood, 2026-04-16).
+ *
+ * `snippet` is optional: absent on fresh model output, filled in by the CLI
+ * from disk bytes before MDX write. Kept readable in the schema so v1
+ * committed docs (with literal snippets) keep parsing without a migration.
  *
  *   file       — repo-relative path (e.g. "src/routes/auth.ts")
  *   startLine  — 1-indexed inclusive
  *   endLine    — 1-indexed inclusive, >= startLine
- *   snippet    — verbatim bytes from the cited line range (used to detect
- *                when the LLM hallucinated a citation that looks plausible
- *                but doesn't match the actual file).
+ *   reason     — one short sentence on why this range supports the claim
+ *   snippet    — disk bytes from [startLine, endLine] (CLI-populated at write)
  */
 export const contextCitationSchema = z
   .object({
     file: z.string().min(1, "file is required"),
     startLine: z.number().int().positive("startLine must be >= 1"),
     endLine: z.number().int().positive("endLine must be >= 1"),
-    snippet: z.string().min(1, "snippet is required"),
+    reason: z.string().optional(),
+    snippet: z.string().optional(),
   })
   .refine((c) => c.endLine >= c.startLine, {
     message: "endLine must be >= startLine",

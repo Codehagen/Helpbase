@@ -7,7 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`helpbase context` citations are now disk-backed (v2 contract).** The
+  LLM used to be asked for a verbatim `snippet` alongside each citation's
+  file + line range; the validator then required that snippet to appear
+  literally in the file. Dogfood on the helpbase repo itself exposed this
+  as brittle: Gemini 3.1 Flash Lite (default model) dropped 3/3 docs and
+  Sonnet 4.6 dropped 5 of 13 on paraphrase drift — models couldn't hold
+  "verbatim bytes" reliably. The new contract asks the model only for
+  `{file, startLine, endLine, reason}`; the CLI reads the literal bytes
+  from disk after validation. Same repo, same model went from 0/3 → 3/3
+  kept. `helpbaseContextVersion` bumps to `2`; v1 citations (with
+  `snippet` fields) keep parsing and keep getting their literal-text
+  check, so committed `.helpbase/` content is not invalidated. Schema
+  synced to all four copies (apps/web, create-helpbase templates,
+  shadcn registry, shared).
+- **Sources section handles triple-backtick collisions.** When the disk
+  bytes themselves contain ``` (any Markdown or MDX file picks this up),
+  the fence widens to four or more backticks so the rendered doc stays
+  parseable. Regression test covers it.
+
 ### Added
+- **Eval quality gate ships in CI.** New `.github/workflows/context-eval.yml`
+  runs the 5-question self-dogfood eval weekly (Mondays 09:00 UTC) plus
+  on manual `workflow_dispatch`. Model is pinned to Sonnet 4.6 via
+  `HELPBASE_EVAL_MODEL`; threshold is ≥ 0.70; eval-report.json uploads
+  as an artifact with 90-day retention. Not per-PR — each run spends
+  real LLM tokens.
+- **Eval runner fixes.** Path resolution now anchors to the monorepo
+  root (was: `packages/cli`), the `--max-tokens` cap is raised to 500k
+  for large-repo runs, and the runner uses Sonnet for generation so the
+  quality gate measures "is the pipeline good enough", not "does the
+  cheapest model happen to work".
 - **`helpbase context` — turn any repo into cited how-to docs + an MCP endpoint in one command.**
   Walks markdown + selected code extensions (TS, JS, Python, Go, Rust, Ruby,
   Java, Kotlin, Swift, PHP), synthesizes task-oriented how-to guides via

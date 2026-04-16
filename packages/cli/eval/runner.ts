@@ -32,6 +32,18 @@ import {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const CLI_PATH = path.resolve(__dirname, "../dist/index.js")
+/** Monorepo root — `packages/cli/eval` → repo root. Relative repo paths in
+ *  questions.ts resolve from here, not from the runner's CWD. */
+const MONOREPO_ROOT = path.resolve(__dirname, "../../..")
+/** Budget for the eval runs. The helpbase self-dogfood has ~350k tokens
+ *  across 322 source files; 500k gives headroom for external repos too. */
+const EVAL_MAX_TOKENS = 500_000
+/** Model used for generation and --ask during eval. Sonnet is the quality
+ *  gate — the eval measures "can the pipeline produce docs good enough
+ *  that agents answer correctly", not "does the cheapest model work".
+ *  Override with HELPBASE_EVAL_MODEL=... for local cost-sensitive runs. */
+const EVAL_MODEL =
+  process.env.HELPBASE_EVAL_MODEL ?? "anthropic/claude-sonnet-4.6"
 
 interface QuestionResult {
   questionId: string
@@ -106,17 +118,19 @@ async function main(): Promise<void> {
 }
 
 async function runRepoEval(repo: EvalRepo): Promise<RepoResult> {
-  const repoAbs = path.resolve(repo.path)
+  const repoAbs = path.isAbsolute(repo.path)
+    ? repo.path
+    : path.resolve(MONOREPO_ROOT, repo.path)
   if (!fs.existsSync(repoAbs)) {
     throw new Error(`Repo path does not exist: ${repoAbs}`)
   }
 
   // Generate docs once per repo — individual --ask calls re-use them.
-  console.log(`  › helpbase context ${repoAbs}`)
-  execSync(`node ${CLI_PATH} context ${repoAbs}`, {
-    stdio: "inherit",
-    env: process.env,
-  })
+  console.log(`  › helpbase context ${repoAbs} (model: ${EVAL_MODEL})`)
+  execSync(
+    `node ${CLI_PATH} context ${repoAbs} --max-tokens ${EVAL_MAX_TOKENS} --model ${EVAL_MODEL} --yes`,
+    { stdio: "inherit", env: process.env },
+  )
 
   const questionResults: QuestionResult[] = []
   for (const q of repo.questions) {
@@ -157,7 +171,7 @@ function runAsk(
   // Shell-quote the question string.
   const qArg = JSON.stringify(q.question)
   const out = execSync(
-    `node ${CLI_PATH} context ${repoAbs} --ask ${qArg}`,
+    `node ${CLI_PATH} context ${repoAbs} --ask ${qArg} --max-tokens ${EVAL_MAX_TOKENS} --model ${EVAL_MODEL} --yes`,
     { encoding: "utf8", env: process.env },
   )
   return { answer: out, durationMs: Date.now() - started }

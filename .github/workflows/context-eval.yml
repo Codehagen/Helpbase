@@ -1,0 +1,57 @@
+name: context-eval
+
+# Quality gate for `helpbase context`. Not per-PR (each run costs real
+# LLM tokens against the AI Gateway). Two triggers:
+#
+#   - workflow_dispatch: run on demand before a release or after a
+#     prompt/schema change that could regress answer quality.
+#   - schedule: weekly on Monday 09:00 UTC. Picks up model drift — if
+#     Sonnet gets updated upstream and starts producing lower-quality
+#     citations, we notice within a week.
+#
+# The job fails if the aggregate eval score drops below 70%. Passing
+# score is persisted as an artifact so future runs can be compared.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1"
+
+jobs:
+  eval:
+    name: helpbase context — 5-Q self-dogfood eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI
+        run: pnpm --filter helpbase build
+
+      - name: Run context eval (Sonnet 4.6)
+        env:
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+          HELPBASE_EVAL_MODEL: anthropic/claude-sonnet-4.6
+        run: pnpm --filter helpbase eval
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: packages/cli/eval/eval-report.json
+          retention-days: 90

@@ -5,6 +5,7 @@ import os from "node:os"
 import {
   createFileCache,
   readFileForCitation,
+  readSnippet,
   validateCitation,
   validateArticleCitations,
   normalizeWhitespace,
@@ -185,6 +186,45 @@ describe("validateCitation", () => {
     expect(r.reason).toMatch(/escape|not found/i)
   })
 
+  it("v2: passes a citation with no snippet — bounds check alone", () => {
+    const cache = createFileCache()
+    const c: ContextCitation = {
+      file: "src/routes/auth.ts",
+      startLine: 1,
+      endLine: 2,
+      reason: "declares the login endpoint",
+    }
+    const r = validateCitation(REPO_ROOT, c, cache)
+    expect(r.ok).toBe(true)
+  })
+
+  it("v2: fails a snippet-less citation whose lines are out of range", () => {
+    const cache = createFileCache()
+    const r = validateCitation(
+      REPO_ROOT,
+      { file: "src/routes/auth.ts", startLine: 500, endLine: 501 },
+      cache,
+    )
+    expect(r.ok).toBe(false)
+    expect(r.reason).toMatch(/out of range/i)
+  })
+
+  it("v1 backcompat: still enforces literal-text match when snippet IS present", () => {
+    const cache = createFileCache()
+    const r = validateCitation(
+      REPO_ROOT,
+      {
+        file: "src/routes/auth.ts",
+        startLine: 1,
+        endLine: 1,
+        snippet: "this text does not appear anywhere",
+      },
+      cache,
+    )
+    expect(r.ok).toBe(false)
+    expect(r.reason).toMatch(/snippet not found/i)
+  })
+
   it("uses the per-run cache so repeated citations into one file read the file once", () => {
     const cache = createFileCache()
     validateCitation(
@@ -282,6 +322,37 @@ describe("readFileForCitation", () => {
     const outsideFile = path.join(OUTSIDE_ROOT, "secret.txt")
     const r = readFileForCitation(REPO_ROOT, outsideFile, cache)
     expect(r.ok).toBe(false)
+  })
+})
+
+describe("readSnippet", () => {
+  it("returns disk bytes for a valid 1-based inclusive range", () => {
+    const cache = createFileCache()
+    const r = readSnippet(REPO_ROOT, "src/routes/auth.ts", 1, 2, cache)
+    expect(r).not.toBeNull()
+    expect(r).toContain("export function login")
+    expect(r).toContain("Validates credentials")
+  })
+
+  it("returns null when the file is missing", () => {
+    const cache = createFileCache()
+    expect(readSnippet(REPO_ROOT, "src/ghost.ts", 1, 1, cache)).toBeNull()
+  })
+
+  it("returns null when the line range is out of bounds", () => {
+    const cache = createFileCache()
+    expect(readSnippet(REPO_ROOT, "src/routes/auth.ts", 99, 100, cache)).toBeNull()
+  })
+
+  it("returns null when startLine > endLine", () => {
+    const cache = createFileCache()
+    expect(readSnippet(REPO_ROOT, "src/routes/auth.ts", 3, 2, cache)).toBeNull()
+  })
+
+  it("normalizes CRLF so Windows-saved files read cleanly", () => {
+    const cache = createFileCache()
+    const r = readSnippet(REPO_ROOT, "src/routes/crlf.ts", 2, 2, cache)
+    expect(r).toBe("line two")
   })
 })
 

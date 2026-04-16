@@ -81,6 +81,11 @@ export async function scrapeUrl(url: string): Promise<string> {
  */
 export const MAX_REPO_CONTENT_CHARS = 200_000
 
+// Kept local to avoid a circular import between shared modules; these live
+// in a dedicated `./secrets.ts` module that both `ai-text` (walker) and the
+// CLI `context` command import from.
+import { isSecretFile } from "./secrets.js"
+
 const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx", ".markdown"])
 
 const SKIP_DIR_NAMES = new Set([
@@ -119,6 +124,11 @@ function walkMarkdownFiles(rootDir: string): string[] {
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase()
         if (MARKDOWN_EXTENSIONS.has(ext)) {
+          // Drop files whose NAMES indicate a secret (.env*, *.pem, *.key, ...).
+          // Content-level secret scanning runs separately in helpbase context;
+          // this gate protects even generate --repo from slurping secrets into
+          // an LLM prompt.
+          if (isSecretFile(entry.name)) continue
           results.push(full)
         }
       }

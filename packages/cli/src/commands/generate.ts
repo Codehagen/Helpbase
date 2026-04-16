@@ -29,6 +29,10 @@ import { HelpbaseError } from "../lib/errors.js"
 
 export const generateCommand = new Command("generate")
   .description("Generate help articles using AI")
+  .argument(
+    "[repoPath]",
+    "Path to a local repository (alias for --repo; ignored if --repo is set)",
+  )
   .option("--url <url>", "Scrape a website URL and generate articles")
   .option("--repo <path>", "Read a local repository and generate articles")
   .option("--screenshots <dir>", "Generate visual how-to articles from a folder of screenshots")
@@ -55,15 +59,22 @@ export const generateCommand = new Command("generate")
 Examples:
   $ helpbase generate --url https://myproduct.com
   $ helpbase generate --url https://myproduct.com --test           # cheap model
-  $ helpbase generate --repo .                                     # read local repo markdown
-  $ helpbase generate --repo ./path/to/repo --dry-run              # preview without spending tokens
+  $ helpbase generate .                                            # read local repo markdown (positional)
+  $ helpbase generate --repo .                                     # same, explicit flag
+  $ helpbase generate ./path/to/repo --dry-run                     # preview without spending tokens
   $ helpbase generate --screenshots ./flow --title "How to invite a teammate"
   $ helpbase generate --url https://myproduct.com --dry-run        # preview without spending tokens
 
 Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
 `,
   )
-  .action(async (opts) => {
+  .action(async (repoPath: string | undefined, opts) => {
+    // Non-breaking alias: positional [repoPath] maps to --repo when --repo is unset.
+    // Keeps `generate --repo ./x` working AND accepts `generate ./x`, matching `context`.
+    if (repoPath && !opts.repo) {
+      opts.repo = repoPath
+    }
+
     if (!opts.url && !opts.repo && !opts.screenshots) {
       console.error(
         `${pc.red("✖")} Provide a source: ${pc.cyan("--url <url>")}, ${pc.cyan("--screenshots <dir>")}, or ${pc.cyan("--repo <path>")}\n` +

@@ -35,6 +35,14 @@ export type ErrorCode =
   | "E_INVALID_REV"
   | "E_NO_CONTENT"
   | "E_NO_MCP_TOKEN"
+  | "E_CONTEXT_MISSING_KEY"
+  | "E_CONTEXT_NO_SOURCES"
+  | "E_CONTEXT_OVER_BUDGET"
+  | "E_CONTEXT_DIRTY_TREE"
+  | "E_CONTEXT_SCHEMA"
+  | "E_CONTEXT_NO_VALID_CITATIONS"
+  | "E_CONTEXT_SECRET"
+  | "E_CONTEXT_REPO_PATH"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

@@ -1,0 +1,121 @@
+/**
+ * Error catalog for `helpbase context`.
+ *
+ * Every error path surfaces the same {problem, cause, fix} shape so the
+ * user always knows what happened and what to do next. This is the
+ * DX-review-mandated error formatting — half the error paths in the
+ * pre-review draft had no specified UX. Now they all do.
+ *
+ * Thin layer over HelpbaseError — the doc URL is derived automatically
+ * from the `code` (see errors.ts `docUrl()`).
+ */
+
+import { HelpbaseError, type ErrorCode } from "../lib/errors.js"
+
+export type ContextErrorCode = Extract<ErrorCode, `E_CONTEXT_${string}`>
+
+interface ContextErrorBase {
+  problem: string
+  cause: string
+  fix: string | string[]
+}
+
+export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
+  E_CONTEXT_MISSING_KEY: {
+    problem: "No LLM API key is set in your environment.",
+    cause:
+      "helpbase context needs AI_GATEWAY_API_KEY. Vercel AI Gateway is a FREE routing proxy — " +
+      "you configure your existing Anthropic/OpenAI key there and get one Gateway key back. " +
+      "You pay the provider once, not twice.",
+    fix: [
+      "Sign up free at https://vercel.com/ai-gateway (30 seconds).",
+      "Configure your Anthropic or OpenAI key in the Gateway dashboard.",
+      "export AI_GATEWAY_API_KEY=<gateway-key> and re-run.",
+      "(Direct @ai-sdk/anthropic + @ai-sdk/openai support ships in v1.1.)",
+    ],
+  },
+  E_CONTEXT_NO_SOURCES: {
+    problem: "No source files found in the target repo.",
+    cause:
+      "helpbase context walks markdown + selected code extensions and skips " +
+      "secret files, lockfile dirs, build output, and .gitignore-style paths. " +
+      "Either the directory is empty or everything got filtered out.",
+    fix: [
+      "Check the path you passed — `helpbase context .` uses the current directory.",
+      "Add a README.md or source files with supported extensions (.md, .mdx, .ts, .tsx, .js, .py, .go, .rs, .rb, .java).",
+    ],
+  },
+  E_CONTEXT_OVER_BUDGET: {
+    problem: "The repo's source content exceeds the token budget.",
+    cause:
+      "Default budget is 100,000 input tokens estimated at 3.5 chars/token. " +
+      "Your repo is above that.",
+    fix: [
+      "Raise the ceiling: --max-tokens 200000.",
+      "Narrow scope: --only <category>.",
+      "Adjust the ratio for your content type: --chars-per-token 4.2 (prose-heavy) / 2.8 (code-heavy).",
+    ],
+  },
+  E_CONTEXT_DIRTY_TREE: {
+    problem: "Working tree has uncommitted changes and --require-clean was set.",
+    cause:
+      "--require-clean is CI-mode. It fails fast if git status shows modifications " +
+      "so scheduled runs don't commingle generated docs with WIP code.",
+    fix: [
+      "Commit or `git stash` your WIP, then re-run.",
+      "Drop --require-clean if you're running locally (default warns but continues).",
+    ],
+  },
+  E_CONTEXT_SCHEMA: {
+    problem: "The model returned output that did not match the generation schema.",
+    cause:
+      "Some models emit empty arrays for nested `min(1)` constraints, or wrap JSON in prose. " +
+      "We retried once with a smaller input slice and it still failed.",
+    fix: [
+      "Try a stronger model: --model anthropic/claude-sonnet-4.6.",
+      "Reduce scope with --only <category> or --max-tokens <n>.",
+    ],
+  },
+  E_CONTEXT_NO_VALID_CITATIONS: {
+    problem: "Every generated doc failed citation validation — nothing was written.",
+    cause:
+      "The LLM emitted citations whose file + line range + snippet could not be " +
+      "literally matched against the repo. Usually means the model hallucinated evidence.",
+    fix: [
+      "Check .helpbase/synthesis-report.json for per-citation drop reasons.",
+      "If snippets were paraphrased, retry with --model anthropic/claude-sonnet-4.6.",
+      "If cited code files were missing from the reader, use --include-ext to widen it.",
+    ],
+  },
+  E_CONTEXT_SECRET: {
+    problem: "Generated content matched a secret-shaped pattern. Run aborted.",
+    cause:
+      "The pre-write secret scanner caught content that looks like an API key, " +
+      "private key, or credential. NOTHING was written to .helpbase/.",
+    fix: [
+      "Open the file + line shown above.",
+      "If it's a legitimate example, use a placeholder (sk-xxxxx) instead of a realistic-looking value.",
+      "If it's a real secret, rotate it immediately and add the source file to .gitignore.",
+    ],
+  },
+  E_CONTEXT_REPO_PATH: {
+    problem: "The repo path you passed does not exist or is not a directory.",
+    cause: "helpbase context needs a local directory to walk.",
+    fix: [
+      "Check the path. Use `.` for the current directory. Absolute paths work too.",
+    ],
+  },
+}
+
+export function contextError(
+  code: ContextErrorCode,
+  overrides?: Partial<ContextErrorBase>,
+): HelpbaseError {
+  const info = CONTEXT_ERRORS[code]
+  return new HelpbaseError({
+    code,
+    problem: overrides?.problem ?? info.problem,
+    cause: overrides?.cause ?? info.cause,
+    fix: overrides?.fix ?? info.fix,
+  })
+}

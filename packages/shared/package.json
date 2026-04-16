@@ -12,14 +12,25 @@
     "./ai-visual": "./src/ai-visual.ts",
     "./ai-sync": "./src/ai-sync.ts",
     "./screenshots": "./src/screenshots.ts",
-    "./config": "./src/config.ts"
+    "./config": "./src/config.ts",
+    "./secrets": "./src/secrets.ts",
+    "./citations": "./src/citations.ts",
+    "./context-reader": "./src/context-reader.ts",
+    "./ai-context": "./src/ai-context.ts",
+    "./context-writer": "./src/context-writer.ts",
+    "./llms-txt": "./src/llms-txt.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
   },
   "dependencies": {
     "ai": "^5.0.0",
+    "gray-matter": "^4.0.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@workspace/typescript-config": "workspace:*",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.3"
   }
 }

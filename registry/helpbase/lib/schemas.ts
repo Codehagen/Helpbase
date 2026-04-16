@@ -32,6 +32,35 @@ function isAllowedEmbedHost(url: string): boolean {
   }
 }
 
+/**
+ * A citation produced by `helpbase context` — points at the specific file
+ * + line range + snippet that justifies a generated how-to guide.
+ *
+ * Literal-text validated at disk: `snippet` must appear byte-for-byte in
+ * the file between `startLine` and `endLine` (whitespace-normalized). Docs
+ * whose citations fail this check are dropped before write.
+ *
+ *   file       — repo-relative path (e.g. "src/routes/auth.ts")
+ *   startLine  — 1-indexed inclusive
+ *   endLine    — 1-indexed inclusive, >= startLine
+ *   snippet    — verbatim bytes from the cited line range (used to detect
+ *                when the LLM hallucinated a citation that looks plausible
+ *                but doesn't match the actual file).
+ */
+export const contextCitationSchema = z
+  .object({
+    file: z.string().min(1, "file is required"),
+    startLine: z.number().int().positive("startLine must be >= 1"),
+    endLine: z.number().int().positive("endLine must be >= 1"),
+    snippet: z.string().min(1, "snippet is required"),
+  })
+  .refine((c) => c.endLine >= c.startLine, {
+    message: "endLine must be >= startLine",
+    path: ["endLine"],
+  })
+
+export type ContextCitation = z.infer<typeof contextCitationSchema>
+
 export const frontmatterSchema = z.object({
   schemaVersion: z.number({
     error: "schemaVersion is required. Add 'schemaVersion: 1' to your frontmatter.",
@@ -52,6 +81,11 @@ export const frontmatterSchema = z.object({
     })
     .optional(),
   ogImage: z.string().optional(),
+  // Fields set by `helpbase context` on generated docs. Optional so hand-
+  // written articles and scaffolded content keep validating unchanged.
+  citations: z.array(contextCitationSchema).optional(),
+  source: z.enum(["generated", "custom"]).optional(),
+  helpbaseContextVersion: z.string().optional(),
 })
 
 export type Frontmatter = z.infer<typeof frontmatterSchema>
@@ -93,6 +127,26 @@ export const generatedArticlesSchema = z.object({
 })
 
 export type GeneratedArticle = z.infer<typeof generatedArticleSchema>
+
+/**
+ * Generated context doc — what the LLM returns for `helpbase context`. Extends
+ * the article shape with citations (1–5 per doc, enforced; literal-text
+ * validated before write) and a list of source file paths the model was
+ * inspired by. Dropped docs (zero valid citations) never reach disk.
+ */
+export const generatedContextDocSchema = generatedArticleSchema.extend({
+  citations: z
+    .array(contextCitationSchema)
+    .min(1, "at least 1 citation is required")
+    .max(5, "at most 5 citations per doc"),
+  sourcePaths: z.array(z.string()).default([]),
+})
+
+export const generatedContextDocsSchema = z.object({
+  docs: z.array(generatedContextDocSchema),
+})
+
+export type GeneratedContextDoc = z.infer<typeof generatedContextDocSchema>
 
 /**
  * An image associated with a generated article.

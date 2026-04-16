@@ -8,6 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`helpbase context` — turn any repo into cited how-to docs + an MCP endpoint in one command.**
+  Walks markdown + selected code extensions (TS, JS, Python, Go, Rust, Ruby,
+  Java, Kotlin, Swift, PHP), synthesizes task-oriented how-to guides via
+  Vercel AI Gateway, grounds every claim in a literal-text-validated citation
+  (file + line range + verbatim snippet), writes MDX with a `## Sources`
+  section to `.helpbase/docs/<category>/<slug>.mdx`, and emits
+  `llms.txt` + `llms-full.txt` + an `mcp.json` config hint. Regeneration is
+  idempotent: `source: generated` frontmatter marks files helpbase owns,
+  `source: custom` is preserved untouched, stale generated files are
+  deleted. Two safety gates (secret deny-list pre-walk + post-synthesis
+  scan) abort runs before any file hits disk if secret-shaped content
+  appears. `--ask "<question>"` runs a local RAG answer in the terminal
+  against the freshly generated docs — no MCP client required for the
+  first demo. `--require-clean` fails fast for CI; `--only <category>`
+  regenerates a single category; `--max-tokens` enforces the input
+  budget with a per-file breakdown when exceeded. Extends `generate` to
+  accept a positional repo path (non-breaking alias for `--repo`).
+- **Eval harness for `helpbase context`.** `packages/cli/eval/` ships 5
+  questions × 1 repo (helpbase itself) with an LLM-as-judge grader.
+  `pnpm --filter helpbase eval` runs the full pipeline and writes
+  `eval-report.json`. ≥0.70 aggregate score is the ship-block. External
+  repos + CI workflow_dispatch gate land in v1.1.
+- **Shared citation + secret primitives.** `@workspace/shared/citations`
+  (literal-text validator with CRLF normalization, path-traversal
+  defense, per-run file cache) and `@workspace/shared/secrets` (deny-list
+  for `.env*`, `*.pem`, `*.key`, `sk-*`, `AKIA*`, `ghp_`, `xoxb-`, AWS
+  secrets, PEM blocks; matched bytes deliberately never appear in error
+  output to prevent log leaks). Walker used by `generate --repo` now
+  skips secret-named files too.
+- **`frontmatterSchema` extension — `citations`, `source`,
+  `helpbaseContextVersion` optional fields.** Propagated to all 4 copies
+  via `pnpm sync:templates` so scaffolded apps and the shadcn registry
+  validate generated content without failing. 
 - **Semantic search for `@helpbase/mcp` (opt-in).** New `helpbase-mcp-build-index`
   bin writes a `.search-index.json` beside your content dir using
   `@xenova/transformers` (default model `Xenova/all-MiniLM-L6-v2`, 384-dim,

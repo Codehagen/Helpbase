@@ -28,6 +28,46 @@ _All P2 items for the 2026-04-15 knowledge-layer plan shipped. See Completed._
 
 ## P3 (deferred)
 
+### TODO-018: `helpbase context` — direct `@ai-sdk/anthropic` / `@ai-sdk/openai` BYOK (v1.1)
+
+**What:** `helpbase context` v1 routes through Vercel AI Gateway only. v1.1 should accept `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` directly via `@ai-sdk/anthropic` + `@ai-sdk/openai` so devs with a provider key can skip the Gateway signup entirely.
+
+**Why:** DX review flagged the Gateway signup as a first-run TTHW hit. v1 mitigates with a clear error message (Gateway is a free proxy, your provider key still does the work) but full direct-SDK BYOK is cleaner.
+
+**Pros:** Removes the one external signup. Faster first-run for devs with existing provider keys.
+**Cons:** Adds ~400KB install weight. Requires a provider router in `callGenerator` that passes the right SDK object per env var.
+
+**Context:**
+- Plan Decision #12, revised during Step 5 implementation
+- Touch points: `packages/shared/src/ai.ts` (`callGenerator`), `packages/cli/src/commands/context.ts` (key resolution chain)
+- Error-catalog copy in `context-errors.ts` already mentions v1.1
+
+**Effort:** S (human ~4h / CC ~30m)
+**Priority:** P3
+**Source:** /autoplan --only plan-devex-review 2026-04-16
+
+---
+
+### TODO-019: `helpbase context` — external-repo eval + CI gate (v1.1)
+
+**What:** Extend `packages/cli/eval/questions.ts` with 2 external repos (shadcn-ui/ui + one other), add GitHub Actions `workflow_dispatch` + nightly cron jobs that run the eval with the `AI_GATEWAY_API_KEY` secret, store score history in `~/.gstack/analytics/eval.jsonl`.
+
+**Why:** v1 eval covers only the helpbase repo. External-repo coverage validates the thesis generalizes beyond dogfood and catches regressions that only show up on unfamiliar codebases.
+
+**Pros:** Stronger ship-block. Regression detection across unfamiliar layouts. Public history of score trends.
+**Cons:** ~30 LLM calls per run × 3 repos = ~90 calls. Not expensive but not free.
+
+**Context:**
+- `packages/cli/eval/README.md` already notes v1.1 scope
+- CI config: `.github/workflows/ci.yml` (add `eval` job gated to workflow_dispatch + nightly)
+- Clone cache path: `packages/cli/eval/.repos/` (gitignored)
+
+**Effort:** M (human ~1 day / CC ~1h)
+**Priority:** P3
+**Source:** /autoplan --only plan-eng-review 2026-04-16
+
+---
+
 ### TODO-017: `helpbase agent` — prompt-to-PR doc writer (deferred)
 
 **What:** CLI that takes a natural-language prompt and opens a doc PR. Parity with hosted-docs-SaaS prompt-to-PR features, but invokable from any CI or locally. No GitHub App phone-home.

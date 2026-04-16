@@ -39,6 +39,7 @@ monorepo.
 - **Docs site** — a full Next.js + shadcn/ui help center in your repo
 - **MCP server** — `@helpbase/mcp` runs next to your app, not in a vendor's cloud
 - **`llms.txt` + `llms-full.txt`** — generated at your build time, served from your origin
+- **`helpbase context`** — point at any repo, get cited how-to guides + MCP + llms.txt in one command
 - **Doc sync** — `helpbase sync` proposes codebase-grounded doc diffs with mandatory citations, opens them as PRs in your repo via your CI
 - **Workflows** — `shadcn add helpbase-workflow` drops a plain GitHub Action that runs `helpbase sync` in your Actions minutes, with your secrets
 
@@ -60,6 +61,28 @@ log into.
 - **Content audit CLI** — `helpbase audit` catches missing titles, broken schemas, and empty categories in CI
 - **Reduced-motion aware** — animations respect `prefers-reduced-motion`
 - **Production-tested** — 300+ tests across the CLI, scaffolder, MCP server, and content pipeline, plus an install-path smoke test in CI
+
+## Try it on your repo in 60 seconds
+
+Point `helpbase context` at any repo. It synthesizes task-oriented how-to
+guides grounded in cited files, writes MDX to `.helpbase/docs/`, emits
+`llms.txt` + an MCP config hint, and can answer questions in-terminal
+without any MCP client setup. Same content, two surfaces: humans read
+the MDX, agents query over MCP.
+
+```bash
+export AI_GATEWAY_API_KEY=...                       # free proxy; your provider key routes through it
+npx helpbase context .                               # synthesize cited how-tos from your repo
+npx helpbase context . --ask "how do I log in?"     # answer in terminal, no MCP client required
+```
+
+Every generated doc cites specific files + line ranges. Citations that
+don't match the repo literally are dropped before write — no hallucinated
+docs. Secret-shaped content aborts the run before any file hits disk.
+`.helpbase/` is gitignored by default.
+
+Paste one of the blocks from `.helpbase/mcp.json` into Claude Desktop,
+Cursor, or Claude Code and your agent has your repo as docs.
 
 ## Quick start
 

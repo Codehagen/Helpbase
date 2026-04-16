@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-04-16
+
+First real release. `helpbase context` is the AI-native flow: point the CLI
+at any repo, get cited how-to docs + an MCP endpoint + llms.txt in one
+command. Validated end-to-end on a fresh third-party repo — the agent
+flow works (MCP `list_docs` over JSON-RPC serves the generated MDX), the
+human flow works (cited Sources section, parseable frontmatter, MDX
+renders), and the eval gate passes at 80% on Sonnet.
+
+### Packages
+- `helpbase` CLI: `0.0.1` → `0.1.0`
+- `@helpbase/mcp`: `0.0.1` → `0.1.0` (adds opt-in semantic search)
+
+### Fixed
+- **YAML frontmatter parse bug on snippets with leading whitespace.** The
+  block-scalar emitter auto-detected indentation from the first content
+  line, so a snippet starting with ` *` (JSDoc) locked the block indent
+  to 7 and any later 6-space line exited the block, corrupting the
+  frontmatter. Observed in 5 of 13 Sonnet outputs on the helpbase self-
+  dogfood — docs written to disk were unreadable by gray-matter, the MCP
+  loader, and `helpbase audit`. Fix uses an explicit YAML indentation
+  indicator (`|2-`) so the emitter's indent is authoritative regardless
+  of content. Regression test round-trips a JSDoc snippet.
+- **`context` discoverability in `helpbase --help`.** The flagship
+  command was in the "Other" bucket below `completion` and `upgrade`.
+  Promoted to "Most common" and leads "Get started."
+- **Project name resolution for `llms.txt` and the LLM prompt.** The CLI
+  used the directory basename when resolving the project name. Running
+  `helpbase context /tmp/xyz123` told the LLM "You are documenting
+  xyz123" even when `package.json` set `"name": "todo-app"`. New
+  `resolveProjectName()` helper prefers `package.json` name, falls back
+  to the basename. Used consistently for prompt + llms.txt.
+
 ### Changed
 - **`helpbase context` citations are now disk-backed (v2 contract).** The
   LLM used to be asked for a verbatim `snippet` alongside each citation's
@@ -28,6 +61,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parseable. Regression test covers it.
 
 ### Added
+- **`--reuse-existing` flag on `helpbase context`.** With `--ask`, skips
+  the walk + LLM generation and answers against the `.helpbase/docs/`
+  already on disk. Unblocks the eval runner from N+1 full regenerations
+  per run (one per question) down to a single generation, and gives
+  users a fast path for asking repeat questions without re-spending
+  tokens. Two new error codes guard misuse.
 - **Eval quality gate ships in CI.** New `.github/workflows/context-eval.yml`
   runs the 5-question self-dogfood eval weekly (Mondays 09:00 UTC) plus
   on manual `workflow_dispatch`. Model is pinned to Sonnet 4.6 via

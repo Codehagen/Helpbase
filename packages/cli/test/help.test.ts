@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest"
+import fs from "node:fs"
 import path from "node:path"
 import { execSync } from "node:child_process"
 
@@ -58,7 +59,13 @@ describe("helpbase --help", () => {
 
   it("shows version", () => {
     const output = run("--version")
-    expect(output.trim()).toBe("0.0.1")
+    // Read the expected version from package.json so this test doesn't
+    // drift on every release. What matters is --version matches the
+    // package, not that it matches a specific string.
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf8"),
+    )
+    expect(output.trim()).toBe(pkg.version)
   })
 
   it("shows dev subcommand help", () => {

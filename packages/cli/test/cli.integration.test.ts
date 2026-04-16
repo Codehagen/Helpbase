@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest"
+import fs from "node:fs"
 import path from "node:path"
 import { execSync } from "node:child_process"
 
 const CLI = path.resolve(__dirname, "../dist/index.js")
+const PKG_VERSION = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf8"),
+).version as string
 
 function exec(args: string): { stdout: string; stderr: string; exitCode: number } {
   try {
@@ -40,7 +44,7 @@ describe("helpbase CLI integration", () => {
 
     it("prints version", () => {
       const { stdout } = exec("--version")
-      expect(stdout.trim()).toBe("0.0.1")
+      expect(stdout.trim()).toBe(PKG_VERSION)
     })
 
     it("each subcommand has help text", () => {

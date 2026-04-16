@@ -170,8 +170,11 @@ function runAsk(
   const started = Date.now()
   // Shell-quote the question string.
   const qArg = JSON.stringify(q.question)
+  // --reuse-existing: skip the walk + LLM + validate + write cycle and
+  // answer against the .helpbase/docs generated earlier in runRepoEval.
+  // Cuts an N-question eval from N+1 full generations to 1.
   const out = execSync(
-    `node ${CLI_PATH} context ${repoAbs} --ask ${qArg} --max-tokens ${EVAL_MAX_TOKENS} --model ${EVAL_MODEL} --yes`,
+    `node ${CLI_PATH} context ${repoAbs} --ask ${qArg} --reuse-existing --model ${EVAL_MODEL}`,
     { encoding: "utf8", env: process.env },
   )
   return { answer: out, durationMs: Date.now() - started }

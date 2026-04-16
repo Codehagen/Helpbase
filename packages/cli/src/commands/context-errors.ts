@@ -105,6 +105,26 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
       "Check the path. Use `.` for the current directory. Absolute paths work too.",
     ],
   },
+  E_CONTEXT_REUSE_WITHOUT_ASK: {
+    problem: "--reuse-existing requires --ask — nothing to reuse without a question.",
+    cause:
+      "--reuse-existing skips the walk + LLM generation so an existing .helpbase/docs/ " +
+      "can be queried with --ask. On its own it would do nothing.",
+    fix: [
+      "Pair with --ask: `helpbase context . --reuse-existing --ask \"...\"`.",
+      "Or drop --reuse-existing to regenerate from scratch.",
+    ],
+  },
+  E_CONTEXT_REUSE_EMPTY: {
+    problem: "--reuse-existing was set but .helpbase/docs/ has no MDX files to reuse.",
+    cause:
+      "The output directory is empty. You need to have run `helpbase context` at " +
+      "least once before --reuse-existing has anything to answer from.",
+    fix: [
+      "Run once without --reuse-existing to populate .helpbase/docs, then re-run with --reuse-existing.",
+      "Check that --output points at the same directory your previous run used.",
+    ],
+  },
 }
 
 export function contextError(

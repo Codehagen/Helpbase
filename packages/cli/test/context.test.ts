@@ -104,6 +104,73 @@ describe("helpbase context", () => {
       fs.rmSync(tmp, { recursive: true, force: true })
     }
   })
+
+  it("--reuse-existing without --ask surfaces E_CONTEXT_REUSE_WITHOUT_ASK", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ctx-reuse-"))
+    try {
+      fs.writeFileSync(path.join(tmp, "README.md"), "# Hello\n\nsample")
+      const result = run(`context ${tmp} --reuse-existing`)
+      expect(result.exitCode).toBe(1)
+      expect(result.output).toContain("E_CONTEXT_REUSE_WITHOUT_ASK")
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it("--reuse-existing --ask with empty .helpbase surfaces E_CONTEXT_REUSE_EMPTY", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ctx-reuse-"))
+    try {
+      fs.writeFileSync(path.join(tmp, "README.md"), "# Hello\n\nsample")
+      // No .helpbase/docs directory exists — reuse should fail loudly.
+      const result = run(`context ${tmp} --reuse-existing --ask "anything"`)
+      expect(result.exitCode).toBe(1)
+      expect(result.output).toContain("E_CONTEXT_REUSE_EMPTY")
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it("--reuse-existing --ask with a populated .helpbase/docs reaches the LLM call (fast path, no walk)", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ctx-reuse-"))
+    try {
+      // Seed a pre-generated doc on disk — the fast path reads these.
+      const docsDir = path.join(tmp, ".helpbase", "docs", "getting-started")
+      fs.mkdirSync(docsDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(docsDir, "how-to-log-in.mdx"),
+        [
+          "---",
+          "schemaVersion: 1",
+          'title: "How to log in"',
+          'description: "Log in with a magic link."',
+          "tags: []",
+          "order: 1",
+          "---",
+          "",
+          "Call POST /api/auth/login with email and password.",
+          "",
+        ].join("\n"),
+      )
+      // No AI key and no source walk — the fast path goes straight to
+      // runLocalAsk, which needs a key. Observable behavior: we get past
+      // the walker (no NO_SOURCES, no REPO_PATH error) and fail at the
+      // LLM call with a gateway/key error, NOT at the pipeline gate.
+      const result = runWithEnv(
+        `context ${tmp} --reuse-existing --ask "how do I log in?"`,
+        {
+          AI_GATEWAY_API_KEY: "vck_this_is_not_a_real_key_abcdefghijklmnop",
+        },
+      )
+      // The run should fail at the LLM boundary, not the reuse gate.
+      expect(result.output).not.toContain("E_CONTEXT_REUSE_EMPTY")
+      expect(result.output).not.toContain("E_CONTEXT_REUSE_WITHOUT_ASK")
+      expect(result.output).not.toContain("E_CONTEXT_NO_SOURCES")
+      // The Answering line proves we reached runLocalAsk's prompt stage.
+      expect(result.output).toContain("Answering:")
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
 })
 
 describe("helpbase generate positional alias", () => {

@@ -293,14 +293,27 @@ function renderCitationsYaml(citations: ContextCitation[]): string {
         lines.push(`    reason: ${JSON.stringify(c.reason)}`)
       }
       if (c.snippet) {
-        // Fold the snippet into a YAML block scalar (`|-` preserves \n,
-        // strips trailing newline). Indent each line by 6 spaces to sit
-        // inside the citation item.
+        // YAML block scalar with an EXPLICIT indentation indicator.
+        //
+        // The `snippet:` key sits 4 columns in; `|2-` tells the YAML parser
+        // the content's indent baseline is 4+2 = 6 columns, regardless of
+        // what the first content line happens to start with. Without the
+        // explicit indicator, auto-detection keys off the first non-empty
+        // line — and when a code snippet begins with a JSDoc ` *` (one
+        // leading space), YAML sets baseline = 7, and any later line with
+        // only 6 leading spaces exits the block and corrupts the parse.
+        // Observed in five of the first thirteen Sonnet outputs on the
+        // helpbase self-dogfood.
+        //
+        // `-` is the chomping indicator (strip trailing newline). Every
+        // emitted line gets a fixed 6-space prefix — even fully blank
+        // lines, which is why we replace ^$ with 6 spaces to keep them
+        // inside the block.
         const indented = c.snippet
           .split("\n")
           .map((line) => `      ${line}`)
           .join("\n")
-        lines.push(`    snippet: |-`, indented)
+        lines.push(`    snippet: |2-`, indented)
       }
       return lines.join("\n")
     })

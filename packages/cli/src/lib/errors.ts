@@ -43,6 +43,8 @@ export type ErrorCode =
   | "E_CONTEXT_NO_VALID_CITATIONS"
   | "E_CONTEXT_SECRET"
   | "E_CONTEXT_REPO_PATH"
+  | "E_CONTEXT_REUSE_WITHOUT_ASK"
+  | "E_CONTEXT_REUSE_EMPTY"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

@@ -196,6 +196,45 @@ describe("articleToMdxWithCitations", () => {
     expect(parsed.data.source).toBe("custom")
   })
 
+  it("emits frontmatter that round-trips through gray-matter when snippet has variable leading whitespace (regression: YAML block-scalar indent-indicator bug)", () => {
+    // Real pattern seen in 5 of 13 Sonnet outputs on helpbase self-dogfood:
+    // a JSDoc snippet starts with ` *` (one space + asterisk), so auto-
+    // detected block indent was 7. Later lines with only 6 leading spaces
+    // exit the block and corrupt the YAML parse.
+    const jsdoc = [
+      " *",
+      " * Resolution order:",
+      " *   1. HELPBASE_CONTENT_DIR env var",
+      " *   2. Walk up for apps/web/content/",
+      " */",
+      "export function findContentDir(): string {",
+      "  return path.resolve(process.cwd())",
+      "}",
+    ].join("\n")
+    const jsdocDoc: GeneratedContextDoc = {
+      ...doc,
+      citations: [
+        {
+          file: "packages/mcp/src/content/loader.ts",
+          startLine: 27,
+          endLine: 34,
+          reason: "implements findContentDir",
+          snippet: jsdoc,
+        },
+      ],
+    }
+    const out = articleToMdxWithCitations(jsdocDoc, 1)
+    // The emitted frontmatter must parse cleanly. Before the fix this
+    // threw "bad indentation of a mapping entry".
+    expect(() => matter(out)).not.toThrow()
+    const parsed = matter(out)
+    expect(parsed.data.citations).toHaveLength(1)
+    const c = parsed.data.citations[0]
+    // The snippet that comes back out must equal the snippet that went in —
+    // explicit indent indicator guarantees bytes-in-bytes-out.
+    expect(c.snippet).toBe(jsdoc)
+  })
+
   it("uses a longer fence when the snippet itself contains triple-backticks (regression)", () => {
     const snippetWithFence =
       "Run the command:\n\n```bash\nhelpbase context .\n```\n\nDone."

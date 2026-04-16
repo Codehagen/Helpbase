@@ -69,6 +69,7 @@ export const contextCommand = new Command("context")
   .option("--only <category>", "Only (re)generate docs in one category slug")
   .option("--prompt <file>", "Override the default prompt with a file path (content is still wrapped in untrusted-content delimiters)")
   .option("--ask <question>", "After generating, answer a question against the fresh docs in-terminal (no MCP client required)")
+  .option("--reuse-existing", "With --ask: skip generation, answer against the existing .helpbase/docs/ on disk (for eval/batch runs)")
   .addHelpText(
     "after",
     `
@@ -133,6 +134,7 @@ interface ContextOpts {
   only?: string
   prompt?: string
   ask?: string
+  reuseExisting?: boolean
 }
 
 async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void> {
@@ -142,6 +144,23 @@ async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void>
     throw contextError("E_CONTEXT_REPO_PATH", {
       cause: `Resolved path: ${repoRoot}`,
     })
+  }
+
+  // ─── 1.5. --reuse-existing fast path (eval / batch --ask runs) ──
+  // Skips the walk + LLM + validate + write pipeline entirely. Only
+  // legal when paired with --ask, because there's no point reusing docs
+  // if you're not asking a question. Reads existing .helpbase/docs and
+  // hands them straight to runLocalAsk. Net effect for the eval runner:
+  // one generate + N cheap --ask passes, instead of N+1 full regens.
+  if (opts.reuseExisting) {
+    if (!opts.ask) {
+      throw contextError("E_CONTEXT_REUSE_WITHOUT_ASK")
+    }
+    const outputDir = path.resolve(repoRoot, opts.output || ".helpbase")
+    const serialized = loadExistingDocs(outputDir)
+    const model = resolveModel({ test: opts.test, modelOverride: opts.model })
+    await runLocalAsk(opts.ask, serialized, model)
+    return
   }
 
   // ─── 2. Dirty-tree check (warn-by-default, block only on --require-clean) ──
@@ -567,6 +586,58 @@ interface SynthesisReport {
   }>
   preservedFiles: string[]
   deletedFiles: string[]
+}
+
+// ── --reuse-existing: load docs from disk into runLocalAsk shape ─────
+
+/**
+ * Walk `.helpbase/docs/` for existing MDX files and reconstruct the
+ * `serialized`-shape array that `runLocalAsk` consumes. Used by the
+ * `--reuse-existing --ask` fast path so the eval runner can do one
+ * expensive generation and many cheap question passes instead of N+1
+ * full regens.
+ */
+function loadExistingDocs(
+  outputDir: string,
+): Array<{ relPath: string; content: string; doc: GeneratedContextDoc }> {
+  const docsDir = path.join(outputDir, "docs")
+  if (!fs.existsSync(docsDir)) {
+    throw contextError("E_CONTEXT_REUSE_EMPTY", {
+      cause: `No directory at ${docsDir}.`,
+    })
+  }
+  const results: Array<{ relPath: string; content: string; doc: GeneratedContextDoc }> = []
+  // docs/<category>/<slug>.mdx — two-level walk, not recursive globbing.
+  for (const categoryDir of fs.readdirSync(docsDir, { withFileTypes: true })) {
+    if (!categoryDir.isDirectory()) continue
+    const catPath = path.join(docsDir, categoryDir.name)
+    for (const entry of fs.readdirSync(catPath, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith(".mdx")) continue
+      const full = path.join(catPath, entry.name)
+      const content = fs.readFileSync(full, "utf8")
+      const parsed = matter(content)
+      // Minimal reconstruction — runLocalAsk uses title from doc, body
+      // from parsed content. Extra fields kept so the shape is valid.
+      const doc: GeneratedContextDoc = {
+        title: String(parsed.data.title ?? entry.name),
+        description: String(parsed.data.description ?? ""),
+        category: categoryDir.name,
+        tags: Array.isArray(parsed.data.tags) ? parsed.data.tags : [],
+        content: parsed.content,
+        citations: Array.isArray(parsed.data.citations) ? parsed.data.citations : [],
+        sourcePaths: [],
+      }
+      results.push({
+        relPath: path.join(categoryDir.name, entry.name),
+        content,
+        doc,
+      })
+    }
+  }
+  if (results.length === 0) {
+    throw contextError("E_CONTEXT_REUSE_EMPTY")
+  }
+  return results
 }
 
 // ── Local --ask (the magical-moment fix) ─────────────────────────────

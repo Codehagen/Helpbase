@@ -130,6 +130,45 @@ describe("helpbase context", () => {
     }
   })
 
+  it("resolves project name from package.json, not the containing directory (regression)", async () => {
+    // Temp dirs have names like `helpbase-user-test-znh2Rp`. Without this
+    // fix, that string ended up in the LLM prompt and in llms.txt as the
+    // project's display name — drowning out the `name: "todo-app"` the
+    // user set in their package.json.
+    const { resolveProjectName } = await import("../src/commands/context.js")
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-name-regression-"))
+    try {
+      fs.writeFileSync(
+        path.join(tmp, "package.json"),
+        JSON.stringify({ name: "todo-app", version: "0.1.0" }),
+      )
+      expect(resolveProjectName(tmp)).toBe("todo-app")
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it("falls back to the directory basename when package.json has no name", async () => {
+    const { resolveProjectName } = await import("../src/commands/context.js")
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-noname-"))
+    try {
+      fs.writeFileSync(path.join(tmp, "package.json"), JSON.stringify({ version: "0.1.0" }))
+      expect(resolveProjectName(tmp)).toBe(path.basename(tmp))
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it("falls back to the directory basename when there is no package.json at all", async () => {
+    const { resolveProjectName } = await import("../src/commands/context.js")
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-nopkg-"))
+    try {
+      expect(resolveProjectName(tmp)).toBe(path.basename(tmp))
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
   it("--reuse-existing --ask with a populated .helpbase/docs reaches the LLM call (fast path, no walk)", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ctx-reuse-"))
     try {

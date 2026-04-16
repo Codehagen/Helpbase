@@ -27,14 +27,14 @@ interface GroupDef {
 }
 
 const GROUPS: GroupDef[] = [
-  { label: "Get started", commands: ["new", "dev"] },
+  { label: "Get started", commands: ["context", "new", "dev"] },
   { label: "Ship", commands: ["deploy", "link", "open"] },
   { label: "Author", commands: ["generate", "sync", "mcp", "audit"] },
   { label: "Account", commands: ["login", "logout", "whoami", "config"] },
   { label: "Diagnose", commands: ["doctor", "feedback", "completion", "upgrade"] },
 ]
 
-const MOST_COMMON = ["helpbase new", "helpbase dev", "helpbase deploy"]
+const MOST_COMMON = ["helpbase context", "helpbase new", "helpbase dev"]
 
 /**
  * Render grouped help text for the top-level program. Returns a string

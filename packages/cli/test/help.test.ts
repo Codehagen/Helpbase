@@ -35,11 +35,19 @@ describe("helpbase --help", () => {
     expect(output).toContain("Diagnose")
   })
 
-  it("surfaces the three canonical commands up top", () => {
+  it("surfaces the three canonical commands up top (context leads — flagship AI-native flow)", () => {
     const output = runNoColor("--help")
+    expect(output).toMatch(/Most common:[\s\S]*helpbase context/)
     expect(output).toMatch(/Most common:[\s\S]*helpbase new/)
     expect(output).toMatch(/Most common:[\s\S]*helpbase dev/)
-    expect(output).toMatch(/Most common:[\s\S]*helpbase deploy/)
+  })
+
+  it("lists context under Get started, not Other", () => {
+    const output = runNoColor("--help")
+    // Extract the "Get started" block — ends at the next group heading
+    // ("Ship") or EOL.
+    const getStarted = output.match(/Get started[\s\S]*?(?=Ship|$)/)?.[0] ?? ""
+    expect(getStarted).toContain("context")
   })
 
   it("advertises --json and --quiet as global options", () => {

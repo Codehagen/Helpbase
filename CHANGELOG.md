@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [@helpbase/mcp 0.1.1] — 2026-04-16
+
+### Fixed
+- **`npx @helpbase/mcp` no longer fails with "could not determine
+  executable to run".** The published `mcp.json` the CLI generates tells
+  Claude Desktop / Cursor / Claude Code to spawn the server via
+  `npx -y @helpbase/mcp@latest`. npx resolves a scoped package's default
+  binary by stripping the scope and looking for a bin of that name —
+  `mcp` in our case. `0.1.0` shipped with only `helpbase-mcp`,
+  `helpbase-mcp-http`, and `helpbase-mcp-build-index` in the `bin`
+  field, so every user who pasted our generated config hit a cryptic
+  startup error and the MCP tools never appeared in their client.
+  `0.1.1` adds `mcp` as an alias pointing at the stdio server entry,
+  matching the scope-trimmed convention. The CLI-emitted config now
+  works unmodified.
+- **serverInfo reports the real package version** over JSON-RPC. The
+  `McpServer` constructor was hardcoded to `0.0.1`, so every client
+  saw the same serverInfo regardless of which version was actually
+  running. Synced to `0.1.1` and pinned by a test that reads both
+  package.json and server.ts on every build.
+
 ## [0.1.0] — 2026-04-16
 
 First real release. `helpbase context` is the AI-native flow: point the CLI

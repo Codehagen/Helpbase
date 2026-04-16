@@ -84,7 +84,9 @@ export function buildServer(options: BuildServerOptions = {}): {
 
   const server = new McpServer({
     name: options.name ?? "helpbase-mcp",
-    version: options.version ?? "0.0.1",
+    // Kept in sync with package.json by a test in test/package-bin.test.ts.
+    // Update both together on every release.
+    version: options.version ?? "0.1.1",
   })
 
   server.registerTool(

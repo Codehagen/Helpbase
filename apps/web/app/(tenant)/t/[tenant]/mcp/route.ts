@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js"
 import { buildServer } from "@helpbase/mcp"
 import { tokensEqual, extractBearer } from "@helpbase/mcp/http"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
-import { randomUUID } from "node:crypto"
 import { IncomingMessage, ServerResponse } from "node:http"
 import { Socket } from "node:net"
 import type { Database } from "@/types/supabase"
@@ -129,9 +128,19 @@ async function bridgeToNodeHttp(
   const req = new IncomingMessage(socket)
   req.method = request.method
   req.url = request.nextUrl.pathname + request.nextUrl.search
+  // The MCP SDK's Node transport delegates to @hono/node-server, which
+  // builds its Web `Headers` from `incoming.rawHeaders` only (see
+  // @hono/node-server/dist/request.js:newHeadersFromIncoming). A synthetic
+  // IncomingMessage starts with rawHeaders = []; populating `req.headers`
+  // alone leaves the bridged Request with zero headers, so every request
+  // lost its Accept / Authorization / Content-Type and hit the SDK's
+  // "Accept must include application/json + text/event-stream" 406.
+  const rawHeaders: string[] = []
   request.headers.forEach((value, key) => {
     req.headers[key.toLowerCase()] = value
+    rawHeaders.push(key, value)
   })
+  req.rawHeaders = rawHeaders
   if (body) {
     req.push(body)
   }
@@ -139,14 +148,60 @@ async function bridgeToNodeHttp(
 
   const res = new ServerResponse(req)
   const chunks: Buffer[] = []
+  // Track headers through every path the SDK (via @hono/node-server's
+  // listener) can use to set them: writeHead(status, headers), setHeader,
+  // and initial writeHead with a headers object. We can't rely on
+  // res.getHeaders() alone — writeHead with a headers arg bypasses
+  // setHeader in some Node versions, leaving getHeaders() empty after
+  // the response has been "sent." That was dropping Mcp-Session-Id on
+  // initialize responses and forcing all follow-up calls into
+  // "Server not initialized."
+  const captured = new Headers()
+  let capturedStatus = 200
+  const appendHeader = (key: string, value: unknown) => {
+    if (value === undefined || value === null) return
+    if (Array.isArray(value)) {
+      for (const item of value) captured.append(key, String(item))
+    } else {
+      captured.set(key, String(value))
+    }
+  }
+
+  const originalWriteHead = res.writeHead.bind(res)
+  const originalSetHeader = res.setHeader.bind(res)
+  const originalWrite = res.write.bind(res)
+  const originalEnd = res.end.bind(res)
+
+  res.setHeader = ((name: string, value: number | string | readonly string[]) => {
+    appendHeader(name, value)
+    return originalSetHeader(name, value)
+  }) as typeof res.setHeader
+
+  res.writeHead = ((...args: unknown[]) => {
+    const [status, arg2, arg3] = args as [
+      number,
+      string | Record<string, unknown> | Array<[string, unknown]> | undefined,
+      Record<string, unknown> | Array<[string, unknown]> | undefined,
+    ]
+    capturedStatus = status
+    const headerArg =
+      typeof arg2 === "string" || arg2 === undefined ? arg3 : arg2
+    if (Array.isArray(headerArg)) {
+      for (const entry of headerArg) {
+        if (Array.isArray(entry)) appendHeader(String(entry[0]), entry[1])
+      }
+    } else if (headerArg && typeof headerArg === "object") {
+      for (const [k, v] of Object.entries(headerArg)) appendHeader(k, v)
+    }
+    // @ts-expect-error: pass-through with original variadic shape
+    return originalWriteHead(...args)
+  }) as typeof res.writeHead
 
   let resolveCollected: (r: Response) => void
   const collected = new Promise<Response>((resolve) => {
     resolveCollected = resolve
   })
 
-  const originalWrite = res.write.bind(res)
-  const originalEnd = res.end.bind(res)
   res.write = ((chunk: unknown, ...rest: unknown[]) => {
     if (chunk) chunks.push(coerceChunk(chunk))
     // @ts-expect-error: pass-through to original
@@ -156,17 +211,12 @@ async function bridgeToNodeHttp(
     if (chunk) chunks.push(coerceChunk(chunk))
     // @ts-expect-error: pass-through
     const r = originalEnd(chunk, ...rest)
-    const buf = Buffer.concat(chunks)
-    const headers = new Headers()
-    for (const [k, v] of Object.entries(res.getHeaders())) {
-      if (v === undefined) continue
-      if (Array.isArray(v)) {
-        for (const item of v) headers.append(k, String(item))
-      } else {
-        headers.set(k, String(v))
-      }
-    }
-    resolveCollected(new Response(buf, { status: res.statusCode, headers }))
+    resolveCollected(
+      new Response(Buffer.concat(chunks), {
+        status: capturedStatus,
+        headers: captured,
+      }),
+    )
     return r
   }) as typeof res.end
 
@@ -243,8 +293,13 @@ async function handle(request: NextRequest, tenantSlug: string): Promise<Respons
     preloadedDocs: mcpDocs,
     preloadedCategories: mcpCategories,
   })
+  // Stateless mode: Vercel serverless has no shared memory between
+  // invocations, so per-request session tracking can't work. The SDK
+  // supports this exactly: `sessionIdGenerator: undefined` skips
+  // validateSession and treats every POST as a fresh, independent
+  // request. Matches the upstream simpleStatelessStreamableHttp example.
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
+    sessionIdGenerator: undefined,
   })
   await server.connect(transport)
 

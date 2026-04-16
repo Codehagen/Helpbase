@@ -45,6 +45,9 @@ export type ErrorCode =
   | "E_CONTEXT_REPO_PATH"
   | "E_CONTEXT_REUSE_WITHOUT_ASK"
   | "E_CONTEXT_REUSE_EMPTY"
+  | "E_CONTEXT_PREVIEW_NO_DOCS"
+  | "E_CONTEXT_PREVIEW_SCAFFOLD"
+  | "E_CONTEXT_PREVIEW_INSTALL"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

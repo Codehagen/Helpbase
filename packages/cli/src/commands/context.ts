@@ -437,16 +437,19 @@ function printNextSteps(repoArg: string, outputDir: string): void {
   console.log("")
   console.log(pc.bold("Next:"))
   console.log(
-    `  ${pc.dim("1. Try it in-terminal:")} ${pc.cyan(`helpbase context ${repoArg} --ask "how do I log in?"`)}`,
+    `  ${pc.dim("1. Open it in a browser:")} ${pc.cyan("helpbase preview")}`,
   )
-  console.log(`  ${pc.dim("2. Share with an MCP client — copy a block from:")}`)
+  console.log(
+    `  ${pc.dim("2. Try it in-terminal:")} ${pc.cyan(`helpbase context ${repoArg} --ask "how do I log in?"`)}`,
+  )
+  console.log(`  ${pc.dim("3. Share with an MCP client — copy a block from:")}`)
   console.log(`     ${pc.cyan(path.join(outputDir, "mcp.json"))}`)
   console.log(`     ${pc.dim("into your client's config file:")}`)
   for (const p of mcpClientConfigPaths()) {
     console.log(`       ${pc.dim("·")} ${p.client}: ${pc.cyan(p.path)}`)
   }
   console.log(
-    `  ${pc.dim("3. Or browse")} ${pc.cyan(path.join(outputDir, "llms.txt"))} / ${pc.cyan(path.join(outputDir, "llms-full.txt"))} ${pc.dim("— standard llms.txt format")}`,
+    `  ${pc.dim("4. Or browse")} ${pc.cyan(path.join(outputDir, "llms.txt"))} / ${pc.cyan(path.join(outputDir, "llms-full.txt"))} ${pc.dim("— standard llms.txt format")}`,
   )
   console.log("")
 }

@@ -125,6 +125,35 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
       "Check that --output points at the same directory your previous run used.",
     ],
   },
+  E_CONTEXT_PREVIEW_NO_DOCS: {
+    problem: "`helpbase preview` needs .helpbase/docs/ to exist in the current directory.",
+    cause:
+      "Preview renders the MDX `helpbase context` produces. There's nothing to render yet.",
+    fix: [
+      "Run `helpbase context .` first — that generates the docs.",
+      "Then `helpbase preview` to open them in the browser.",
+    ],
+  },
+  E_CONTEXT_PREVIEW_SCAFFOLD: {
+    problem: "Failed to scaffold the preview renderer.",
+    cause:
+      "The first `helpbase preview` on a new CLI version shells out to " +
+      "`npx create-helpbase` to set up a cached renderer. That command failed.",
+    fix: [
+      "Check your network — the first run needs to reach the npm registry.",
+      "Retry: `helpbase preview --reset` wipes the cache and starts over.",
+      "If it keeps failing: `npx create-helpbase@latest /tmp/test` in isolation.",
+    ],
+  },
+  E_CONTEXT_PREVIEW_INSTALL: {
+    problem: "Failed to install preview dependencies.",
+    cause:
+      "The scaffolded renderer's package manager install exited with an error.",
+    fix: [
+      "Check your network and disk space.",
+      "Retry: `helpbase preview --reset` to re-scaffold + re-install.",
+    ],
+  },
 }
 
 export function contextError(

@@ -27,7 +27,7 @@ interface GroupDef {
 }
 
 const GROUPS: GroupDef[] = [
-  { label: "Get started", commands: ["context", "new", "dev"] },
+  { label: "Get started", commands: ["context", "preview", "new", "dev"] },
   { label: "Ship", commands: ["deploy", "link", "open"] },
   { label: "Author", commands: ["generate", "sync", "mcp", "audit"] },
   { label: "Account", commands: ["login", "logout", "whoami", "config"] },

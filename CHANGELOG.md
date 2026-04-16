@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-16
+
+### Added
+- **`helpbase preview` — one-command browser-viewable help center from
+  your generated docs.** Point the CLI at any repo with
+  `helpbase context .`, then run `helpbase preview` to open the docs
+  in a polished help center UI (sidebar, search, theme toggle, MDX
+  components, the whole thing) at `http://localhost:3000`. Fills the
+  last gap in the "repo → human-readable docs" story — before this,
+  the generated MDX was agent-facing only and had no viewer.
+  - Cache lives at `~/.helpbase/preview-<cli-version>/` — one install
+    per CLI version, shared across all projects on the machine.
+  - First run per CLI version: ~45-60s (scaffolds via
+    `create-helpbase` + `<pm> install`). Every run after: ~3s.
+  - `--reset` wipes the cache and re-scaffolds.
+  - `--setup-only` warms the cache without starting the server
+    (useful for CI or pre-demo prep).
+  - `--port <n>` for port override; picks whichever package manager
+    the user has (pnpm > yarn > bun > npm).
+
+### Changed
+- **`apps/web` resolves content via the same `HELPBASE_CONTENT_DIR` env
+  var the MCP server uses.** Previously hardcoded to `<cwd>/content`.
+  One env var now points both the human-facing renderer and the
+  agent-facing MCP server at the same docs directory — the foundation
+  `helpbase preview` is built on.
+- **`helpbase context` next-steps output leads with `helpbase preview`.**
+  Users no longer have to hunt for "so how do I actually open this in
+  a browser."
+
+### Packages
+- `helpbase` CLI: `0.1.0` → `0.2.0`
+- `create-helpbase`: `0.0.3` → `0.1.0` (adds env-var-aware content dir,
+  required by `helpbase preview`)
+
 ## [@helpbase/mcp 0.1.1] — 2026-04-16
 
 ### Fixed

@@ -11,8 +11,9 @@ import type { ArticleMeta, Article, Category, TocItem } from "@workspace/shared/
 import { titleCase } from "@workspace/shared/slugify"
 import { extractToc } from "./toc"
 import { createArticleComponents } from "./mdx-components"
+import { resolveContentDir } from "./content-dir"
 
-const CONTENT_DIR = path.join(process.cwd(), "content")
+const CONTENT_DIR = resolveContentDir()
 
 /**
  * Get all articles (frontmatter only, no compiled content).

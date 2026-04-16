@@ -47,3 +47,4 @@ apps/web/public/_helpbase-assets/
 
 # Eval harness output — per-run artifact, not committed
 packages/cli/eval/eval-report.json
+packages/cli/eval/hosted-parity-report.json

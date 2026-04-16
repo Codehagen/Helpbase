@@ -28,6 +28,22 @@ Evaluates the helpbase repo itself (5 questions). A failing score here is a hard
 - GitHub Actions `workflow_dispatch` + nightly cron
 - Score history stored in `~/.gstack/analytics/eval.jsonl`
 
+## Hosted-parity check
+
+`run-hosted-parity.mjs` is a separate, structural gate (not LLM-graded). It
+runs the same MCP tool calls through the stdio `@helpbase/mcp` binary and
+through the hosted `/{slug}/mcp` endpoint and asserts the outputs match.
+Threshold: hosted ≥ stdio × 0.95. Ship-block for the hosted bridge.
+
+```bash
+HOSTED_MCP_URL=https://{slug}.helpbase.dev/mcp \
+HOSTED_MCP_TOKEN=... \
+HOSTED_CONTENT_DIR=/path/to/same/content \
+  pnpm eval:hosted-parity
+```
+
+Writes `hosted-parity-report.json`. Skips gracefully when any env is unset.
+
 ## Updating the question set
 
 Edit `questions.ts`. Each question needs:

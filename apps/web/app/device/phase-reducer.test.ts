@@ -31,11 +31,33 @@ describe("initialPhase", () => {
 })
 
 describe("phaseReducer — SESSION_LOADING", () => {
-  it("returns loading regardless of prior phase", () => {
-    for (const prior of SAMPLE) {
+  it("returns loading from derivable phases (loading/signed-out/signed-in/error)", () => {
+    const derivable: Phase[] = [
+      { kind: "loading" },
+      { kind: "signed-out" },
+      { kind: "signed-in", email: "x@y.com", userCode: "CODE" },
+      { kind: "error", message: "boom" },
+    ]
+    for (const prior of derivable) {
       expect(phaseReducer(prior, { type: "SESSION_LOADING" })).toEqual({
         kind: "loading",
       })
+    }
+  })
+
+  // Background session refreshes mustn't wipe the user out of
+  // in-progress or terminal phases — better-auth's useSession churns
+  // its object reference, so the derivation effect will re-fire even
+  // when data hasn't actually changed.
+  it("preserves in-progress and terminal phases (email-sent/approving/approved/denied)", () => {
+    const preserved: Phase[] = [
+      { kind: "email-sent", email: "x@y.com" },
+      { kind: "approving" },
+      { kind: "approved", email: "x@y.com" },
+      { kind: "denied" },
+    ]
+    for (const prior of preserved) {
+      expect(phaseReducer(prior, { type: "SESSION_LOADING" })).toEqual(prior)
     }
   })
 })
@@ -167,6 +189,30 @@ describe("phaseReducer — SESSION_RESOLVED", () => {
       baseAction({ session: null, userCode: "ABCD-EFGH" }),
     )
     expect(result).toEqual({ kind: "signed-out" })
+  })
+
+  // Same reasoning as SESSION_LOADING preservation: better-auth's
+  // session reference churns, so SESSION_RESOLVED re-fires on every
+  // re-render. Without this guard, a user waiting on their magic link
+  // would snap back to "signed-out" when useSession re-renders.
+  it("preserves in-progress and terminal phases (email-sent/approving/approved/denied)", () => {
+    const preserved: Phase[] = [
+      { kind: "email-sent", email: "x@y.com" },
+      { kind: "approving" },
+      { kind: "approved", email: "x@y.com" },
+      { kind: "denied" },
+    ]
+    for (const prior of preserved) {
+      expect(
+        phaseReducer(
+          prior,
+          baseAction({
+            session: { user: { email: "x@y.com" } },
+            userCode: "ABCD-EFGH",
+          }),
+        ),
+      ).toEqual(prior)
+    }
   })
 })
 

@@ -68,12 +68,27 @@ export type PhaseAction =
 // `initialPhase.kind = ...` somewhere would corrupt every fresh mount.
 export const initialPhase: Readonly<Phase> = Object.freeze({ kind: "loading" })
 
+// Phases that are derived from (sessionPending, session, userCode). Only
+// these respond to SESSION_* actions; in-progress and terminal phases
+// (email-sent, approving, approved, denied) ignore background session
+// refreshes so a Better Auth reference-churn or TTL refresh doesn't clobber
+// them back to loading/signed-out mid-flow.
+//
+// Background: better-auth's `useSession` doesn't memoize its return value,
+// so any render can re-fire the derivation effect even when data hasn't
+// actually changed. Without this guard, a user watching "Check your email"
+// gets bounced to the spinner or the sign-in form on a phantom refresh.
+function isDerivable(kind: Phase["kind"]): boolean {
+  return kind === "loading" || kind === "signed-out" || kind === "signed-in" || kind === "error"
+}
+
 export function phaseReducer(state: Phase, action: PhaseAction): Phase {
   switch (action.type) {
     case "SESSION_LOADING":
-      return { kind: "loading" }
+      return isDerivable(state.kind) ? { kind: "loading" } : state
 
     case "SESSION_RESOLVED": {
+      if (!isDerivable(state.kind)) return state
       const { session, userCode } = action
       // userCode missing → we can't authorize even with a live session,
       // so send the user to the signed-out form (rare path; CLI always

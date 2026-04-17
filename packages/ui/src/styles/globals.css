@@ -363,12 +363,24 @@
 }
 
 /* ── Syntax highlighting (rehype-pretty-code + shiki) ────────────────────
+   rehype-pretty-code emits TWO wrapper shapes:
+     - block code: <figure data-rehype-pretty-code-figure><pre><code>...
+     - inline code: <span data-rehype-pretty-code-figure><code>...</code></span>
+
+   Block-only styles (display: grid, padding, pre bg) must be scoped to
+   `figure[data-rehype-pretty-code-figure]` — applying them to the inline
+   <span> shape bumps inline `.mdx`-style code onto its own grid row with
+   padding, which is how a paragraph like "Use them in any `.mdx` file"
+   ended up with `.mdx` visually detached onto an indented line. Found
+   during /qa on 2026-04-17 (ISSUE-003).
+
    Dual-theme emits both --shiki-light and --shiki-dark on each span/pre.
-   Map to the active theme. next-themes sets `.dark` on <html>. */
+   next-themes toggles `.dark` on <html>. Color vars apply to both shapes
+   so tokens get colored wherever they land; bg vars are block-only so
+   inline code keeps the existing .article-content code muted pill. */
 
 html:not(.dark) [data-rehype-pretty-code-figure] code span {
   color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
   font-style: var(--shiki-light-font-style);
   font-weight: var(--shiki-light-font-weight);
   text-decoration: var(--shiki-light-text-decoration);
@@ -376,28 +388,23 @@ html:not(.dark) [data-rehype-pretty-code-figure] code span {
 
 html.dark [data-rehype-pretty-code-figure] code span {
   color: var(--shiki-dark);
-  background-color: var(--shiki-dark-bg);
   font-style: var(--shiki-dark-font-style);
   font-weight: var(--shiki-dark-font-weight);
   text-decoration: var(--shiki-dark-text-decoration);
 }
 
-html:not(.dark) [data-rehype-pretty-code-figure] pre {
+html:not(.dark) figure[data-rehype-pretty-code-figure] pre {
   background-color: var(--shiki-light-bg);
 }
-html.dark [data-rehype-pretty-code-figure] pre {
+html.dark figure[data-rehype-pretty-code-figure] pre {
   background-color: var(--shiki-dark-bg);
 }
 
-[data-rehype-pretty-code-figure] {
+figure[data-rehype-pretty-code-figure] {
   position: relative;
 }
 
-[data-rehype-pretty-code-figure] pre {
-  background: transparent;
-}
-
-[data-rehype-pretty-code-figure] code {
+figure[data-rehype-pretty-code-figure] code {
   display: grid;
   padding: 0;
   background: transparent;
@@ -405,14 +412,14 @@ html.dark [data-rehype-pretty-code-figure] pre {
   line-height: 1.7;
 }
 
-[data-rehype-pretty-code-figure] [data-line] {
+figure[data-rehype-pretty-code-figure] [data-line] {
   padding: 0 1rem;
 }
 
-[data-rehype-pretty-code-figure] [data-highlighted-line] {
+figure[data-rehype-pretty-code-figure] [data-highlighted-line] {
   background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
-[data-rehype-pretty-code-figure] [data-highlighted-chars] {
+figure[data-rehype-pretty-code-figure] [data-highlighted-chars] {
   background-color: color-mix(in srgb, var(--foreground) 12%, transparent);
   border-radius: 0.25rem;
   padding: 0 0.125rem;

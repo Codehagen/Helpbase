@@ -1,6 +1,6 @@
 {
   "name": "create-helpbase",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Create a beautiful, AI-powered help center in seconds",
   "type": "module",
   "bin": {

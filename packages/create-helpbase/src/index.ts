@@ -151,30 +151,72 @@ async function run(directory: string | undefined, opts: RunOptions) {
     process.exit(0)
   }
 
-  // 3. BYOK prompt — conditional on auth state.
+  // 3. Auth resolution — conditional on existing state.
   //    Skip entirely when the user already has a helpbase session on disk
-  //    (the hosted proxy will serve them) or has AI_GATEWAY_API_KEY set
-  //    (BYOK already resolved). Saves ~10-15s of dead-air friction for
-  //    the common case of a returning developer.
-  const authToken = readHelpbaseAuthToken()
+  //    or AI_GATEWAY_API_KEY set. Otherwise offer a three-way choice that
+  //    leads with `helpbase login` (free, captures email) instead of
+  //    asking for a Vercel Gateway key most users don't have.
+  //    Saves ~10-15s of dead-air friction for returning developers, and
+  //    surfaces the login path in the CLI where evaluation actually
+  //    happens, instead of hiding it behind an error message.
+  let authToken = readHelpbaseAuthToken()
   const byokAlreadyResolved = Boolean(process.env.AI_GATEWAY_API_KEY)
   let aiGatewayKey: string | undefined
   if (isInteractive && source.kind !== "skip" && !authToken && !byokAlreadyResolved) {
-    const keyResponse = await text({
-      message:
-        "BYOK? Paste a Vercel AI Gateway key (optional — most people skip this and run `helpbase login` instead)",
-      placeholder: "skip",
+    const authChoice = await select({
+      message: "AI generation needs auth. Pick one:",
+      options: [
+        {
+          value: "login",
+          label: "Log in (free, no card, 500k tokens/day)",
+          hint: "runs `helpbase login` — 30 seconds",
+        },
+        {
+          value: "byok",
+          label: "Paste a Vercel AI Gateway key",
+          hint: "BYOK — unlimited on your own billing",
+        },
+        {
+          value: "skip",
+          label: "Skip",
+          hint: "ship with sample content",
+        },
+      ],
+      initialValue: "login",
     })
 
-    if (isCancel(keyResponse)) {
+    if (isCancel(authChoice)) {
       cancel("Setup cancelled.")
       process.exit(0)
     }
 
-    const trimmed = (keyResponse as string | undefined)?.trim()
-    if (trimmed && trimmed.length > 0 && trimmed !== "skip") {
-      aiGatewayKey = trimmed
+    if (authChoice === "login") {
+      const loginResult = await runHelpbaseLogin()
+      if (loginResult === "failed") {
+        note(
+          `Couldn't run helpbase login. Falling back to sample content. Run ${pc.cyan("npx helpbase@latest login")} after scaffold to retry.`,
+          "Login skipped",
+        )
+      } else {
+        // Re-read the token file — login just wrote it.
+        authToken = readHelpbaseAuthToken()
+      }
+    } else if (authChoice === "byok") {
+      const keyResponse = await text({
+        message: "Paste your Vercel AI Gateway key",
+        placeholder: "vck_...",
+      })
+      if (isCancel(keyResponse)) {
+        cancel("Setup cancelled.")
+        process.exit(0)
+      }
+      const trimmed = (keyResponse as string | undefined)?.trim()
+      if (trimmed && trimmed.length > 0 && trimmed !== "skip") {
+        aiGatewayKey = trimmed
+      }
     }
+    // authChoice === "skip" → fall through with no token, generation
+    // will error with the MissingApiKey path and sample content stays.
   }
 
   // 4. Scaffold the project
@@ -692,6 +734,39 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
     `Run ${pc.cyan(`helpbase context ${repoPath}`)} later to retry.`,
     "Tip",
   )
+}
+
+/**
+ * Run `helpbase login` as a subprocess with stdio inherited so the user
+ * sees the real login prompt (email → OTP). Returns "ok" if the login
+ * flow exited cleanly, "failed" if the subprocess crashed / was cancelled.
+ *
+ * Uses `npx helpbase@latest` as the spawn target so this works even when
+ * the user has no global helpbase install and the scaffolder itself was
+ * launched via `pnpm dlx create-helpbase@latest`. First-run resolution
+ * is ~10-20s; subsequent runs hit the npx cache and are near-instant.
+ */
+async function runHelpbaseLogin(): Promise<"ok" | "failed"> {
+  const pkgManager = detectPackageManager()
+  // Prefer the package manager the user invoked create-helpbase with
+  // (matches their cache behavior). Fall back to npx if unknown.
+  const [cmd, ...args] =
+    pkgManager === "pnpm"
+      ? ["pnpm", "dlx", "helpbase@latest", "login"]
+      : pkgManager === "yarn"
+        ? ["yarn", "dlx", "helpbase@latest", "login"]
+        : pkgManager === "bun"
+          ? ["bunx", "helpbase@latest", "login"]
+          : ["npx", "-y", "helpbase@latest", "login"]
+
+  return new Promise<"ok" | "failed">((resolve) => {
+    const child = spawn(cmd, args, {
+      stdio: "inherit",
+      env: process.env,
+    })
+    child.on("exit", (code) => resolve(code === 0 ? "ok" : "failed"))
+    child.on("error", () => resolve("failed"))
+  })
 }
 
 /**

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [create-helpbase 0.3.1] — 2026-04-17
+
+### Changed
+- **Auth prompt leads with `helpbase login`, not BYOK.** When the user
+  picks a repo or URL source and has no existing session / AI Gateway
+  key, the scaffolder now offers a three-way select:
+  - Log in (runs `helpbase login` inline — free, no card, 500k tokens/day)
+  - Paste a Vercel AI Gateway key
+  - Skip and ship with sample content
+
+  Motivation: burying the login path behind a "couldn't generate, try
+  `helpbase login`" error message leaves leads on the floor. Surfacing
+  it at the decision point captures evaluators who are already asking
+  for the value, without forcing signup on users who pick "Skip".
+
+  Login spawns as a subprocess with inherited stdio (so the email → OTP
+  flow runs natively), via `pnpm dlx` / `npx` / `bunx` / `yarn dlx`
+  matching the user's package manager. The scaffolder re-reads
+  `~/.helpbase/auth.json` after the subprocess exits and continues
+  with the freshly-minted token.
+
 ## [0.4.0] — 2026-04-17
 
 ### Added

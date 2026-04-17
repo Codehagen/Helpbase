@@ -84,6 +84,23 @@ const HOSTED_TIER_EXCLUDES = [
   "lib/waitlist.ts",
   "lib/rate-limit.ts",
   "components/tenant-search-trigger.tsx",
+  // Admin dashboard + TanStack Query foundation: hosted-tier only.
+  // The scaffolded docs site is pure SSR — it has no client server-state
+  // to manage and doesn't need to ship @tanstack/react-query.
+  "app/admin/",
+  "components/providers/",
+  "hooks/use-usage-today.ts",
+  "hooks/use-my-tenants.ts",
+  "hooks/use-usage-today.test.tsx",
+  "hooks/use-my-tenants.test.tsx",
+  "lib/data/",
+  "lib/fetchers.ts",
+  "lib/fetchers.test.ts",
+  "lib/query-client.ts",
+  "lib/get-query-client.ts",
+  "lib/query-keys.ts",
+  "lib/query-keys.test.ts",
+  "lib/query-options.ts",
 ]
 
 // Import transform map. Each @workspace/* prefix maps to a local @/* path.
@@ -944,9 +961,13 @@ function syncRegistry() {
   }
   mkdirSync(REGISTRY, { recursive: true })
 
-  // Copy components/ (all 8 component files)
+  // Copy components/ (all 8 component files). Filter mirrors the templates
+  // target's semantics (startsWith) so directory-prefix entries in
+  // HOSTED_TIER_EXCLUDES like "components/providers/" actually exclude.
   const componentFiles = walkFiles(join(APPS_WEB, "components")).filter(
-    (f) => !f.endsWith(".gitkeep"),
+    (f) =>
+      !f.endsWith(".gitkeep") &&
+      !HOSTED_TIER_EXCLUDES.some((p) => `components/${f}`.startsWith(p)),
   )
   for (const rel of componentFiles) {
     copyAppsWebFileToRegistry(join("components", rel))
@@ -955,8 +976,12 @@ function syncRegistry() {
 
   // Copy lib/ (apps/web lib files: content, search, toc, etc.)
   // Excludes hosted-tier files (tenant-content, hosted-mdx-components, supabase).
+  // startsWith matches both exact file entries ("lib/auth.ts") and directory
+  // entries ("lib/data/").
   const libFiles = walkFiles(join(APPS_WEB, "lib")).filter(
-    (f) => !f.endsWith(".gitkeep") && !HOSTED_TIER_EXCLUDES.includes(`lib/${f}`),
+    (f) =>
+      !f.endsWith(".gitkeep") &&
+      !HOSTED_TIER_EXCLUDES.some((p) => `lib/${f}`.startsWith(p)),
   )
   for (const rel of libFiles) {
     copyAppsWebFileToRegistry(join("lib", rel))

@@ -43,8 +43,8 @@ describe("AdminLayout", () => {
     expect(out).toBeDefined()
     // The returned element is a plain React element — inspect the tree
     // instead of rendering to DOM (requires Link/Suspense shims otherwise).
-    expect(out).toMatchObject({
-      type: "div",
-    })
+    // Root is <QueryProvider>, a function component.
+    expect(typeof out.type).toBe("function")
+    expect(out.type).toHaveProperty("name", "QueryProvider")
   })
 })

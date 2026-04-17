@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [helpbase 0.4.1] — 2026-04-17
+
+### Fixed
+- **`helpbase login` accepts a pasted magic-link URL, not just a 6-digit code.** Supabase's default email template sends only a clickable magic link (no code), so users who ran `helpbase login` got an email, saw no code, and watched the CLI wait forever for input. The prompt now accepts either form: a full URL with `#access_token=...` OR a 6-digit code for projects whose template includes `{{ .Token }}`. The URL path decodes the session in-process without a second Supabase round-trip.
+- Tracking `TODO-020` in `TODOS.md` for the real fix — a proper device flow à la Claude Code / Supabase CLI / `gh auth login` that bounces the user to `helpbase.dev/login/cli/<session>`, skips email entirely, and polls from the CLI. Needs its own plan review before shipping.
+
 ## [create-helpbase 0.3.1] — 2026-04-17
 
 ### Changed

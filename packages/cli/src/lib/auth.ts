@@ -92,6 +92,106 @@ export async function sendLoginCode(email: string): Promise<void> {
 }
 
 /**
+ * Parse a Supabase magic-link URL (the thing the user clicks in their email)
+ * into an AuthSession. Supabase's default template sends only a link, not
+ * a 6-digit code, so accepting the link directly as a CLI paste is the
+ * fallback for projects that haven't added `{{ .Token }}` to their email
+ * template yet.
+ *
+ * The URL shape is:
+ *   http://<site>/#access_token=<jwt>&refresh_token=<r>&expires_at=<s>&token_type=bearer&type=magiclink
+ *
+ * Fragment (not query) because that's what Supabase writes. We accept
+ * either for robustness — some email clients rewrite links.
+ *
+ * Stores the resulting session to `~/.helpbase/auth.json` so the rest of
+ * the CLI picks it up.
+ */
+export function verifyLoginFromMagicLink(url: string): AuthSession {
+  const parsed = parseMagicLinkTokens(url)
+  if (!parsed) {
+    throw new HelpbaseError({
+      code: "E_AUTH_VERIFY_OTP",
+      problem: "Couldn't read the magic link",
+      cause: "No access_token in the URL you pasted",
+      fix: [
+        "Copy the full URL from the email — everything after `#` matters",
+        "Run `helpbase login` again if it expired",
+      ],
+    })
+  }
+  const session: AuthSession = {
+    userId: parsed.userId,
+    email: parsed.email,
+    accessToken: parsed.accessToken,
+    refreshToken: parsed.refreshToken,
+    expiresAt: parsed.expiresAt,
+  }
+  storeSession(session)
+  return session
+}
+
+interface ParsedMagicLink {
+  accessToken: string
+  refreshToken: string
+  expiresAt: number
+  userId: string
+  email: string
+}
+
+function parseMagicLinkTokens(url: string): ParsedMagicLink | null {
+  // Supabase writes the session into the URL fragment (#key=value&...).
+  // Grab whatever comes after the first # OR ? — some email clients
+  // normalize the fragment into a query string.
+  const hashIdx = url.indexOf("#")
+  const queryIdx = url.indexOf("?")
+  let payload: string
+  if (hashIdx >= 0) {
+    payload = url.slice(hashIdx + 1)
+  } else if (queryIdx >= 0) {
+    payload = url.slice(queryIdx + 1)
+  } else {
+    return null
+  }
+  const params = new URLSearchParams(payload)
+  const accessToken = params.get("access_token")
+  const refreshToken = params.get("refresh_token")
+  const expiresAt = params.get("expires_at")
+  if (!accessToken || !refreshToken) return null
+
+  // Decode the JWT just enough to extract `sub` + `email`. Supabase signs
+  // it so we don't need to verify here — any subsequent API call will
+  // reject a tampered token on the server side.
+  const jwtPayload = decodeJwtPayload(accessToken)
+  if (!jwtPayload) return null
+  const userId = typeof jwtPayload.sub === "string" ? jwtPayload.sub : ""
+  const email = typeof jwtPayload.email === "string" ? jwtPayload.email : ""
+  if (!userId || !email) return null
+
+  return {
+    accessToken,
+    refreshToken,
+    expiresAt: expiresAt ? Number(expiresAt) : Math.floor(Date.now() / 1000) + 3600,
+    userId,
+    email,
+  }
+}
+
+function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
+  const parts = jwt.split(".")
+  if (parts.length !== 3) return null
+  try {
+    // JWT uses base64url — normalize to base64 for Node's Buffer.
+    const b64 = parts[1]!.replace(/-/g, "+").replace(/_/g, "/")
+    const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, "=")
+    const json = Buffer.from(padded, "base64").toString("utf-8")
+    return JSON.parse(json) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+/**
  * Complete an interactive login by verifying the 6-digit code from the email.
  * Stores the resulting session to ~/.helpbase/auth.json.
  */

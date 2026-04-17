@@ -24,7 +24,44 @@ _All P1 items for the 2026-04-15 knowledge-layer plan shipped. See Completed._
 
 ## P2
 
-_All P2 items for the 2026-04-15 knowledge-layer plan shipped. See Completed._
+### TODO-020: `helpbase login` — proper device flow (Claude / Supabase CLI pattern)
+
+**What:** Replace the email-OTP / magic-link paste dance with a browser-based device flow. `helpbase login` opens `https://helpbase.dev/login/cli/<session-id>` in the user's browser, they sign in there (existing Supabase auth, one click if already logged in), the page writes a token bound to the session ID, the CLI polls a `/api/cli/auth/poll` endpoint until the token appears, then writes it to `~/.helpbase/auth.json`. Matches Claude Code's `claude login`, Supabase CLI's `supabase login`, `gh auth login` — the shape every dev already knows.
+
+**Why:** Today's CLI login sends a Supabase magic-link email whose default template contains only a clickable URL, no 6-digit code. The CLI was coded to prompt for a code, so until 2026-04-17 users got an email that looked wrong and a terminal that hung waiting for input. The 2026-04-17 patch (helpbase 0.4.1) accepts a pasted magic link URL as a workaround, but this is duct tape on a fundamentally bad UX: the user still has to leave the terminal, open email, click link, see a "this page doesn't do anything" landing at localhost:3000, come back to the terminal, paste the URL. Three context switches. Device flow is one.
+
+**Pros:**
+- Best-in-class DX — same mental model as Claude / Supabase / gh
+- No email client weirdness, no URL-paste copy failures
+- Captures lead data (email verified in-browser) on every login, not just the first
+- Works without user ever looking at an email client — friction kill on cold installs
+- Sidesteps the magic-link vs OTP config mess entirely
+
+**Cons:**
+- Real feature, not a patch. New Next.js page + new API route + new Supabase table + CLI state machine.
+- State machine has timing edge cases (what if user closes the browser mid-auth, token expiry, polling backoff, rate limiting on poll endpoint).
+- Touches auth code — must go through `/plan-eng-review` + `/plan-devex-review` before shipping.
+
+**Context:**
+- Bug surfaced 2026-04-17 when `pnpm dlx create-helpbase@0.3.1` spawned `helpbase login` inline. User got a Supabase magic link instead of a 6-digit code (Supabase's default template doesn't include `{{ .Token }}`). Current state: `packages/cli/src/commands/login.ts` asks "Paste the magic link URL or 6-digit code" — works but awkward.
+- Parallel fix (separate, quick): update the Supabase project's email template to include both `{{ .Token }}` AND `{{ .ConfirmationURL }}` so existing login flow surfaces a code too. Dashboard change, not code.
+- Touch points for the real fix:
+  - New route: `apps/web/app/login/cli/[session]/page.tsx` (the browser-facing page)
+  - New API: `apps/web/app/api/cli/auth/start/route.ts` (mint a session ID + pending record) and `.../poll/route.ts` (CLI fetches token once the page writes one)
+  - New Supabase table: `cli_auth_sessions` (id, user_id nullable, token nullable, expires_at, created_at). RLS: rows visible only to the CLI polling with the matching session ID, writable only by the signed-in user whose browser page is open.
+  - CLI: `packages/cli/src/lib/auth.ts` adds `startDeviceAuth()` (POST /start, returns `{ sessionId, url }`), `pollDeviceAuth(sessionId)` (loop with exponential backoff, max 5 min). `packages/cli/src/commands/login.ts` branches on a `--device` flag or makes device flow the default.
+  - Browser open helper: same `spawn("open" | "xdg-open" | "start", [url])` pattern the scaffolder already uses for `pnpm dev`.
+- Reference implementations worth reading before designing ours:
+  - Supabase CLI: https://github.com/supabase/cli/tree/develop/internal/login
+  - Claude Code login flow (device code over HTTPS)
+  - GitHub CLI `gh auth login --web`: uses OAuth device flow
+
+**Effort:** M (human ~1–2 days / CC ~1–2 hours for the happy path; more if we add polish like "revoke device" and per-device names)
+**Priority:** P2 (ships before next external-user campaign — Vegard walkthrough or public-soft-launch)
+**Depends on / blocked by:** nothing — Supabase auth already works; this is additive infrastructure.
+**Source:** live dogfood 2026-04-17 via `pnpm dlx create-helpbase@0.3.1 scaffold-repo-test`
+
+---
 
 ## P3 (deferred)
 

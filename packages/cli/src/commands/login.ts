@@ -7,6 +7,7 @@ import {
   isNonInteractive,
   sendLoginCode,
   verifyLoginCode,
+  verifyLoginFromMagicLink,
 } from "../lib/auth.js"
 import { HelpbaseError, formatError } from "../lib/errors.js"
 import {
@@ -70,21 +71,28 @@ export const loginCommand = new Command("login")
       process.exit(1)
     }
 
-    const code = await text({
-      message: "Enter the 6-digit code from your email:",
-      placeholder: "123456",
+    const input = await text({
+      message: "Paste the magic link URL from the email (or the 6-digit code, if your template shows one):",
+      placeholder: "https://helpbase.dev/#access_token=... or 123456",
       validate: (v) => {
-        if (!/^\d{6}$/.test(v)) return "Enter the 6-digit code"
-        return undefined
+        const t = v.trim()
+        if (!t) return "Paste the URL or code"
+        if (t.startsWith("http")) return undefined
+        if (/^\d{6}$/.test(t)) return undefined
+        return "Expected a full URL starting with http or a 6-digit code"
       },
     })
-    if (isCancel(code)) {
+    if (isCancel(input)) {
       cancel("Cancelled.")
       process.exit(0)
     }
 
+    const trimmed = (input as string).trim()
+
     try {
-      const session = await verifyLoginCode(email, code as string)
+      const session = trimmed.startsWith("http")
+        ? verifyLoginFromMagicLink(trimmed)
+        : await verifyLoginCode(email, trimmed)
       await maybeAskTelemetryConsent()
       outro(`Logged in as ${pc.cyan(session.email)}`)
       nextSteps({ commands: ["helpbase link", "helpbase new"] })

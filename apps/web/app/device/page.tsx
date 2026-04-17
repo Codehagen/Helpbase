@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { authProviders } from "@/lib/auth"
 import { AuthorizeDeviceClient } from "./AuthorizeDeviceClient"
 
 export const metadata: Metadata = {
@@ -17,6 +18,14 @@ export default async function DevicePage({
   const params = await searchParams
   const userCode = params.user_code?.trim() ?? ""
 
+  // Social-provider availability is computed server-side (env vars live
+  // on the server), then handed to the client so buttons only render for
+  // providers that are actually configured.
+  const providers = {
+    google: authProviders.google,
+    github: authProviders.github,
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-12">
       <div className="w-full rounded-lg border border-neutral-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
@@ -26,7 +35,7 @@ export default async function DevicePage({
             A CLI session on your device is waiting for approval.
           </p>
         </div>
-        <AuthorizeDeviceClient initialUserCode={userCode} />
+        <AuthorizeDeviceClient initialUserCode={userCode} providers={providers} />
         <div className="mt-6 border-t border-neutral-200 pt-4 text-center text-xs text-neutral-500 dark:border-neutral-800">
           Compare the code above to what your terminal shows. If they don't
           match, close this tab and ignore the link.

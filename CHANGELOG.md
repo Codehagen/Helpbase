@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **OAuth providers on `/device`.** Opt-in Google + GitHub sign-in
+  buttons render above the magic-link form when the provider's
+  `*_CLIENT_ID` and `*_CLIENT_SECRET` env vars are configured on the
+  server. Buttons stay hidden until configured, and the email
+  magic-link path always remains available as a fallback. Cold-path
+  TTHW drops from ~60s (email round-trip) to ~20s (one-click OAuth).
+
 ## [helpbase 0.5.0] — 2026-04-17
 
 ### Added

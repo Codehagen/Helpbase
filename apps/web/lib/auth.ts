@@ -9,6 +9,39 @@ const DATABASE_URL = process.env.DATABASE_URL
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "helpbase <login@helpbase.dev>"
 
+// Social providers are opt-in: the config block is only added when BOTH
+// the client id and secret are present in env. Lets us deploy the code
+// without the OAuth apps being created yet, and lets teammates run
+// locally without setting up their own OAuth clients.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET
+
+export const authProviders = {
+  google: Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
+  github: Boolean(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET),
+} as const
+
+type SocialProvidersConfig = NonNullable<Parameters<typeof betterAuth>[0]["socialProviders"]>
+
+function buildSocialProviders(): SocialProvidersConfig {
+  const providers: SocialProvidersConfig = {}
+  if (authProviders.google) {
+    providers.google = {
+      clientId: GOOGLE_CLIENT_ID!,
+      clientSecret: GOOGLE_CLIENT_SECRET!,
+    }
+  }
+  if (authProviders.github) {
+    providers.github = {
+      clientId: GITHUB_CLIENT_ID!,
+      clientSecret: GITHUB_CLIENT_SECRET!,
+    }
+  }
+  return providers
+}
+
 // Guards fire at runtime (server-side request handling), not during
 // `next build` static page-data collection. NEXT_PHASE is set to
 // 'phase-production-build' by Next.js during build so we can distinguish
@@ -88,6 +121,7 @@ async function deliverMagicLink(email: string, url: string): Promise<void> {
 
 export const auth = betterAuth({
   database: new Pool({ connectionString: DATABASE_URL }),
+  socialProviders: buildSocialProviders(),
   plugins: [
     bearer(),
     magicLink({

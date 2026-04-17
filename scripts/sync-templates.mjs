@@ -67,10 +67,13 @@ const HOSTED_TIER_EXCLUDES = [
   "app/(main)/waitlist/",
   "app/api/",
   "lib/tenant-content.ts",
+  "lib/tenant-search.ts",
   "lib/hosted-mdx-components.tsx",
   "lib/supabase.ts",
   "lib/supabase-admin.ts",
   "lib/waitlist.ts",
+  "lib/rate-limit.ts",
+  "components/tenant-search-trigger.tsx",
 ]
 
 // Import transform map. Each @workspace/* prefix maps to a local @/* path.
@@ -463,8 +466,10 @@ function generateTemplatesPackageJson() {
       "next-mdx-remote": "^6.0.0",
       "next-themes": "^0.4.6",
       "gray-matter": "^4.0.3",
+      "rehype-pretty-code": "^0.14.3",
       "rehype-slug": "^6.0.0",
       "remark-gfm": "^4.0.0",
+      shiki: "^4.0.2",
       zod: "^4.3.6",
       clsx: "^2.1.1",
       "tailwind-merge": "^3.5.0",

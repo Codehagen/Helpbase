@@ -83,22 +83,26 @@ export function spinner(): Spinner {
   // Fallback path: single-line log per unique message. Used in CI, pipes,
   // --json, --quiet. Writes directly so it stays visible even when
   // canDecorate() is false (progress indication is useful in CI logs).
+  //
+  // No ANSI here — we took this path precisely because the environment
+  // can't render them (pipes, CI logs, non-TTY stderr). Bare characters
+  // keep CI log scrapers happy.
   let lastMessage = ""
   const quiet = () => process.env.HELPBASE_QUIET
   return {
     start(msg?: string) {
       if (!msg || quiet()) return
       lastMessage = msg
-      process.stderr.write(`${pc.dim("›")} ${msg}\n`)
+      process.stderr.write(`> ${msg}\n`)
     },
     message(msg: string) {
       if (!msg || msg === lastMessage || quiet()) return
       lastMessage = msg
-      process.stderr.write(`${pc.dim("›")} ${msg}\n`)
+      process.stderr.write(`> ${msg}\n`)
     },
     stop(msg?: string, code = 0) {
       if (!msg || quiet()) return
-      const prefix = code !== 0 ? pc.red("✖") : pc.green("✓")
+      const prefix = code !== 0 ? "x" : "ok"
       process.stderr.write(`${prefix} ${msg}\n`)
     },
   }

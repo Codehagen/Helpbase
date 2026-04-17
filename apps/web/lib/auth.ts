@@ -9,12 +9,19 @@ const DATABASE_URL = process.env.DATABASE_URL
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "helpbase <login@helpbase.dev>"
 
+// Guards fire at runtime (server-side request handling), not during
+// `next build` static page-data collection. NEXT_PHASE is set to
+// 'phase-production-build' by Next.js during build so we can distinguish
+// the two. Without this gate, CI without prod secrets can't build at all,
+// and Vercel's build step would fail before ever getting to runtime.
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
+const isRuntimeProd = process.env.NODE_ENV === "production" && !isBuildPhase
+
 if (!DATABASE_URL) {
-  // In prod, this is fatal — every auth request would 500 against a pool
-  // built from undefined. Fail loud so the Vercel build surfaces it.
-  // In dev we only warn; contributors can run the docs site + non-auth
-  // routes without a DB if they're iterating on MDX or the web UI.
-  if (process.env.NODE_ENV === "production") {
+  if (isRuntimeProd) {
+    // Runtime miss — every auth request would 500 against a pool built
+    // from undefined. Surfaces on first request to /api/auth/* instead
+    // of at module load, so the rest of the site still serves pages.
     throw new Error(
       "DATABASE_URL is required in production. Supabase → Project Settings → " +
       "Database → Connection string. Use the 'session' / direct connection.",
@@ -23,11 +30,11 @@ if (!DATABASE_URL) {
   // eslint-disable-next-line no-console
   console.warn(
     "[auth] DATABASE_URL not set. /api/auth/* will 500 until you set it " +
-    "in apps/web/.env.local.",
+    "in apps/web/.env.local (or Vercel env for prod).",
   )
 }
 
-if (!RESEND_API_KEY && process.env.NODE_ENV === "production") {
+if (!RESEND_API_KEY && isRuntimeProd) {
   // Without a mail provider in prod, the dev fallback would print live
   // magic-link URLs to Vercel Runtime Logs — anyone with log access could
   // harvest sign-in URLs. Fail boot instead.

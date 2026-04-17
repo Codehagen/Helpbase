@@ -4,6 +4,7 @@ import { magicLink } from "better-auth/plugins/magic-link"
 import { deviceAuthorization } from "better-auth/plugins/device-authorization"
 import { Pool } from "pg"
 import { Resend } from "resend"
+import { SignInMagicLinkEmail } from "@/emails/sign-in-magic-link"
 
 const DATABASE_URL = process.env.DATABASE_URL
 const RESEND_API_KEY = process.env.RESEND_API_KEY
@@ -79,15 +80,30 @@ if (!RESEND_API_KEY && isRuntimeProd) {
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 
+// Keep in sync with the magicLink plugin's `expiresIn` below. Used both by
+// the email template copy and the text fallback so they never drift.
+const MAGIC_LINK_EXPIRES_MINUTES = 10
+
 async function deliverMagicLink(email: string, url: string): Promise<void> {
   if (resend) {
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
       subject: "Sign in to helpbase",
+      // Resend renders the React component to HTML server-side. The `text`
+      // fallback is kept explicit (rather than letting Resend auto-generate
+      // one from the component) so plain-text-only clients get copy tuned
+      // for that surface — no stripped-down HTML leftovers.
+      react: SignInMagicLinkEmail({
+        url,
+        email,
+        expiresInMinutes: MAGIC_LINK_EXPIRES_MINUTES,
+      }),
       text:
-        `Click the link below to sign in:\n\n${url}\n\n` +
-        `This link expires in 10 minutes. If you didn't request this, ignore this email.`,
+        `Sign in to helpbase\n\n` +
+        `Click the link below to continue:\n${url}\n\n` +
+        `This link expires in ${MAGIC_LINK_EXPIRES_MINUTES} minutes.\n` +
+        `If you didn't request this email, you can ignore it.`,
     })
     if (error) {
       // Let Better Auth surface the error to the caller. The CLI's
@@ -125,7 +141,10 @@ export const auth = betterAuth({
   plugins: [
     bearer(),
     magicLink({
-      expiresIn: 600, // 10 minutes; Better Auth default is 300 which is tight for mobile mail delivery
+      // Keep in sync with MAGIC_LINK_EXPIRES_MINUTES above (the email copy
+      // references it). Better Auth's default 300s is tight for mobile mail
+      // delivery; 10m gives most carriers a comfortable window.
+      expiresIn: MAGIC_LINK_EXPIRES_MINUTES * 60,
       sendMagicLink: async ({ email, url }) => {
         await deliverMagicLink(email, url)
       },

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Branded HTML magic-link email.** The sign-in email is now a React
+  Email component (`apps/web/emails/sign-in-magic-link.tsx`) matching
+  the editorial-technical look of the site — helpbase wordmark, near-
+  black primary CTA, cool-neutral palette, 10-minute expiry copy, and a
+  tuned plain-text fallback for clients that don't render HTML. Preview
+  locally with `pnpm -F web email`.
 - **OAuth providers on `/device`.** Opt-in Google + GitHub sign-in
   buttons render above the magic-link form when the provider's
   `*_CLIENT_ID` and `*_CLIENT_SECRET` env vars are configured on the

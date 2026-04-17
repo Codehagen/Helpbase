@@ -33,6 +33,12 @@ const RESET = "\x1b[0m"
 
 export function renderBanner(): string {
   if (isJsonMode() || isQuiet()) return ""
+  // Stdout is reserved for composable output (JSON, URLs, paths). When
+  // not a TTY, we're being piped into `grep` / a completion generator /
+  // another process — escape sequences AND decorative glyphs break the
+  // downstream parse. isTTY is undefined in non-TTY envs (not false), so
+  // coerce explicitly.
+  if (!process.stdout.isTTY) return ""
   const cols = process.stdout.columns ?? 80
   if (cols < LOGO_WIDTH + 2) return ""
   if (!canColor()) return LOGO_LINES.join("\n") + "\n"

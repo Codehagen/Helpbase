@@ -15,6 +15,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
+// Keep this route dynamic. Auth-gated + per-user data is never safe to
+// prerender, and we want a defensive barrier against future PPR/ISR
+// project-wide config flipping this to cached-by-default.
+export const dynamic = "force-dynamic"
+
 export default async function UsagePage() {
   // The layout already auth-gates, but we also need `userId` + `email`
   // here to call the data layer. Re-resolving is cheap (cookie → session
@@ -23,11 +28,12 @@ export default async function UsagePage() {
   if (!session?.user?.id) redirect("/device")
 
   // Direct data-layer call + setQueryData avoids a self-HTTP round-trip.
-  // Client's useSuspenseQuery reads the seeded cache, sees fresh-within-
-  // staleTime, and never triggers queryFn — so no content flash.
+  // `updatedAt: Date.now()` is critical: without it the hydrated entry
+  // has dataUpdatedAt=0, so useSuspenseQuery treats it as stale and
+  // refetches on mount — defeating the whole point of seeding.
   const queryClient = getQueryClient()
   const data = await getUsageTodayForUser(session.user.id, session.user.email ?? "")
-  queryClient.setQueryData(usageKeys.today(), data)
+  queryClient.setQueryData(usageKeys.today(), data, { updatedAt: Date.now() })
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

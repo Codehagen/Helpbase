@@ -6,7 +6,9 @@ import { usageTodayOptions } from "@/lib/query-options"
 export function UsageCard() {
   const { data } = useSuspenseQuery(usageTodayOptions())
   const { usedToday, dailyLimit, resetAt } = data.quota
-  const pct = dailyLimit > 0 ? Math.min(100, Math.round((usedToday / dailyLimit) * 100)) : 0
+  // Clamp both ends: negative usedToday (quota refund TODO) would otherwise
+  // produce width: -5% → CSS drops it → bar collapses silently.
+  const pct = dailyLimit > 0 ? Math.max(0, Math.min(100, Math.round((usedToday / dailyLimit) * 100))) : 0
 
   return (
     <section className="rounded-lg border border-border bg-card p-6">
@@ -37,7 +39,7 @@ export function UsageCard() {
         />
       </div>
 
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-3 text-xs text-muted-foreground" suppressHydrationWarning>
         Resets at {new Date(resetAt).toLocaleString()}
       </p>
     </section>

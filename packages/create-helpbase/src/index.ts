@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-import { intro, outro, text, spinner, note, cancel, isCancel } from "@clack/prompts"
+import { intro, outro, text, select, confirm, spinner, note, cancel, isCancel } from "@clack/prompts"
 import { Command } from "commander"
 import pc from "picocolors"
 import fs from "node:fs"
+import os from "node:os"
 import path from "node:path"
-import { execSync } from "node:child_process"
+import { execSync, spawn } from "node:child_process"
 import {
   planArticleWrites,
   resolveModel,
@@ -20,9 +21,17 @@ import {
 import { scaffoldProject, clearSampleContent } from "./scaffold.js"
 import { writeAiGatewayKey } from "./env-local.js"
 import { readHelpbaseAuthToken } from "./auth.js"
+import {
+  generateFromRepo,
+  AllDocsDroppedError,
+  TokenBudgetExceededError,
+  SchemaGenerationError,
+} from "./generate-from-repo.js"
+import { emitMcpJson } from "./emit-mcp-json.js"
 
 interface RunOptions {
   url?: string
+  source?: string
   install?: boolean
   open?: boolean
   test?: boolean
@@ -31,6 +40,7 @@ interface RunOptions {
 }
 
 const PROJECT_NAME_REGEX = /^[a-z0-9-]+$/
+const GITHUB_URL_REGEX = /^https?:\/\/(?:www\.)?github\.com\/[^/]+\/[^/]+(?:\.git)?\/?$/i
 
 function validateProjectName(name: string): string | undefined {
   if (!name) return "Project name is required"
@@ -46,6 +56,10 @@ const program = new Command()
   .version("0.0.1")
   .argument("[directory]", "Directory to create the project in")
   .option("--url <url>", "Generate articles from a website URL")
+  .option(
+    "--source <value>",
+    "Seed content source: a URL (https://...), a local repo path, or 'skip' for sample content",
+  )
   .option("--no-install", "Skip dependency installation")
   .option("--no-open", "Don't open browser after setup")
   .option(
@@ -60,6 +74,11 @@ const program = new Command()
   .action(run)
 
 program.parse()
+
+type ContentSource =
+  | { kind: "url"; url: string }
+  | { kind: "repo"; repoPath: string; tempClone?: string }
+  | { kind: "skip" }
 
 async function run(directory: string | undefined, opts: RunOptions) {
   console.log()
@@ -115,39 +134,32 @@ async function run(directory: string | undefined, opts: RunOptions) {
     }
   }
 
-  // 2. Optional URL for AI content generation.
-  //    Skip the prompt entirely in non-interactive mode so the tool can be
-  //    scripted. Users who want AI generation pass --url explicitly.
-  let siteUrl = opts.url
-  if (!siteUrl && isInteractive) {
-    const urlResponse = await text({
-      message: "Generate articles from your website? (paste URL or leave empty to skip)",
-      placeholder: "https://myproduct.com",
-    })
+  // 2. Content source selection.
+  //    Explicit select first (URL / repo / skip), then the source-specific
+  //    input. Rationale: single-prompt heuristics on the input itself made
+  //    `my-repo` ambiguous between "subdirectory" and "bare URL without
+  //    scheme". Splitting into select-then-input is explicit > clever.
+  //    If --source / --url flags are set, honor them and skip the prompt.
+  const source = await resolveContentSource({
+    flagUrl: opts.url,
+    flagSource: opts.source,
+    isInteractive,
+  })
 
-    if (isCancel(urlResponse)) {
-      cancel("Setup cancelled.")
-      process.exit(0)
-    }
-
-    if (urlResponse && (urlResponse as string).trim().length > 0) {
-      let url = (urlResponse as string).trim()
-      if (!url.startsWith("http")) {
-        url = `https://${url}`
-      }
-      siteUrl = url
-    }
+  if (source === "cancelled") {
+    cancel("Setup cancelled.")
+    process.exit(0)
   }
 
-  // 3. Optional BYOK key.
-  //    Most users skip this — the default flow is `helpbase login` post-scaffold,
-  //    which uses the free-tier hosted proxy (no card, 500k tokens/day).
-  //    BYOK (Vercel AI Gateway key) is for power users who want unlimited calls
-  //    on their own billing, CI runs without login, or privacy-sensitive setups.
-  //    Skipping here is the right default.
-  //    Non-interactive runs skip entirely; scripted setups inject via env / .env.local.
+  // 3. BYOK prompt — conditional on auth state.
+  //    Skip entirely when the user already has a helpbase session on disk
+  //    (the hosted proxy will serve them) or has AI_GATEWAY_API_KEY set
+  //    (BYOK already resolved). Saves ~10-15s of dead-air friction for
+  //    the common case of a returning developer.
+  const authToken = readHelpbaseAuthToken()
+  const byokAlreadyResolved = Boolean(process.env.AI_GATEWAY_API_KEY)
   let aiGatewayKey: string | undefined
-  if (isInteractive) {
+  if (isInteractive && source.kind !== "skip" && !authToken && !byokAlreadyResolved) {
     const keyResponse = await text({
       message:
         "BYOK? Paste a Vercel AI Gateway key (optional — most people skip this and run `helpbase login` instead)",
@@ -181,48 +193,45 @@ async function run(directory: string | undefined, opts: RunOptions) {
 
   s.stop("Project scaffolded!")
 
-  // 4. AI content generation (if URL provided).
+  // 5. AI content generation — branches by source kind.
   //
-  // Sample content from apps/web/content/ ships with the templates dir, so
-  // every fresh scaffold already has 3 sample articles in 2 categories.
-  // When --url is supplied and generation succeeds, we wipe that sample
-  // content first so the user sees their AI-generated articles cleanly,
-  // not mixed with placeholders. When --url fails, we keep the sample
-  // content (it's the natural fallback).
-  if (siteUrl) {
-    const model = resolveModel({ test: opts.test, modelOverride: opts.model })
-    // Three-stage spinner: scrape → synthesize → write. The LLM call is the
-    // long step (10-25s on Flash Lite), and running all three under one
-    // spinner made users think the whole thing had hung. Separate stages let
-    // them see real state changes every few seconds.
-    try {
-      clearSampleContent(projectDir)
+  //    Invariant (Issue 1 fix from /plan-eng-review 2026-04-17): sample
+  //    content stays on disk until LLM synthesis SUCCEEDS. The old flow
+  //    ran clearSampleContent() before the LLM call, so a failure in the
+  //    LLM path left the user with an empty content/ and a message
+  //    claiming "sample content remains" — a lie. Now the clear happens
+  //    in the onPhase("writing") callback, which fires only after
+  //    synthesis returned + citations validated.
+  let generationSucceeded = false
 
-      s.start(`Scraping ${pc.cyan(siteUrl)}...`)
-      const content = await scrapeUrl(siteUrl)
-      s.stop("Site scraped.")
-
-      s.start(`Synthesizing articles with ${pc.dim(model)} ${pc.dim("(~10-25s)")}...`)
-      const articles = await generateArticlesFromContent({
-        content,
-        sourceUrl: siteUrl,
-        model,
-        authToken: readHelpbaseAuthToken(),
-      })
-      s.stop(`Synthesized ${articles.length} article${articles.length === 1 ? "" : "s"}.`)
-
-      s.start("Writing articles...")
-      writeArticlesToContentDir(projectDir, articles)
-      s.stop("Articles generated!")
-    } catch (err) {
-      s.stop(pc.yellow("Couldn't generate articles. Sample content shipped with the scaffold remains."))
-      printGenerationFallbackHint(err, siteUrl)
-    }
+  if (source.kind === "url") {
+    generationSucceeded = await runUrlGeneration({
+      projectDir,
+      url: source.url,
+      model: resolveModel({ test: opts.test, modelOverride: opts.model }),
+      spinner: s,
+    })
+  } else if (source.kind === "repo") {
+    generationSucceeded = await runRepoGeneration({
+      projectDir,
+      repoPath: source.repoPath,
+      model: resolveModel({ test: opts.test, modelOverride: opts.model }),
+      authToken,
+      spinner: s,
+      tempClone: source.tempClone,
+    })
   }
 
-  // 5. Install dependencies
+  // 6. Emit mcp.json at project root if generation produced docs.
+  //    For `skip` source we keep the sample content + skip emit (sample
+  //    content has no citations worth wiring into MCP for a stranger).
+  if (generationSucceeded) {
+    emitMcpJson(projectDir)
+  }
+
+  // 7. Install dependencies
+  const pkgManager = detectPackageManager()
   if (opts.install !== false) {
-    const pkgManager = detectPackageManager()
     s.start(`Installing dependencies with ${pkgManager}... (this may take a minute)`)
     try {
       execSync(`${pkgManager} install`, {
@@ -240,8 +249,7 @@ async function run(directory: string | undefined, opts: RunOptions) {
     }
   }
 
-  // 6. Done!
-  const pkgManager = detectPackageManager()
+  // 8. Done!
   const cdCmd = projectDir === process.cwd()
     ? ""
     : `cd ${projectName as string}`
@@ -258,9 +266,9 @@ async function run(directory: string | undefined, opts: RunOptions) {
   note(bootstrap, "Run it locally")
 
   note(
-    `${pc.cyan("npx helpbase generate --url <your-site>")}  ${pc.dim("AI-write articles from your site")}\n` +
-    `${pc.cyan("npx helpbase deploy")}                      ${pc.dim("go live at <slug>.helpbase.dev")}\n` +
-    `${pc.cyan("npx helpbase new")}                         ${pc.dim("add a new article interactively")}`,
+    `${pc.cyan("npx helpbase context .")}                 ${pc.dim("generate docs from your repo source")}\n` +
+    `${pc.cyan("npx helpbase deploy")}                    ${pc.dim("go live at <slug>.helpbase.dev")}\n` +
+    `${pc.cyan("npx helpbase new")}                       ${pc.dim("add a new article interactively")}`,
     "What next",
   )
 
@@ -269,16 +277,295 @@ async function run(directory: string | undefined, opts: RunOptions) {
     `  Docs: ${pc.dim("https://helpbase.dev/docs")}`,
   )
 
-  // 7. Auto-open browser
+  // 9. Start dev server + auto-open browser on "Ready" signal.
+  //    Previously used execSync with stdio:inherit — user had to click the
+  //    localhost link manually, which added 10-15s of "wait, now what?"
+  //    time to TTHW. Spawning lets us tail stdout and open the browser the
+  //    moment Next.js signals readiness. The magical moment (cited docs at
+  //    localhost:3000) has to land in the user's eyes, not in their stdout.
   if (opts.install !== false && opts.open !== false) {
+    await startDevServerWithAutoOpen(pkgManager, projectDir)
+  }
+
+  // 10. Clean up any temp clone (GitHub branch only).
+  if (source.kind === "repo" && source.tempClone) {
     try {
-      execSync(`${pkgManager === "npm" ? "npm run" : pkgManager} dev`, {
-        cwd: projectDir,
-        stdio: "inherit",
-      })
+      fs.rmSync(source.tempClone, { recursive: true, force: true })
     } catch {
-      // Dev server was killed (Ctrl+C), that's fine
+      // best-effort
     }
+  }
+}
+
+/**
+ * Resolve the user's seed-content choice into a ContentSource. Honors
+ * --url / --source flags first (non-interactive-friendly), then prompts
+ * interactively. Handles GitHub URL detection by offering a
+ * "clone this and generate from the source code instead of scraping" path.
+ */
+async function resolveContentSource(opts: {
+  flagUrl?: string
+  flagSource?: string
+  isInteractive: boolean
+}): Promise<ContentSource | "cancelled"> {
+  // Flag short-circuit (scripted CI-friendly usage).
+  if (opts.flagUrl) {
+    return normalizeUrlInput(opts.flagUrl, /* offerClone */ false)
+  }
+  if (opts.flagSource) {
+    return classifyFlagSource(opts.flagSource)
+  }
+
+  if (!opts.isInteractive) {
+    // No flags, non-interactive — fall through to "skip" (sample content).
+    return { kind: "skip" }
+  }
+
+  const choice = await select({
+    message: "Seed content from?",
+    options: [
+      {
+        value: "url",
+        label: "A website",
+        hint: "paste a URL, we scrape it",
+      },
+      {
+        value: "repo",
+        label: "A code repository",
+        hint: "point at a local path or GitHub URL",
+      },
+      {
+        value: "skip",
+        label: "Skip",
+        hint: "ship with sample content",
+      },
+    ],
+    initialValue: "repo",
+  })
+
+  if (isCancel(choice)) return "cancelled"
+
+  if (choice === "skip") return { kind: "skip" }
+
+  if (choice === "url") {
+    const urlResponse = await text({
+      message: "Paste your website URL",
+      placeholder: "https://myproduct.com",
+    })
+    if (isCancel(urlResponse)) return "cancelled"
+    const raw = (urlResponse as string | undefined)?.trim()
+    if (!raw) return { kind: "skip" }
+    return normalizeUrlInput(raw, /* offerClone */ true)
+  }
+
+  // choice === "repo"
+  const pathResponse = await text({
+    message: "Paste the repo path (or a github.com URL)",
+    placeholder: "./my-app",
+  })
+  if (isCancel(pathResponse)) return "cancelled"
+  const raw = (pathResponse as string | undefined)?.trim()
+  if (!raw) return { kind: "skip" }
+
+  // A github.com URL pasted here: same clone path as the URL branch.
+  if (GITHUB_URL_REGEX.test(raw)) {
+    const cloned = await cloneGithubRepo(raw)
+    if (cloned === "cancelled") return "cancelled"
+    if (cloned === "failed") return { kind: "skip" }
+    return { kind: "repo", repoPath: cloned, tempClone: cloned }
+  }
+
+  const abs = path.resolve(process.cwd(), raw)
+  if (!fs.existsSync(abs)) {
+    note(
+      `Directory ${pc.bold(abs)} does not exist. Shipping sample content instead.`,
+      "Path not found",
+    )
+    return { kind: "skip" }
+  }
+  if (!fs.statSync(abs).isDirectory()) {
+    note(`${pc.bold(abs)} is not a directory. Shipping sample content instead.`, "Not a directory")
+    return { kind: "skip" }
+  }
+  return { kind: "repo", repoPath: abs }
+}
+
+/**
+ * Handle a raw URL input from the website branch. If it's a github.com
+ * URL, offer to clone it and generate from source instead of scraping
+ * GitHub's HTML (which would give us nav chrome, not docs).
+ */
+async function normalizeUrlInput(
+  raw: string,
+  offerClone: boolean,
+): Promise<ContentSource | "cancelled"> {
+  let url = raw
+  if (!url.startsWith("http")) {
+    url = `https://${url}`
+  }
+  if (offerClone && GITHUB_URL_REGEX.test(url)) {
+    const wantsClone = await confirm({
+      message: `That looks like a GitHub repo. Clone it and generate from source? (recommended — scraping github.com HTML gives nav chrome, not docs)`,
+      initialValue: true,
+    })
+    if (isCancel(wantsClone)) return "cancelled"
+    if (wantsClone) {
+      const cloned = await cloneGithubRepo(url)
+      if (cloned === "cancelled") return "cancelled"
+      if (cloned === "failed") {
+        // Fall back to scraping the URL as-is.
+        return { kind: "url", url }
+      }
+      return { kind: "repo", repoPath: cloned, tempClone: cloned }
+    }
+  }
+  return { kind: "url", url }
+}
+
+/**
+ * Classify a --source flag value without prompting. Used when the CLI is
+ * invoked non-interactively (CI, scripts).
+ */
+function classifyFlagSource(raw: string): ContentSource {
+  const trimmed = raw.trim()
+  if (!trimmed || trimmed.toLowerCase() === "skip") return { kind: "skip" }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return { kind: "url", url: trimmed }
+  }
+  const abs = path.resolve(process.cwd(), trimmed)
+  if (fs.existsSync(abs) && fs.statSync(abs).isDirectory()) {
+    return { kind: "repo", repoPath: abs }
+  }
+  // Last-ditch: treat as URL (http will be prepended if missing).
+  return { kind: "url", url: trimmed.startsWith("http") ? trimmed : `https://${trimmed}` }
+}
+
+/**
+ * `git clone --depth 1 <url> <tmpDir>`. Returns the temp directory path
+ * on success, "failed" if git isn't installed or the clone errored,
+ * "cancelled" if the user cancelled. Caller is responsible for cleanup.
+ */
+async function cloneGithubRepo(url: string): Promise<string | "failed" | "cancelled"> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-scaffold-"))
+  const sClone = spinner()
+  sClone.start(`Cloning ${pc.cyan(url)}...`)
+  try {
+    execSync(`git clone --depth 1 ${JSON.stringify(url)} ${JSON.stringify(tmpDir)}`, {
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 60_000,
+    })
+    sClone.stop("Repo cloned.")
+    return tmpDir
+  } catch (err) {
+    sClone.stop(pc.yellow(`Couldn't clone ${url}.`))
+    note(
+      `Check the URL or that git is installed. ${err instanceof Error ? err.message : ""}\n` +
+      `Falling back to sample content.`,
+      "Clone failed",
+    )
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    } catch {
+      // best-effort
+    }
+    return "failed"
+  }
+}
+
+/**
+ * Run the URL branch: scrape + LLM + write. Deferred clearSampleContent
+ * per Issue 1 fix — sample content stays on disk until AFTER the LLM
+ * returns successfully, so a failure mid-call leaves the user with a
+ * working (sample) scaffold rather than an empty one.
+ */
+async function runUrlGeneration(opts: {
+  projectDir: string
+  url: string
+  model: string
+  spinner: ReturnType<typeof spinner>
+}): Promise<boolean> {
+  const { projectDir, url, model, spinner: s } = opts
+  try {
+    s.start(`Scraping ${pc.cyan(url)}...`)
+    const content = await scrapeUrl(url)
+    s.stop("Site scraped.")
+
+    s.start(`Synthesizing articles with ${pc.dim(model)} ${pc.dim("(~10-25s)")}...`)
+    const articles = await generateArticlesFromContent({
+      content,
+      sourceUrl: url,
+      model,
+      authToken: readHelpbaseAuthToken(),
+    })
+    s.stop(`Synthesized ${articles.length} article${articles.length === 1 ? "" : "s"}.`)
+
+    s.start("Writing articles...")
+    // Deferred clear: sample content is only removed once we have something
+    // to replace it with.
+    clearSampleContent(projectDir)
+    writeArticlesToContentDir(projectDir, articles)
+    s.stop("Articles generated!")
+    return true
+  } catch (err) {
+    s.stop(pc.yellow("Couldn't generate articles. Sample content shipped with the scaffold remains."))
+    printGenerationFallbackHint(err, url)
+    return false
+  }
+}
+
+/**
+ * Run the repo branch: walk + LLM + validate + write. The three-stage
+ * spinner mirrors the URL branch but maps to the richer phases generate-
+ * from-repo exposes via onPhase (scanning → synthesizing → writing).
+ * clearSampleContent fires in the writing phase, after synthesis succeeded.
+ */
+async function runRepoGeneration(opts: {
+  projectDir: string
+  repoPath: string
+  model: string
+  authToken?: string
+  spinner: ReturnType<typeof spinner>
+  tempClone?: string
+}): Promise<boolean> {
+  const { projectDir, repoPath, model, authToken, spinner: s } = opts
+  // Track the label of the phase that's currently under the spinner so we
+  // can emit a matching completion line when the next phase starts. Empty
+  // s.stop() prints a bare "◇" line which looks broken; labeled stops
+  // create a clean ladder (Site scanned → Articles synthesized → Written).
+  let lastPhase: "scanning" | "synthesizing" | "writing" | null = null
+  const stopCurrent = () => {
+    if (lastPhase === "scanning") s.stop("Repo scanned.")
+    else if (lastPhase === "synthesizing") s.stop("Articles synthesized.")
+    else if (lastPhase === "writing") s.stop("Articles generated!")
+  }
+  try {
+    await generateFromRepo({
+      projectDir,
+      repoPath,
+      model,
+      authToken,
+      onPhase: (phase, detail) => {
+        stopCurrent()
+        lastPhase = phase
+        if (phase === "scanning") {
+          s.start(`Scanning ${pc.cyan(repoPath)}...`)
+        } else if (phase === "synthesizing") {
+          s.start(`Synthesizing articles with ${pc.dim(model)}${detail ? pc.dim(` (${detail})`) : ""}...`)
+        } else if (phase === "writing") {
+          // Defer sample-content clear until right before writes.
+          clearSampleContent(projectDir)
+          s.start("Writing articles...")
+        }
+      },
+    })
+    stopCurrent()
+    return true
+  } catch (err) {
+    if (lastPhase !== null) {
+      s.stop(pc.yellow("Couldn't generate articles. Sample content shipped with the scaffold remains."))
+    }
+    printRepoGenerationFallbackHint(err, repoPath)
+    return false
   }
 }
 
@@ -292,9 +579,8 @@ function detectPackageManager(): string {
 
 /**
  * Write generated articles into `<projectDir>/content/<category>/*.mdx` and
- * scaffold the matching `_category.json` files. Split out from the caller
- * so the main flow can own the three-stage spinner (scrape → synthesize →
- * write) without hiding the last step behind a combined helper.
+ * scaffold the matching `_category.json` files. URL branch only — the repo
+ * branch writes via generateFromRepo (shared context-writer path).
  */
 function writeArticlesToContentDir(
   projectDir: string,
@@ -354,4 +640,120 @@ function printGenerationFallbackHint(err: unknown, url: string): void {
     `Run ${pc.cyan(`helpbase generate --url ${url}`)} later to retry.`,
     "Tip",
   )
+}
+
+function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
+  if (err instanceof MissingApiKeyError) {
+    note(
+      `Run ${pc.cyan("helpbase login")} (free, no card) then:\n` +
+      `  ${pc.cyan(`helpbase context ${repoPath}`)}\n\n` +
+      `Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} ` +
+      `(docs: ${pc.cyan("helpbase.dev/docs/byok")})`,
+      "AI generation skipped",
+    )
+    return
+  }
+  if (err instanceof TokenBudgetExceededError) {
+    note(
+      `${err.message}\n` +
+      `Point at a subdirectory with more focused content, or run:\n` +
+      `  ${pc.cyan(`helpbase context ${repoPath} --max-tokens 200000`)} after scaffold.`,
+      "Repo is too large",
+    )
+    return
+  }
+  if (err instanceof SchemaGenerationError) {
+    note(
+      `The model returned invalid output. Retry with ${pc.cyan("--model anthropic/claude-sonnet-4.6")}.`,
+      "Model output issue",
+    )
+    return
+  }
+  if (err instanceof AllDocsDroppedError) {
+    note(
+      `The model returned ${err.rawDocCount} article(s) but citation validation dropped all of them. ` +
+        `This is common on cheap models that paraphrase quoted code.\n\n` +
+        `Retry with:\n` +
+        `  ${pc.cyan(`helpbase context ${repoPath} --model anthropic/claude-sonnet-4.6`)}\n` +
+        `after scaffold to regenerate with a stronger model.`,
+      "All articles dropped",
+    )
+    return
+  }
+  if (err instanceof GatewayError) {
+    note(
+      `Gateway error: ${err.message}\n` +
+      `Retry with ${pc.cyan(`helpbase context ${repoPath} --test`)} after scaffold to use a cheap fallback model.`,
+      "AI generation failed",
+    )
+    return
+  }
+  note(
+    `Run ${pc.cyan(`helpbase context ${repoPath}`)} later to retry.`,
+    "Tip",
+  )
+}
+
+/**
+ * Spawn `<pkgManager> dev` as a background process, tail stdout for the
+ * Next.js "Ready in XXXms" signal, and fire the user's default browser
+ * the moment it appears. The user sees the magical moment (cited docs at
+ * localhost:3000) without having to click the terminal link.
+ *
+ * Waits for the server to stay alive — returns when the child exits, so
+ * the CLI doesn't return to the shell while the user is reading.
+ */
+async function startDevServerWithAutoOpen(
+  pkgManager: string,
+  projectDir: string,
+): Promise<void> {
+  const [cmd, ...args] = pkgManager === "npm" ? ["npm", "run", "dev"] : [pkgManager, "dev"]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const child = spawn(cmd as any, args, {
+    cwd: projectDir,
+    stdio: ["inherit", "pipe", "pipe"],
+    env: process.env,
+  })
+
+  let browserOpened = false
+  const openBrowserOnce = (url: string) => {
+    if (browserOpened) return
+    browserOpened = true
+    try {
+      const openCmd =
+        process.platform === "darwin"
+          ? "open"
+          : process.platform === "win32"
+          ? "start"
+          : "xdg-open"
+      // Spawn detached so we don't hold the browser open on CLI exit.
+      spawn(openCmd, [url], { detached: true, stdio: "ignore" }).unref()
+    } catch {
+      // best-effort — if open fails the user can click the terminal link
+    }
+  }
+
+  const handleChunk = (chunk: Buffer) => {
+    process.stdout.write(chunk)
+    const text = chunk.toString("utf8")
+    // Next.js 13+ prints the port it actually bound to (may not be 3000
+    // if the port was taken). Match the "- Local:" line to get the
+    // real URL, or fall back to "Ready in" + localhost:3000.
+    const localMatch = text.match(/Local:\s+(https?:\/\/[^\s]+)/)
+    if (localMatch && localMatch[1]) {
+      openBrowserOnce(localMatch[1])
+      return
+    }
+    if (/Ready in \d+/.test(text)) {
+      openBrowserOnce("http://localhost:3000")
+    }
+  }
+
+  child.stdout?.on("data", handleChunk)
+  child.stderr?.on("data", (chunk: Buffer) => process.stderr.write(chunk))
+
+  await new Promise<void>((resolve) => {
+    child.on("exit", () => resolve())
+    child.on("error", () => resolve())
+  })
 }

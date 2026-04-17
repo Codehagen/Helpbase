@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-04-17
+
+### Added
+- **Unified scaffolder — `npx create-helpbase` now seeds content from a
+  URL, a local repo, a GitHub URL, or sample content.** One explicit
+  prompt picks the source. The repo and GitHub paths run the same
+  synthesis pipeline as `helpbase context` (cited how-tos + MDX +
+  `## Sources` sections), written straight into the scaffolded
+  `content/` directory. Pairs with an `mcp.json` hint at the project
+  root so the user can paste a block into Claude Desktop / Cursor /
+  Claude Code immediately.
+  - `create-helpbase 0.2.1` → `0.3.0`.
+  - Champion-tier TTHW target: under 2 min scaffold + synthesize +
+    auto-open browser at `http://localhost:3000` with cited docs
+    from the user's own source files.
+  - Conditional BYOK prompt — if `~/.helpbase/auth.json` exists or
+    `AI_GATEWAY_API_KEY` is set, the key prompt is skipped entirely.
+  - Three-stage spinner (Scanning → Synthesizing → Writing) so the
+    10-25s LLM call no longer reads as a hang.
+  - Browser auto-open — scaffolder tails the Next.js dev server
+    stdout and opens `http://localhost:3000` on the "Ready in" signal.
+  - GitHub URL detection — pasted `github.com/foo/bar` URLs prompt
+    the user with "Clone and generate from source?" and route to
+    the repo branch on accept (shallow clone to a temp dir, cleaned
+    up post-scaffold).
+- **Walker deny-list — `helpbase context` now skips codegen output
+  directories and lockfiles automatically.** Added to the built-in
+  skip list: `generated/`, `__generated__/`, `target/`, `.nuxt/`,
+  `.svelte-kit/`, `.wrangler/`. Added file-name skip: `pnpm-lock.yaml`,
+  `package-lock.json`, `yarn.lock`, `bun.lockb`, `Cargo.lock`,
+  `Gemfile.lock`, `poetry.lock`, `Pipfile.lock`, `composer.lock`. Added
+  suffix skip: `*.min.js`, `*.min.css`, `*.map`, `*.snap`,
+  `*.d.ts.map`. Fixes the "repo with Prisma codegen blows the default
+  100k token budget" problem.
+
+### Fixed
+- **`create-helpbase` no longer wipes sample content before the LLM
+  call.** Previous releases called `clearSampleContent` BEFORE the LLM
+  ran; any failure (missing auth, quota hit, gateway error) left the
+  user with an empty `content/` directory and a message claiming
+  "sample content remains" — a lie. The clear now fires in the
+  writing phase, only after the model returned valid articles.
+
+### Packages
+- `helpbase` CLI: `0.3.0` → `0.4.0`
+- `create-helpbase`: `0.2.1` → `0.3.0`
+- `@workspace/shared`: walker deny-list (internal, not published)
+
 ## [0.3.0] — 2026-04-17
 
 ### Added

@@ -23,19 +23,21 @@ helpbase ships as a scaffolder that creates a standalone Next.js project. No run
     ```
     This creates a new directory with a complete help center project.
   </Step>
-  <Step title="Install dependencies">
-    ```bash
-    cd my-docs
-    pnpm install
-    ```
+  <Step title="Pick a content source">
+    The scaffolder asks where to seed content from. Three options:
+
+    - **A website** — paste a URL, the scraper pulls articles from the page copy.
+    - **A code repository** — paste a local path (or a `github.com` URL to clone + generate). The scaffolder walks your source, synthesizes cited how-to guides with file + line references, and writes them into `content/`. Requires a helpbase login (free, 500k tokens/day) or an `AI_GATEWAY_API_KEY`.
+    - **Skip** — scaffold with the shipped sample articles so you can start from a known-good layout.
   </Step>
   <Step title="Start the dev server">
-    ```bash
-    pnpm dev
-    ```
-    Open `http://localhost:3000` to see your help center running locally.
+    The scaffolder installs dependencies and opens `http://localhost:3000` automatically once Next.js is ready. Your generated (or sample) articles are live.
   </Step>
 </Steps>
+
+<Callout type="tip">
+Pointed at a repo and hit a token budget error? Scope down to a subdirectory with `--source ./apps/web`. The walker already skips common codegen dirs (`generated/`, `.next/`, `dist/`, `target/`) and lockfiles automatically, but enormous monorepos may still need a narrower path.
+</Callout>
 
 ## What the scaffolder creates
 

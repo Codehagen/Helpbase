@@ -39,6 +39,31 @@ beforeAll(() => {
   fs.writeFileSync(path.join(ROOT, "node_modules", "lodash", "index.js"), "module.exports = {}")
   fs.mkdirSync(path.join(ROOT, ".git"), { recursive: true })
   fs.writeFileSync(path.join(ROOT, ".git", "HEAD"), "ref: main")
+  // Codegen output dirs — MUST NOT be read. The hagenkit dogfood
+  // (2026-04-17) blew the 100k token budget on generated/prisma/models/*.ts.
+  fs.mkdirSync(path.join(ROOT, "generated", "prisma"), { recursive: true })
+  fs.writeFileSync(
+    path.join(ROOT, "generated", "prisma", "User.ts"),
+    "// auto-generated\nexport interface User { id: string }\n",
+  )
+  fs.mkdirSync(path.join(ROOT, "__generated__"), { recursive: true })
+  fs.writeFileSync(
+    path.join(ROOT, "__generated__", "graphql.ts"),
+    "// auto-generated\nexport type Query = unknown\n",
+  )
+  fs.mkdirSync(path.join(ROOT, "dist"), { recursive: true })
+  fs.writeFileSync(path.join(ROOT, "dist", "index.js"), "module.exports = {}")
+  fs.mkdirSync(path.join(ROOT, ".next", "cache"), { recursive: true })
+  fs.writeFileSync(path.join(ROOT, ".next", "cache", "build.js"), "// next build")
+  fs.mkdirSync(path.join(ROOT, "target", "debug"), { recursive: true })
+  fs.writeFileSync(path.join(ROOT, "target", "debug", "main.rs"), "// rust target")
+  // Generated / minified / lockfile filenames — MUST NOT be read.
+  fs.writeFileSync(path.join(ROOT, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n")
+  fs.writeFileSync(path.join(ROOT, "package-lock.json"), '{"name":"x"}')
+  fs.writeFileSync(path.join(ROOT, "Cargo.lock"), "[[package]]")
+  fs.writeFileSync(path.join(ROOT, "bundle.min.js"), "(function(){})()")
+  fs.writeFileSync(path.join(ROOT, "style.min.css"), "body{margin:0}")
+  fs.writeFileSync(path.join(ROOT, "bundle.js.map"), "{}")
   // CRLF file — MUST normalize to LF
   fs.writeFileSync(path.join(ROOT, "crlf-notes.md"), "line one\r\nline two\r\n")
   // Excluded extension (must NOT be read by default)
@@ -80,6 +105,37 @@ describe("readContextSources", () => {
     // No node_modules or .git content makes it through
     expect(paths.some((p) => p.startsWith("node_modules/"))).toBe(false)
     expect(paths.some((p) => p.startsWith(".git/"))).toBe(false)
+  })
+
+  it("skips codegen output directories (generated/, __generated__/)", () => {
+    const sources = readContextSources(ROOT)
+    const paths = sources.map((s) => s.path)
+    expect(paths.some((p) => p.startsWith("generated/"))).toBe(false)
+    expect(paths.some((p) => p.startsWith("__generated__/"))).toBe(false)
+  })
+
+  it("skips framework build-output directories (dist/, .next/, target/)", () => {
+    const sources = readContextSources(ROOT)
+    const paths = sources.map((s) => s.path)
+    expect(paths.some((p) => p.startsWith("dist/"))).toBe(false)
+    expect(paths.some((p) => p.startsWith(".next/"))).toBe(false)
+    expect(paths.some((p) => p.startsWith("target/"))).toBe(false)
+  })
+
+  it("skips lockfiles by exact filename", () => {
+    const sources = readContextSources(ROOT)
+    const paths = sources.map((s) => s.path)
+    expect(paths).not.toContain("pnpm-lock.yaml")
+    expect(paths).not.toContain("package-lock.json")
+    expect(paths).not.toContain("Cargo.lock")
+  })
+
+  it("skips minified and map files by suffix", () => {
+    const sources = readContextSources(ROOT)
+    const paths = sources.map((s) => s.path)
+    expect(paths).not.toContain("bundle.min.js")
+    expect(paths).not.toContain("style.min.css")
+    expect(paths).not.toContain("bundle.js.map")
   })
 
   it("normalizes CRLF to LF on read", () => {

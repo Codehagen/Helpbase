@@ -76,21 +76,66 @@ export const DEFAULT_CONTEXT_EXTENSIONS = [
 /** Default per-file byte cap. 100KB is plenty for almost any hand-written file. */
 export const DEFAULT_MAX_FILE_BYTES = 100 * 1024
 
+// Directory names that never enter the LLM context. Generated output, build
+// artifacts, and VCS internals — all noise. A Prisma project with `generated/`
+// can easily blow the default 100k token budget on a single run; the hagenkit
+// dogfood (2026-04-17) hit 477k tokens because the top 8 files were all in
+// `generated/prisma/`. Built-in deny-list is the minimum-surface fix.
 const SKIP_DIR_NAMES = new Set([
   "node_modules",
   ".git",
   "dist",
   "build",
   "out",
+  "target",
   ".next",
+  ".nuxt",
+  ".svelte-kit",
   ".turbo",
   ".vercel",
+  ".wrangler",
   ".cache",
   "coverage",
   ".helpbase",
+  "generated",
+  "__generated__",
   // Lockfile-shaped bulk that has no signal for how-to synthesis.
   "vendor",
 ])
+
+// Exact file names that never enter the LLM context. Lockfiles are enormous
+// and deterministic; no how-to guide benefits from them.
+const SKIP_FILE_NAMES = new Set([
+  "pnpm-lock.yaml",
+  "package-lock.json",
+  "yarn.lock",
+  "bun.lockb",
+  "Cargo.lock",
+  "Gemfile.lock",
+  "poetry.lock",
+  "Pipfile.lock",
+  "composer.lock",
+])
+
+// File-suffix patterns that indicate generated, minified, or binary-adjacent
+// content. Keep this list conservative — every entry here is a file a user
+// might reasonably want documented if they special-cased it, so only add
+// extensions that are almost never hand-edited.
+const SKIP_FILE_SUFFIXES = [
+  ".min.js",
+  ".min.css",
+  ".map",
+  ".snap",
+  ".d.ts.map",
+]
+
+function isIgnoredFileName(name: string): boolean {
+  if (SKIP_FILE_NAMES.has(name)) return true
+  for (const suffix of SKIP_FILE_SUFFIXES) {
+    if (name.endsWith(suffix)) return true
+  }
+  return false
+}
 
 export function readContextSources(
   repoRoot: string,
@@ -130,6 +175,8 @@ export function readContextSources(
       if (!entry.isFile()) continue
       // Gate 1: secret-named files never enter the LLM context.
       if (isSecretFile(entry.name)) continue
+      // Gate 2: generated / minified / lockfile names that waste the budget.
+      if (isIgnoredFileName(entry.name)) continue
       const ext = path.extname(entry.name).toLowerCase()
       if (!exts.has(ext)) continue
 

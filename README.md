@@ -91,12 +91,17 @@ Node 20+ and pnpm or npm.
 
 ```bash
 npx create-helpbase my-help-center
-cd my-help-center
-pnpm dev
 ```
 
-Open http://localhost:3000 and you have a working help center with sample
-articles. Edit the markdown in `content/` and the dev server hot-reloads.
+The scaffolder asks what to seed content from:
+
+- **A website** — paste a URL, it scrapes the page and generates articles.
+- **A code repository** — paste a local path or a `github.com` URL. The scaffolder walks your source, synthesizes cited how-to guides with file + line refs, and writes them to `content/`. Needs a helpbase login (free, 500k tokens/day) or `AI_GATEWAY_API_KEY`.
+- **Skip** — ship with sample articles.
+
+Dependencies install, the dev server starts, and your browser opens at
+`http://localhost:3000`. Edit the markdown in `content/` and the dev
+server hot-reloads.
 
 ### Go live in one command
 

@@ -48,13 +48,41 @@ export function resolveProxyBase(): string {
   return process.env.HELPBASE_PROXY_URL?.replace(/\/$/, "") ?? "https://helpbase.dev"
 }
 
+/**
+ * Read an env var and treat empty/whitespace-only as unset. A shell
+ * `export ANTHROPIC_API_KEY=" "` or a quoted `.env` line like
+ * `ANTHROPIC_API_KEY=""` would otherwise make `isByokMode()` return true
+ * and the SDK would 401 far downstream. Normalize once at the read site.
+ */
+function readByokKey(name: "AI_GATEWAY_API_KEY" | "ANTHROPIC_API_KEY" | "OPENAI_API_KEY"): string | undefined {
+  const v = process.env[name]?.trim()
+  return v || undefined
+}
+
 /** True when we should bypass the proxy — any provider key counts as BYOK. */
 export function isByokMode(): boolean {
   return Boolean(
-    process.env.AI_GATEWAY_API_KEY ||
-      process.env.ANTHROPIC_API_KEY ||
-      process.env.OPENAI_API_KEY,
+    readByokKey("AI_GATEWAY_API_KEY") ||
+      readByokKey("ANTHROPIC_API_KEY") ||
+      readByokKey("OPENAI_API_KEY"),
   )
+}
+
+/**
+ * Return the name of whichever BYOK env var is active, in the same
+ * precedence order `resolveByokModel` uses. `undefined` when no BYOK key
+ * is set. Exported so the CLI's `whoami` / `doctor` surfaces can name the
+ * active key without duplicating the precedence logic.
+ */
+export function getActiveByokKey():
+  | "AI_GATEWAY_API_KEY"
+  | "ANTHROPIC_API_KEY"
+  | "OPENAI_API_KEY"
+  | undefined {
+  if (readByokKey("AI_GATEWAY_API_KEY")) return "AI_GATEWAY_API_KEY"
+  if (readByokKey("ANTHROPIC_API_KEY")) return "ANTHROPIC_API_KEY"
+  if (readByokKey("OPENAI_API_KEY")) return "OPENAI_API_KEY"
+  return undefined
 }
 
 /**
@@ -69,17 +97,24 @@ export function isByokMode(): boolean {
  * that provider (e.g. `google/gemini-...` while only ANTHROPIC_API_KEY is
  * set), we throw an explicit error instead of silently routing to Gateway,
  * because Gateway isn't configured and a "no key" error would be confusing.
+ *
+ * Model-string parsing is case-insensitive and tolerates leading/trailing
+ * whitespace — users who shell-quote `--model " anthropic/..."` should not
+ * hit a confusing "provider mismatch" error.
  */
 export function resolveByokModel(modelString: string): LanguageModel | string {
+  const trimmed = modelString.trim()
+
   // Gateway wins: it accepts any provider-prefixed model string directly.
-  if (process.env.AI_GATEWAY_API_KEY) {
-    return modelString
+  if (readByokKey("AI_GATEWAY_API_KEY")) {
+    return trimmed
   }
 
-  const [provider, ...rest] = modelString.split("/")
-  const modelId = rest.join("/")
+  const [providerRaw, ...rest] = trimmed.split("/")
+  const provider = providerRaw?.toLowerCase()
+  const modelId = rest.join("/").trim()
 
-  if (process.env.ANTHROPIC_API_KEY) {
+  if (readByokKey("ANTHROPIC_API_KEY")) {
     if (provider !== "anthropic" || !modelId) {
       throw new GatewayError(
         `ANTHROPIC_API_KEY is set but the model is "${modelString}". ` +
@@ -91,7 +126,7 @@ export function resolveByokModel(modelString: string): LanguageModel | string {
     return anthropic(modelId)
   }
 
-  if (process.env.OPENAI_API_KEY) {
+  if (readByokKey("OPENAI_API_KEY")) {
     if (provider !== "openai" || !modelId) {
       throw new GatewayError(
         `OPENAI_API_KEY is set but the model is "${modelString}". ` +

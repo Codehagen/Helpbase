@@ -11,6 +11,7 @@ import {
   callLlmObject,
   callLlmText,
   fetchUsageToday,
+  getActiveByokKey,
   isByokMode,
   resolveByokModel,
   resolveProxyBase,
@@ -74,6 +75,57 @@ describe("isByokMode", () => {
   it("true when OPENAI_API_KEY set", () => {
     process.env.OPENAI_API_KEY = "sk-test"
     expect(isByokMode()).toBe(true)
+  })
+
+  it("treats empty-string env var as unset (not BYOK)", () => {
+    // Shell `export FOO=""` or a quoted `.env` line yields "" in process.env.
+    // Without normalization `Boolean("")` is false, which is correct — pin it.
+    process.env.AI_GATEWAY_API_KEY = ""
+    process.env.ANTHROPIC_API_KEY = ""
+    process.env.OPENAI_API_KEY = ""
+    expect(isByokMode()).toBe(false)
+  })
+
+  it("treats whitespace-only env var as unset (not BYOK)", () => {
+    // `export FOO=" "` yields " " which is truthy. Pre-normalization this
+    // would flip to BYOK mode and route to the SDK with a whitespace key,
+    // producing a cryptic 401. After normalization: unset.
+    process.env.ANTHROPIC_API_KEY = "   "
+    expect(isByokMode()).toBe(false)
+  })
+})
+
+describe("getActiveByokKey", () => {
+  it("returns undefined when no BYOK key is set", () => {
+    expect(getActiveByokKey()).toBeUndefined()
+  })
+
+  it("returns AI_GATEWAY_API_KEY when set", () => {
+    process.env.AI_GATEWAY_API_KEY = "vck_test"
+    expect(getActiveByokKey()).toBe("AI_GATEWAY_API_KEY")
+  })
+
+  it("returns ANTHROPIC_API_KEY when Gateway unset but Anthropic set", () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    expect(getActiveByokKey()).toBe("ANTHROPIC_API_KEY")
+  })
+
+  it("returns OPENAI_API_KEY when only OpenAI set", () => {
+    process.env.OPENAI_API_KEY = "sk-test"
+    expect(getActiveByokKey()).toBe("OPENAI_API_KEY")
+  })
+
+  it("respects Gateway > Anthropic > OpenAI precedence", () => {
+    process.env.AI_GATEWAY_API_KEY = "vck_test"
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    process.env.OPENAI_API_KEY = "sk-test"
+    expect(getActiveByokKey()).toBe("AI_GATEWAY_API_KEY")
+  })
+
+  it("treats whitespace env var as unset in precedence", () => {
+    process.env.AI_GATEWAY_API_KEY = "  "
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    expect(getActiveByokKey()).toBe("ANTHROPIC_API_KEY")
   })
 })
 
@@ -141,6 +193,30 @@ describe("resolveByokModel — provider routing", () => {
     process.env.ANTHROPIC_API_KEY = "sk-ant-test"
     expect(() => resolveByokModel("anthropic/")).toThrow(/ANTHROPIC_API_KEY is set/)
     expect(() => resolveByokModel("anthropic")).toThrow(/ANTHROPIC_API_KEY is set/)
+  })
+
+  it("tolerates leading/trailing whitespace in the model string", () => {
+    // Users who shell-quote `--model " anthropic/claude-..."` shouldn't hit
+    // a confusing "provider mismatch" error.
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    expect(typeof resolveByokModel("  anthropic/claude-3-5-sonnet-latest  ")).toBe("object")
+  })
+
+  it("is case-insensitive on the provider prefix", () => {
+    // `Anthropic/...` and `ANTHROPIC/...` are the same user intent as
+    // `anthropic/...`. Previously threw a confusing provider-mismatch.
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    expect(typeof resolveByokModel("Anthropic/claude-3-5-sonnet-latest")).toBe("object")
+    expect(typeof resolveByokModel("ANTHROPIC/claude-3-5-sonnet-latest")).toBe("object")
+  })
+
+  it("strips Gateway-path whitespace on pass-through", () => {
+    process.env.AI_GATEWAY_API_KEY = "vck_test"
+    // Gateway path returns the trimmed string so the SDK doesn't 404 on
+    // "  google/gemini-...".
+    expect(resolveByokModel("  google/gemini-3.1-flash-lite-preview  ")).toBe(
+      "google/gemini-3.1-flash-lite-preview",
+    )
   })
 })
 

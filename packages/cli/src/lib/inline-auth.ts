@@ -1,15 +1,13 @@
 import pc from "picocolors"
-import { confirm, isCancel } from "@clack/prompts"
+import { confirm, isCancel, spinner } from "@clack/prompts"
 import {
+  deviceLogin,
   getCurrentSession,
-  sendLoginCode,
-  verifyLoginCode,
   isNonInteractive,
   type AuthSession,
 } from "./auth.js"
-import { HelpbaseError } from "./errors.js"
-import { text } from "@clack/prompts"
-import { quotaExceededError, authRequiredError } from "./llm-errors-cli.js"
+import { HelpbaseError, formatError } from "./errors.js"
+import { authRequiredError } from "./llm-errors-cli.js"
 
 /**
  * Resolve the CLI's current auth session, or prompt the user to log in
@@ -22,7 +20,8 @@ import { quotaExceededError, authRequiredError } from "./llm-errors-cli.js"
  *      expired) → throw E_AUTH_REQUIRED. We do NOT fall into an interactive
  *      prompt here: the env var signals explicit CI intent, and silently
  *      replacing it with an interactive login would mask a broken CI token.
- *   4. Else if TTY: prompt "Not signed in. Run helpbase login now? (Y/n)" → inline OTP.
+ *   4. Else if TTY: prompt to run the browser device-flow inline so the
+ *      user stays in the current command instead of bouncing to `login`.
  *   5. Else (non-TTY or declined): throw E_AUTH_REQUIRED with the exact re-run command.
  */
 export interface ResolveAuthOptions {
@@ -71,34 +70,50 @@ export async function resolveAuthOrPromptLogin(
   console.log("")
 
   const go = await confirm({
-    message: `Run ${pc.cyan("helpbase login")} now and continue?`,
+    message: `Open your browser to log in and continue with ${pc.cyan(opts.verb)}?`,
     initialValue: true,
   })
   if (isCancel(go) || !go) {
     throw authRequiredError(opts.retryCommand)
   }
 
-  // Run the OTP flow inline, without dispatching the full `login` command
-  // so we return a session instead of printing its success message twice.
-  const email = await text({
-    message: "Enter your email:",
-    placeholder: "you@company.com",
-    validate: (v) => (v.includes("@") ? undefined : "Please enter a valid email"),
-  })
-  if (isCancel(email)) throw authRequiredError(opts.retryCommand)
-
-  await sendLoginCode(email as string)
-
-  const code = await text({
-    message: "Enter the 6-digit code from your email:",
-    placeholder: "123456",
-    validate: (v) => (/^\d{6}$/.test(v) ? undefined : "Enter the 6-digit code"),
-  })
-  if (isCancel(code)) throw authRequiredError(opts.retryCommand)
-
-  const session = await verifyLoginCode(email as string, code as string)
+  // Run the browser device-flow inline so we return a session and keep
+  // the user in their current command instead of bouncing them through
+  // `helpbase login` and back.
+  const s = spinner()
+  s.start("Requesting device authorization…")
+  let session: AuthSession
+  try {
+    session = await deviceLogin({
+      onStart: (info) => {
+        s.stop("Device code ready.")
+        console.log("")
+        console.log(
+          `  ${pc.dim("Code")}: ${pc.cyan(info.user_code)}\n` +
+          `  ${pc.dim("URL")}:  ${pc.cyan(info.verification_uri_complete || info.verification_uri)}`,
+        )
+        console.log(
+          `  ${pc.dim("If your browser didn't open, paste the URL above.")}`,
+        )
+        console.log("")
+        s.start("Waiting for browser approval…")
+      },
+      onProgress: (elapsedMs) => {
+        if (elapsedMs > 90_000) {
+          s.message("Still waiting… check that a browser tab opened.")
+        }
+      },
+    })
+    s.stop(`Signed in as ${pc.cyan(session.email)}`)
+  } catch (err) {
+    s.stop("Login failed.")
+    if (err instanceof HelpbaseError) {
+      process.stderr.write(formatError(err))
+    }
+    throw authRequiredError(opts.retryCommand)
+  }
   console.log(
-    `  ${pc.green("✓")} Signed in as ${pc.cyan(session.email)}. Continuing with ${pc.bold(opts.verb)}...`,
+    `  ${pc.green("✓")} Continuing with ${pc.bold(opts.verb)}...`,
   )
   console.log("")
   return { byok: false, authToken: session.accessToken, session }

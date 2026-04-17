@@ -46,6 +46,9 @@ export async function DELETE(
   if (owned instanceof NextResponse) return owned
   const { tenant, admin } = owned
   const { error } = await admin.from("tenants").delete().eq("id", tenant.id)
-  if (error) return jsonError(503, "delete_failed", error.message)
+  if (error) {
+    console.error("[tenants.delete] supabase error", { tenantId: tenant.id, error })
+    return jsonError(503, "delete_failed", "Could not delete tenant.")
+  }
   return NextResponse.json({ deleted: true, slug: tenant.slug })
 }

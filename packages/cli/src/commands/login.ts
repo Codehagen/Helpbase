@@ -52,9 +52,14 @@ export const loginCommand = new Command("login")
 async function runDeviceFlow(): Promise<void> {
   const s = spinner()
   s.start("Requesting device authorization…")
+  // Captured from onStart so the "1 minute until expiry" hint is driven
+  // by the server's actual expires_in instead of a hardcoded 300s
+  // assumption. onProgress runs after onStart inside deviceLogin.
+  let expiresInMs: number | null = null
   try {
     const session = await deviceLogin({
       onStart: (info) => {
+        expiresInMs = info.expires_in * 1000
         s.stop("Device code ready.")
         note(
           `${pc.dim("Code")}: ${pc.cyan(info.user_code)}\n` +
@@ -67,8 +72,8 @@ async function runDeviceFlow(): Promise<void> {
       },
       onProgress: (elapsedMs) => {
         // Progressive hints — keep the user oriented during long waits.
-        if (elapsedMs > 240_000) {
-          s.message("1 minute until this code expires.")
+        if (expiresInMs !== null && elapsedMs > expiresInMs - 60_000) {
+          s.message("Under 1 minute until this code expires.")
         } else if (elapsedMs > 90_000) {
           s.message(
             "Taking longer than usual. Ctrl-C to cancel, then run `helpbase login --email` for the fallback.",

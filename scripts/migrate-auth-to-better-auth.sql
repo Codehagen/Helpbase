@@ -49,15 +49,18 @@ DROP POLICY IF EXISTS tenant_mcp_queries_select_own ON public.tenant_mcp_queries
 DROP POLICY IF EXISTS "read own events" ON public.llm_usage_events;
 
 -- 2. Copy auth.users → public.user. UUIDs preserved as 36-char text.
+--    Email is normalized (lower+trim) to match Better Auth's convention
+--    and future-proof case-sensitive joins. The name fallback splits on
+--    the normalized email so it's always non-null.
 INSERT INTO "user" (id, email, "emailVerified", name, "createdAt", "updatedAt")
 SELECT
   u.id::text,
-  u.email,
+  lower(btrim(u.email)),
   u.email_confirmed_at IS NOT NULL,
   COALESCE(
     NULLIF(u.raw_user_meta_data->>'full_name', ''),
     NULLIF(u.raw_user_meta_data->>'name', ''),
-    split_part(u.email, '@', 1)
+    split_part(lower(btrim(u.email)), '@', 1)
   ),
   u.created_at,
   COALESCE(u.updated_at, u.created_at)
@@ -71,10 +74,25 @@ ALTER TABLE public.llm_usage_events
 ALTER TABLE public.tenants
   DROP CONSTRAINT IF EXISTS tenants_owner_id_fkey;
 
-ALTER TABLE public.llm_usage_events
-  ALTER COLUMN user_id TYPE text USING user_id::text;
-ALTER TABLE public.tenants
-  ALTER COLUMN owner_id TYPE text USING owner_id::text;
+-- Idempotency guard: a straight ALTER COLUMN TYPE text rewrites the
+-- entire table and takes an ACCESS EXCLUSIVE lock even when the type
+-- already matches. Gate with information_schema so re-runs are no-ops
+-- on a production-scale llm_usage_events.
+DO $$
+BEGIN
+  IF (
+    SELECT data_type FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'llm_usage_events' AND column_name = 'user_id'
+  ) <> 'text' THEN
+    EXECUTE 'ALTER TABLE public.llm_usage_events ALTER COLUMN user_id TYPE text USING user_id::text';
+  END IF;
+  IF (
+    SELECT data_type FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'tenants' AND column_name = 'owner_id'
+  ) <> 'text' THEN
+    EXECUTE 'ALTER TABLE public.tenants ALTER COLUMN owner_id TYPE text USING owner_id::text';
+  END IF;
+END $$;
 
 ALTER TABLE public.llm_usage_events
   ADD CONSTRAINT llm_usage_events_user_id_fkey
@@ -83,7 +101,16 @@ ALTER TABLE public.tenants
   ADD CONSTRAINT tenants_owner_id_fkey
     FOREIGN KEY (owner_id) REFERENCES "user"(id) ON DELETE CASCADE;
 
--- 4. Recreate the one RLS policy anon needs (proxy.ts tenant resolution).
+-- 4. Lock anon out of the base tenants table. The only public surface is
+--    the `tenants_public` view (mcp_public_token filtered out), created by
+--    the 2026-04-17 tenants_public_view_hide_mcp_token migration. Even
+--    with the SELECT policy below, this REVOKE prevents anon from reading
+--    mcp_public_token directly should the policy ever be widened.
+REVOKE SELECT ON public.tenants FROM anon;
+
+-- 5. Recreate the one RLS policy anon needs (proxy.ts tenant resolution).
+--    Policy scopes visibility; the column-level REVOKE above scopes which
+--    columns anon can read when the policy allows a row.
 CREATE POLICY tenants_select_active
   ON public.tenants
   FOR SELECT

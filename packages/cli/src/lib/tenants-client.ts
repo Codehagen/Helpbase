@@ -47,6 +47,20 @@ function v1Url(path: string): string {
   return `${getAuthBaseUrl()}/api/v1/tenants${path.startsWith("/") ? path : `/${path}`}`
 }
 
+// Default per-request timeout. Short enough that a wedged TCP socket
+// surfaces quickly, long enough to cover a cold Vercel function. Deploy
+// can push a larger payload, so it gets a bumped timeout below.
+const DEFAULT_TIMEOUT_MS = 30_000
+const DEPLOY_TIMEOUT_MS = 120_000
+
+async function v1Fetch(
+  path: string,
+  init: RequestInit = {},
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  return fetch(v1Url(path), { ...init, signal: AbortSignal.timeout(timeoutMs) })
+}
+
 async function parseBody(res: Response): Promise<unknown> {
   const text = await res.text().catch(() => "")
   if (!text) return null
@@ -68,7 +82,7 @@ function throwHttp(op: string, res: Response, body: unknown): never {
 }
 
 export async function listMyTenants(session: AuthSession): Promise<TenantSummary[]> {
-  const res = await fetch(v1Url("/mine"), {
+  const res = await v1Fetch("/mine", {
     headers: { authorization: `Bearer ${session.accessToken}` },
   })
   const body = await parseBody(res)
@@ -81,17 +95,21 @@ export async function getTenant(
   session: AuthSession,
   tenantId: string,
 ): Promise<TenantDetail | null> {
-  const res = await fetch(v1Url(`/${encodeURIComponent(tenantId)}`), {
+  const res = await v1Fetch(`/${encodeURIComponent(tenantId)}`, {
     headers: { authorization: `Bearer ${session.accessToken}` },
   })
-  if (res.status === 404 || res.status === 403) return null
+  // 404 = tenant doesn't exist; callers treat this as "nothing to show".
+  // 403 = the caller authenticated but isn't the owner — surface that
+  // as a thrown error so callers can distinguish it from a missing row
+  // (e.g. link.ts prints "you don't own this subdomain").
+  if (res.status === 404) return null
   const body = await parseBody(res)
   if (!res.ok) throwHttp("get tenant", res, body)
   return body as TenantDetail
 }
 
 export async function checkSlugAvailability(slug: string): Promise<SlugAvailability> {
-  const res = await fetch(v1Url(`/by-slug/${encodeURIComponent(slug)}`))
+  const res = await v1Fetch(`/by-slug/${encodeURIComponent(slug)}`)
   const body = await parseBody(res)
   if (!res.ok) throwHttp("slug availability", res, body)
   return body as SlugAvailability
@@ -102,7 +120,7 @@ export async function createTenant(
   slug: string,
   name?: string,
 ): Promise<TenantCreated> {
-  const res = await fetch(v1Url("/"), {
+  const res = await v1Fetch("/", {
     method: "POST",
     headers: {
       authorization: `Bearer ${session.accessToken}`,
@@ -127,14 +145,18 @@ export async function deployTenant(
   tenantId: string,
   payload: DeployPayload,
 ): Promise<DeployResult> {
-  const res = await fetch(v1Url(`/${encodeURIComponent(tenantId)}/deploy`), {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${session.accessToken}`,
-      "content-type": "application/json",
+  const res = await v1Fetch(
+    `/${encodeURIComponent(tenantId)}/deploy`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${session.accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  })
+    DEPLOY_TIMEOUT_MS,
+  )
   const body = await parseBody(res)
   if (!res.ok) throwHttp("deploy tenant", res, body)
   return body as DeployResult
@@ -144,7 +166,7 @@ export async function deleteTenant(
   session: AuthSession,
   tenantId: string,
 ): Promise<{ slug: string }> {
-  const res = await fetch(v1Url(`/${encodeURIComponent(tenantId)}`), {
+  const res = await v1Fetch(`/${encodeURIComponent(tenantId)}`, {
     method: "DELETE",
     headers: { authorization: `Bearer ${session.accessToken}` },
   })
@@ -157,7 +179,7 @@ export async function rotateMcpToken(
   session: AuthSession,
   tenantId: string,
 ): Promise<string> {
-  const res = await fetch(v1Url(`/${encodeURIComponent(tenantId)}/rotate-mcp-token`), {
+  const res = await v1Fetch(`/${encodeURIComponent(tenantId)}/rotate-mcp-token`, {
     method: "POST",
     headers: { authorization: `Bearer ${session.accessToken}` },
   })

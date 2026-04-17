@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { revalidatePath } from "next/cache"
+import { deployPayloadSchema } from "@workspace/shared/schemas"
 import { jsonError, requireOwnedTenant } from "../../_shared"
 
 /**
@@ -30,21 +31,33 @@ export async function POST(
   if (owned instanceof NextResponse) return owned
   const { tenant, admin } = owned
 
-  let body: {
-    categories?: unknown[]
-    articles?: unknown[]
-    chunks?: unknown[]
-    validation_report?: Record<string, unknown>
-  }
+  let rawBody: unknown
   try {
-    body = await req.json()
+    rawBody = await req.json()
   } catch {
     return jsonError(400, "invalid_body", "Expected JSON {categories, articles, chunks}.")
   }
-  if (!Array.isArray(body.categories) || !Array.isArray(body.articles) || !Array.isArray(body.chunks)) {
-    return jsonError(400, "invalid_body", "categories, articles, chunks must be arrays.")
+  // Shared schema — same one the CLI uses to shape the payload. Validate
+  // server-side so malformed array elements come back as precise 400s
+  // instead of opaque 503 deploy_failed errors from Postgres.
+  const parsed = deployPayloadSchema.safeParse(rawBody)
+  if (!parsed.success) {
+    return jsonError(
+      400,
+      "invalid_body",
+      parsed.error.issues
+        .slice(0, 5)
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; "),
+    )
   }
+  const body = parsed.data
 
+  // Supabase's generated RPC types demand the strict `Json` shape
+  // (recursive `{ [key: string]: Json | undefined }`), which our Zod
+  // types don't satisfy because Frontmatter is `Record<string, unknown>`.
+  // The `as never` is a type-system escape valve — the actual runtime
+  // safety comes from the deployPayloadSchema parse above.
   const { data: deployId, error } = await admin.rpc("deploy_tenant", {
     p_tenant_id: tenant.id,
     p_categories: body.categories as never,
@@ -53,7 +66,8 @@ export async function POST(
     p_validation_report: (body.validation_report ?? {}) as never,
   })
   if (error) {
-    return jsonError(503, "deploy_failed", error.message)
+    console.error("[tenants.deploy] supabase rpc error", { tenantId: tenant.id, error })
+    return jsonError(503, "deploy_failed", "Deploy RPC failed.")
   }
 
   // Count rows post-deploy so the CLI can print a helpful summary.

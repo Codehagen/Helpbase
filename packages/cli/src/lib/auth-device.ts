@@ -38,6 +38,11 @@ export async function deviceLogin(opts: DeviceLoginOptions = {}): Promise<AuthSe
   const startedAt = Date.now()
   let interval = Math.max(info.interval ?? 2, 1) * 1000
   const deadline = startedAt + info.expires_in * 1000
+  // Tolerate a short run of transient network failures (DNS blip, captive-
+  // portal intercept, flaky LTE) during the polling window. Anything beyond
+  // this means the user's connection is genuinely broken.
+  const MAX_CONSECUTIVE_NETWORK_FAILS = 3
+  let consecutiveFailures = 0
 
   while (true) {
     if (opts.signal?.aborted) {
@@ -60,9 +65,53 @@ export async function deviceLogin(opts: DeviceLoginOptions = {}): Promise<AuthSe
     await sleep(interval)
     opts.onProgress?.(Date.now() - startedAt)
 
-    const result = await pollDeviceAuth(info.device_code, clientId)
+    let result
+    try {
+      result = await pollDeviceAuth(info.device_code, clientId)
+    } catch (err) {
+      // A thrown error here is either an RFC-shape mismatch (server sent
+      // an unexpected status/JSON) or a transient network error. Don't let
+      // a single DNS blip abort a 5-minute wait — retry a few times first.
+      consecutiveFailures += 1
+      if (consecutiveFailures >= MAX_CONSECUTIVE_NETWORK_FAILS) {
+        throw new HelpbaseError({
+          code: "E_DEVICE_NETWORK",
+          problem: "Lost connection to helpbase.dev during login",
+          cause:
+            err instanceof Error
+              ? `${consecutiveFailures} consecutive polling errors; last: ${err.message}`
+              : `${consecutiveFailures} consecutive polling errors`,
+          fix: [
+            "Check your network connection",
+            "Run `helpbase login` again once you're back online",
+          ],
+        })
+      }
+      continue
+    }
+    consecutiveFailures = 0
     if ("accessToken" in result) {
-      const resp = await getSessionWithBearer(result.accessToken)
+      let resp
+      try {
+        resp = await getSessionWithBearer(result.accessToken)
+      } catch {
+        // Treat this as a transient failure — the browser side succeeded,
+        // we just couldn't hydrate the session. Retry the outer loop; the
+        // next poll will take the "already-approved" branch again.
+        consecutiveFailures += 1
+        if (consecutiveFailures >= MAX_CONSECUTIVE_NETWORK_FAILS) {
+          throw new HelpbaseError({
+            code: "E_DEVICE_NETWORK",
+            problem: "Lost connection to helpbase.dev during login",
+            cause: "Could not fetch session after approval",
+            fix: [
+              "Check your network connection",
+              "Run `helpbase login` again once you're back online",
+            ],
+          })
+        }
+        continue
+      }
       if (!resp) {
         throw new HelpbaseError({
           code: "E_AUTH_VERIFY_OTP",
@@ -127,13 +176,30 @@ export function openBrowser(url: string): void {
     return
   }
   try {
-    const cmd =
-      process.platform === "darwin"
-        ? "open"
-        : process.platform === "win32"
-          ? "start"
-          : "xdg-open"
-    spawn(cmd, [url], { detached: true, stdio: "ignore" }).unref()
+    let cmd: string
+    let args: string[]
+    if (process.platform === "darwin") {
+      cmd = "open"
+      args = [url]
+    } else if (process.platform === "win32") {
+      // `start` is a cmd.exe builtin, not a standalone exe, so spawning it
+      // directly ENOENTs. The empty "" is `start`'s optional window-title
+      // arg; without it, `start "<url>"` treats the URL as the title and
+      // opens a blank cmd window instead of the browser.
+      cmd = "cmd"
+      args = ["/c", "start", "", url]
+    } else {
+      cmd = "xdg-open"
+      args = [url]
+    }
+    // ChildProcess ENOENT surfaces as an async "error" event; without a
+    // listener, Node historically re-raises it as unhandled. Attach a noop
+    // listener so a missing xdg-open on a minimal container doesn't crash.
+    const child = spawn(cmd, args, { detached: true, stdio: "ignore" })
+    child.on("error", () => {
+      // best-effort — CLI prints the URL regardless
+    })
+    child.unref()
   } catch {
     // best-effort — CLI prints the URL regardless
   }

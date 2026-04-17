@@ -56,6 +56,7 @@ export type ErrorCode =
   | "E_AUTH_CANCELLED"
   | "E_DEVICE_DENIED"
   | "E_DEVICE_EXPIRED"
+  | "E_DEVICE_NETWORK"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

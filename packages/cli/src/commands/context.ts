@@ -85,8 +85,9 @@ Examples:
   $ helpbase context . --only auth                  # regen just one category
   $ helpbase context . --require-clean              # fail if tree is dirty (CI mode)
 
-Pick one: set ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")}.
-BYOK — helpbase calls the provider directly. First key found wins; --model overrides.
+Auth: run ${pc.cyan("helpbase login")} (free, 500k tokens/day, no card)
+  OR export one of ${pc.cyan("ANTHROPIC_API_KEY")} / ${pc.cyan("OPENAI_API_KEY")} / ${pc.cyan("AI_GATEWAY_API_KEY")}
+  (BYOK — first key found wins; --model overrides)
 `,
   )
   .action(async (repoPathArg: string, opts) => {

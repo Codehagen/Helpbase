@@ -132,11 +132,8 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-foreground">
-            <span className="text-xs font-bold text-background">?</span>
-          </div>
-          <span className="hidden sm:inline">helpbase</span>
+        <Link href="/" className="font-semibold tracking-tight">
+          helpbase
         </Link>
 
         {/* Search */}

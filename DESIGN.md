@@ -61,7 +61,7 @@ Article body styling lives in `.article-content` at the bottom of `globals.css`.
 ### Header (`apps/web/components/header.tsx`)
 
 - Sticky top bar with `backdrop-blur-lg` and `bg-background/80`
-- Left: small `bg-foreground` rounded square with white "?" mark, "helpbase" wordmark
+- Left: "helpbase" wordmark (plain, no icon)
 - Center: `<SearchTrigger />` (button that dispatches ⌘K)
 - Right: theme toggle, GitHub icon link
 - `max-w-6xl` container

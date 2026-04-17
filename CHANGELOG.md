@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [helpbase 0.5.0] — 2026-04-17
+
+### Added
+- **`helpbase login` now uses a browser device-flow by default.** Run
+  `helpbase login` and the CLI opens your browser at
+  `helpbase.dev/device?user_code=ABCD-EFGH`, where you click Authorize
+  and the terminal picks up your bearer token. Under 10 seconds on the
+  fast path. No more email round-trip, no more paste-back dance. Built
+  on Better Auth's `deviceAuthorization` plugin (RFC 8628 device grant).
+  The old magic-link email flow is preserved behind
+  `helpbase login --email` as the fallback for CI and sandboxed envs.
+- **Server-side tenant API** under `/api/v1/tenants/*`. `helpbase deploy`,
+  `helpbase link`, and `helpbase open` now call typed HTTP endpoints
+  instead of talking to Supabase directly. Ownership checks happen in
+  the server routes using Better Auth session verification.
+- **Progressive polling hints** during device-flow wait: the spinner
+  surfaces targeted help at T+30s / T+90s / T+4min so the YC-founder
+  first-run doesn't hit a silent 3-minute staring contest.
+
+### Changed
+- **Auth backend migrated from Supabase Auth to Better Auth.** The CLI
+  and the hosted API now authenticate via Better Auth (bearer + magic-link
+  + device-authorization plugins). The `~/.helpbase/auth.json` shape and
+  `HELPBASE_TOKEN` env contract are preserved — no action required for
+  existing installs. Emails now deliver via Resend.
+- `helpbase login` auto-detects headless environments (Codespaces,
+  SSH sessions) and skips the browser spawn; prints the URL for manual
+  copy-paste instead. Override with `HELPBASE_LOGIN_NO_BROWSER=1` in
+  any environment.
+
+### Fixed
+- `~/.helpbase/auth.json` is now force-narrowed to mode `0600` on every
+  write (previously only on file creation, which left stale-permissioned
+  files loose on shared dev machines).
+
+### Security
+- `mcp_public_token` is no longer readable by the anon Supabase key.
+  The `tenants` table lost its anon SELECT grant; anon-facing reads go
+  through a new `tenants_public` view that projects only id/slug/name/
+  active/theme_config. Closes a pre-existing leak where the embedded
+  CLI anon key could enumerate every active tenant's MCP bearer.
+- Resend API key is now required in production. Without it, the auth
+  config fails boot rather than silently printing magic-link URLs to
+  Vercel Runtime Logs (dev-mode console fallback is gated on
+  `NODE_ENV !== "production"`).
+
+### Internal
+- `packages/cli/src/lib/auth.ts` split into `auth.ts` (session core) +
+  `auth-device.ts` (device-flow state machine). 387 → 265 LOC on the
+  main file.
+- 41 new tests across 4 new suites covering the auth surface:
+  `extractVerificationToken`, `deviceLogin`, `pollDeviceAuth`,
+  `consumeMagicLink`, `verifyLoginFromMagicLink`, `getCurrentSession`,
+  `withAuthAndQuota`, and the CLI `toAuthSession` factory.
+- Removed the CLI's dependency on `@supabase/supabase-js`. The CLI now
+  talks to helpbase.dev over plain `fetch`. Lean install, one less
+  auth chain to maintain.
+
 ## [helpbase 0.4.1] — 2026-04-17
 
 ### Fixed

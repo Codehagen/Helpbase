@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ReactNode } from "react"
+import { ApiError } from "@/lib/fetchers"
 import { useUsageToday } from "./use-usage-today"
 
 function makeWrapper() {
@@ -52,8 +53,9 @@ describe("useUsageToday", () => {
     const { result } = renderHook(() => useUsageToday(), { wrapper: makeWrapper() })
 
     await waitFor(() => expect(result.current.isError).toBe(true))
-    expect(result.current.error).toBeInstanceOf(Error)
-    // ApiError shape (from lib/fetchers.ts)
-    expect((result.current.error as Error & { code?: string }).code).toBe("auth_required")
+    expect(result.current.error).toBeInstanceOf(ApiError)
+    const err = result.current.error as ApiError
+    expect(err.status).toBe(401)
+    expect(err.code).toBe("auth_required")
   })
 })

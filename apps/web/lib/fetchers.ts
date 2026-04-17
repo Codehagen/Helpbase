@@ -18,13 +18,16 @@ export class ApiError extends Error {
 // so we don't need to plumb a bearer token. CLI path uses the shared
 // `fetchUsageToday` in packages/shared/src/llm.ts instead.
 export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
+  // Normalize headers so Headers instances and string[][] inputs don't get
+  // dropped by the object spread. Accept always ends up set unless the caller
+  // explicitly overrode it.
+  const merged = new Headers(init?.headers)
+  if (!merged.has("Accept")) merged.set("Accept", "application/json")
+
   const res = await fetch(input, {
     ...init,
     credentials: "same-origin",
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers: merged,
   })
 
   if (!res.ok) {
@@ -41,6 +44,10 @@ export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T
       body,
     )
   }
+
+  // 204 No Content (or any 2xx with empty body) would make res.json() throw
+  // a SyntaxError that bypasses ApiError. Short-circuit before the parse.
+  if (res.status === 204) return undefined as T
 
   return (await res.json()) as T
 }

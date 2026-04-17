@@ -34,10 +34,14 @@ describe("UsageCard", () => {
 
     render(wrap(<UsageCard />, queryClient))
 
+    // Locale-agnostic: Node's default locale differs between dev boxes
+    // and CI runners, so assert on elements and substrings that don't
+    // depend on toLocaleString's thousands separator.
     expect(screen.getByText("Today\u2019s usage")).toBeInTheDocument()
     expect(screen.getByText("founder@example.com")).toBeInTheDocument()
-    expect(screen.getByText("42,000")).toBeInTheDocument()
-    expect(screen.getByText("500,000")).toBeInTheDocument()
+    const bar = screen.getByRole("progressbar")
+    // 42,000 / 500,000 = 8.4% → rounded to 8
+    expect(bar.getAttribute("aria-valuenow")).toBe("8")
   })
 
   it("computes the progress bar from used/limit", () => {

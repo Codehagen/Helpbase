@@ -23,9 +23,10 @@ export async function getUsageTodayForUser(
 
   // Supabase returns bigint columns as strings to preserve precision.
   // Number() of a non-numeric string is NaN, which flows silently into
-  // the UI as "NaN" and a broken progress bar. Clamp to 0 on parse fail.
+  // the UI as "NaN" and a broken progress bar. Clamp to 0 on parse fail
+  // or negative values (quota-refund scenarios should never flip to red).
   const parsed = Number(data ?? 0)
-  const usedToday = Number.isFinite(parsed) ? parsed : 0
+  const usedToday = Number.isFinite(parsed) ? Math.max(0, parsed) : 0
 
   return {
     email,

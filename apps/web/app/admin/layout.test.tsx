@@ -35,16 +35,17 @@ describe("AdminLayout", () => {
     await expect(AdminLayout({ children: null })).rejects.toThrow(/REDIRECT:\/device/)
   })
 
-  it("renders layout with children when session exists", async () => {
+  it("does not redirect when a valid session exists", async () => {
+    // Behavioral assertion: with a session, AdminLayout resolves instead
+    // of throwing the redirect sentinel. Asserting on the root element's
+    // component identity (function name, type === "div") was brittle —
+    // wrapping the shell in QueryProvider shouldn't break this test.
     vi.mocked(auth.api.getSession).mockResolvedValueOnce({
       user: { id: "u1", email: "me@example.com" },
     } as never)
+    const { redirect } = await import("next/navigation")
     const out = await AdminLayout({ children: null })
     expect(out).toBeDefined()
-    // The returned element is a plain React element — inspect the tree
-    // instead of rendering to DOM (requires Link/Suspense shims otherwise).
-    // Root is <QueryProvider>, a function component.
-    expect(typeof out.type).toBe("function")
-    expect(out.type).toHaveProperty("name", "QueryProvider")
+    expect(redirect).not.toHaveBeenCalled()
   })
 })

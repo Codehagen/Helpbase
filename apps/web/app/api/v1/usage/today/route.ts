@@ -24,7 +24,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await getUsageTodayForUser(session.user.id, session.user.email ?? "")
     return NextResponse.json(body)
-  } catch {
+  } catch (err) {
+    // Log the underlying error with the user id so a 503 spike doesn't
+    // require guessing from request timing. `userId` is safe to log;
+    // email is not.
+    console.error("[/api/v1/usage/today] RPC failure", {
+      userId: session.user.id,
+      error: err instanceof Error ? err.message : String(err),
+    })
     return wireError(503, "internal_error", "Supabase is unavailable.")
   }
 }

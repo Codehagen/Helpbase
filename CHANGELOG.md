@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Packages
 - `helpbase` CLI: `0.2.0` → `0.3.0`
+- `create-helpbase`: `0.1.0` → `0.2.0` (forwards `~/.helpbase/auth.json`
+  session to URL-based article generation so first-run scaffolds don't
+  demand a Vercel AI Gateway key when the user has already logged in)
 
 ## [0.2.0] — 2026-04-16
 

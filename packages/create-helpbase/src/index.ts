@@ -19,6 +19,7 @@ import {
 } from "@workspace/shared/ai-text"
 import { scaffoldProject, clearSampleContent } from "./scaffold.js"
 import { writeAiGatewayKey } from "./env-local.js"
+import { readHelpbaseAuthToken } from "./auth.js"
 
 interface RunOptions {
   url?: string
@@ -286,6 +287,7 @@ async function generateFromUrl(
     content,
     sourceUrl: url,
     model,
+    authToken: readHelpbaseAuthToken(),
   })
 
   const contentDir = path.join(projectDir, "content")

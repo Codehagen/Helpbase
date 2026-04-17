@@ -2,9 +2,8 @@ import fs from "node:fs"
 import path from "node:path"
 import matter from "gray-matter"
 import { compileMDX } from "next-mdx-remote/rsc"
-import remarkGfm from "remark-gfm"
-import rehypeSlug from "rehype-slug"
 import { cache } from "react"
+import { remarkPlugins, rehypePlugins } from "./mdx-config"
 
 import { frontmatterSchema, categoryMetaSchema } from "@/lib/schemas"
 import type { ArticleMeta, Article, Category, TocItem } from "@/lib/types"
@@ -144,8 +143,9 @@ export const getArticle = cache(
       components: createArticleComponents(category, slug),
       options: {
         mdxOptions: {
-          remarkPlugins: [remarkGfm],
-          rehypePlugins: [rehypeSlug],
+          remarkPlugins,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          rehypePlugins: rehypePlugins as any,
         },
       },
     })

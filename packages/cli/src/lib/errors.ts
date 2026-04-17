@@ -48,6 +48,11 @@ export type ErrorCode =
   | "E_CONTEXT_PREVIEW_NO_DOCS"
   | "E_CONTEXT_PREVIEW_SCAFFOLD"
   | "E_CONTEXT_PREVIEW_INSTALL"
+  | "E_AUTH_REQUIRED"
+  | "E_QUOTA_EXCEEDED"
+  | "E_GLOBAL_CAP"
+  | "E_LLM_NETWORK"
+  | "E_LLM_GATEWAY"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

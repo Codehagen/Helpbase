@@ -42,6 +42,10 @@ import { slugify } from "@workspace/shared/slugify"
 
 import { HelpbaseError } from "../lib/errors.js"
 import { contextError } from "./context-errors.js"
+import { callLlmText } from "@workspace/shared/llm"
+import { formatQuotaSuffix } from "@workspace/shared/llm-errors"
+import { resolveAuthOrPromptLogin } from "../lib/inline-auth.js"
+import { toCliLlmError } from "../lib/llm-errors-cli.js"
 
 export const contextCommand = new Command("context")
   .description(
@@ -90,6 +94,12 @@ BYOK — helpbase calls the provider directly. First key found wins; --model ove
       await runContext(repoPathArg, opts)
     } catch (err) {
       if (err instanceof HelpbaseError) throw err
+      // Translate hosted-proxy errors (AuthRequired/Quota/GlobalCap/Network/Gateway)
+      // into HelpbaseError with per-code fix copy. Untranslated errors fall through.
+      const llmWrapped = toCliLlmError(err, {
+        retryCommand: `helpbase context ${repoPathArg}${opts.ask ? ` --ask ${JSON.stringify(opts.ask)}` : ""}`,
+      })
+      if (llmWrapped instanceof HelpbaseError) throw llmWrapped
       if (err instanceof MissingApiKeyError) throw contextError("E_CONTEXT_MISSING_KEY")
       if (err instanceof TokenBudgetExceededError) {
         const top = err.files
@@ -159,7 +169,11 @@ async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void>
     const outputDir = path.resolve(repoRoot, opts.output || ".helpbase")
     const serialized = loadExistingDocs(outputDir)
     const model = resolveModel({ test: opts.test, modelOverride: opts.model })
-    await runLocalAsk(opts.ask, serialized, model)
+    const auth = await resolveAuthOrPromptLogin({
+      verb: "ask",
+      retryCommand: `helpbase context --reuse-existing --ask ${JSON.stringify(opts.ask)}`,
+    })
+    await runLocalAsk(opts.ask, serialized, model, auth.authToken)
     return
   }
 
@@ -220,18 +234,11 @@ async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void>
     console.log(`${pc.dim("›")} Wrote prompt to ${pc.cyan(debugPath)}`)
   }
 
-  // ─── 6.5. Key resolution — only required from here on (post-dry-run) ──
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    if (process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY) {
-      throw contextError("E_CONTEXT_MISSING_KEY", {
-        cause:
-          "You have ANTHROPIC_API_KEY or OPENAI_API_KEY set, but AI_GATEWAY_API_KEY is not. " +
-          "v1 routes through Vercel AI Gateway (free proxy for your existing keys). " +
-          "Direct @ai-sdk/anthropic + @ai-sdk/openai support ships in v1.1.",
-      })
-    }
-    throw contextError("E_CONTEXT_MISSING_KEY")
-  }
+  // ─── 6.5. Auth resolution — BYOK env var OR helpbase session ──────
+  const auth = await resolveAuthOrPromptLogin({
+    verb: "context",
+    retryCommand: `helpbase context ${repoPathArg}${opts.ask ? ` --ask ${JSON.stringify(opts.ask)}` : ""}`,
+  })
 
   // ─── 7. LLM synthesis ───────────────────────────────────────────
   console.log(
@@ -244,6 +251,7 @@ async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void>
     model,
     maxTokens,
     charsPerToken,
+    authToken: auth.authToken,
   })
   const llmMs = Date.now() - startLlm
   console.log(
@@ -427,7 +435,7 @@ async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void>
 
   // ─── 16. --ask (local RAG, no MCP client required) ─────────────
   if (opts.ask) {
-    await runLocalAsk(opts.ask, serialized, model)
+    await runLocalAsk(opts.ask, serialized, model, auth.authToken)
   } else {
     printNextSteps(repoPathArg || ".", outputDir)
   }
@@ -680,6 +688,7 @@ async function runLocalAsk(
   question: string,
   serialized: Array<{ relPath: string; content: string; doc: GeneratedContextDoc }>,
   model: string,
+  authToken?: string,
 ): Promise<void> {
   // Ask against just the generated body (not frontmatter), since the model
   // doesn't need to see YAML. Pass the slug path so it can cite correctly.
@@ -692,17 +701,31 @@ async function runLocalAsk(
     }
   })
   const prompt = buildLocalAskPrompt({ question, docs })
-  // Reuse callGenerator via a minimal "answer as a string" shape — skip
-  // generateObject here since we want prose, not structured JSON. We
-  // dynamically import generateText to keep the ai-sdk surface isolated.
-  const { generateText } = await import("ai")
   console.log("")
   console.log(`${pc.dim("›")} Answering: ${pc.bold(JSON.stringify(question))}`)
   const started = Date.now()
-  const { text } = await generateText({ model, prompt })
+  let text: string
+  let quotaForWarning: ReturnType<typeof formatQuotaSuffix> | null = null
+  try {
+    const result = await callLlmText({ model, prompt, authToken })
+    text = result.text
+    if (result.quota) {
+      const pct = Math.round((result.quota.usedToday / result.quota.dailyLimit) * 100)
+      if (pct >= 80) {
+        quotaForWarning = formatQuotaSuffix(result.quota)
+      }
+    }
+  } catch (err) {
+    throw toCliLlmError(err, {
+      retryCommand: `helpbase context --ask ${JSON.stringify(question)}`,
+    })
+  }
   const ms = Date.now() - started
   console.log("")
   console.log(text)
   console.log("")
   console.log(`  ${pc.dim(`answered in ${(ms / 1000).toFixed(1)}s using ${model}`)}`)
+  if (quotaForWarning) {
+    console.log(`  ${pc.yellow("heads-up:")} ${quotaForWarning}`)
+  }
 }

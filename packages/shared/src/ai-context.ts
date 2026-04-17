@@ -120,6 +120,8 @@ export interface GenerateHowtosInput {
   maxTokens: number
   /** Chars-per-token ratio for the estimate. 3.5 = mid-range. */
   charsPerToken: number
+  /** Hosted-proxy session token. Ignored when AI_GATEWAY_API_KEY is set. */
+  authToken?: string
 }
 
 export function estimateTokens(
@@ -142,6 +144,7 @@ export async function generateHowtosFromRepo({
   model = DEFAULT_MODEL,
   maxTokens,
   charsPerToken,
+  authToken,
 }: GenerateHowtosInput): Promise<GeneratedContextDoc[]> {
   // Token budget gate. Pre-LLM, so we fail fast with a file list.
   if (maxTokens > 0) {
@@ -158,6 +161,7 @@ export async function generateHowtosFromRepo({
       model,
       prompt,
       schema: generatedContextDocsSchema,
+      authToken,
     })
     return result.docs
   } catch (err) {
@@ -179,6 +183,7 @@ export async function generateHowtosFromRepo({
         model,
         prompt: buildContextPrompt({ sources: trimmed, repoLabel }),
         schema: generatedContextDocsSchema,
+        authToken,
       })
       return retry.docs
     } catch (retryErr) {

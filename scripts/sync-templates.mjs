@@ -64,10 +64,13 @@ const APPS_WEB_DIRS = ["app", "components", "lib", "content"]
 const HOSTED_TIER_EXCLUDES = [
   "app/(tenant)/",
   "app/(main)/errors/",
+  "app/(main)/waitlist/",
   "app/api/",
   "lib/tenant-content.ts",
   "lib/hosted-mdx-components.tsx",
   "lib/supabase.ts",
+  "lib/supabase-admin.ts",
+  "lib/waitlist.ts",
 ]
 
 // Import transform map. Each @workspace/* prefix maps to a local @/* path.

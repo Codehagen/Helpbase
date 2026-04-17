@@ -25,7 +25,10 @@ import {
   readCaptions,
   resizeForModel,
 } from "@workspace/shared/screenshots"
-import { HelpbaseError } from "../lib/errors.js"
+import { formatQuotaSuffix } from "@workspace/shared/llm-errors"
+import { HelpbaseError, formatError } from "../lib/errors.js"
+import { resolveAuthOrPromptLogin } from "../lib/inline-auth.js"
+import { toCliLlmError } from "../lib/llm-errors-cli.js"
 
 export const generateCommand = new Command("generate")
   .description("Generate help articles using AI")
@@ -200,6 +203,12 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
         return
       }
 
+      // Resolve auth (BYOK or helpbase session) — prompts inline login if TTY + no session.
+      const auth = await resolveAuthOrPromptLogin({
+        verb: "generate",
+        retryCommand: buildRetryCommand(opts),
+      })
+
       // Generate articles
       s.start("Generating visual how-to guide with AI...")
       let result
@@ -211,10 +220,11 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
           sourceUrl: opts.url,
           title: opts.title,
           model,
+          authToken: auth.authToken,
         })
       } catch (err) {
         s.stop(pc.red("Failed"))
-        printGenerateError(err)
+        printGenerateError(err, opts)
         process.exit(1)
       }
       s.stop(`Generated ${pc.bold(String(result.articles.length))} article${result.articles.length === 1 ? "" : "s"}!`)
@@ -371,6 +381,11 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
         return
       }
 
+      const auth = await resolveAuthOrPromptLogin({
+        verb: "generate",
+        retryCommand: buildRetryCommand(opts),
+      })
+
       s.start("Generating help articles with AI...")
       let articles
       try {
@@ -378,10 +393,11 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
           content: markdown,
           sourceUrl: opts.url,
           model,
+          authToken: auth.authToken,
         })
       } catch (err) {
         s.stop(pc.red("Failed"))
-        printGenerateError(err)
+        printGenerateError(err, opts)
         process.exit(1)
       }
       s.stop(`Generated ${pc.bold(String(articles.length))} articles!`)
@@ -487,6 +503,11 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
         return
       }
 
+      const auth = await resolveAuthOrPromptLogin({
+        verb: "generate",
+        retryCommand: buildRetryCommand(opts),
+      })
+
       s.start("Generating help articles with AI...")
       let articles
       try {
@@ -494,10 +515,11 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
           content: markdown,
           sourceUrl: sourceLabel,
           model,
+          authToken: auth.authToken,
         })
       } catch (err) {
         s.stop(pc.red("Failed"))
-        printGenerateError(err)
+        printGenerateError(err, opts)
         process.exit(1)
       }
       s.stop(`Generated ${pc.bold(String(articles.length))} articles!`)
@@ -604,14 +626,28 @@ function printScrapeError(url: string, err: unknown): void {
   )
 }
 
-function printGenerateError(err: unknown): void {
+function printGenerateError(err: unknown, opts?: { url?: string; repo?: string; screenshots?: string; title?: string; test?: boolean; model?: string }): void {
+  // Translate hosted-proxy errors (AuthRequired/Quota/GlobalCap/Network/Gateway)
+  // into HelpbaseError with rich `fix:` copy. Returned value is a HelpbaseError
+  // or the original if untranslated; use formatError() to render it.
+  const retry = opts ? buildRetryCommand(opts) : undefined
+  const wrapped = toCliLlmError(err, { retryCommand: retry })
+  if (wrapped instanceof HelpbaseError) {
+    // Let the top-level handler format it via formatError() — re-throw here
+    // would be wrong inside a try/catch, so we print the message directly.
+    process.stderr.write("\n")
+    process.stderr.write(formatError(wrapped))
+    return
+  }
+
   if (err instanceof MissingApiKeyError) {
+    // Legacy path — shouldn't hit now that inline-auth prompts, but keep for
+    // scaffolder / scripts that bypass the command layer.
     console.error(
       `\n${pc.red("✖")} Could not generate articles\n` +
-      `  Reason: AI_GATEWAY_API_KEY is not set.\n` +
-      `  Fix: Create a key at ${pc.cyan("https://vercel.com/ai-gateway")} and export it:\n` +
-      `       ${pc.dim("$")} export AI_GATEWAY_API_KEY=your_key_here\n` +
-      `  Docs: https://helpbase.dev/docs/troubleshooting#missing-api-key\n`,
+      `  Reason: Not signed in and no AI_GATEWAY_API_KEY is set.\n` +
+      `  Fix: Run ${pc.cyan("helpbase login")} (free, no card), then re-run.\n` +
+      `       Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} (docs: helpbase.dev/docs/byok)\n`,
     )
     return
   }
@@ -634,4 +670,16 @@ function printGenerateError(err: unknown): void {
     `  Fix: Check the source and try again.\n` +
     `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
   )
+}
+
+/** Rebuild the user's likely command, for the quota/auth error retry hint. */
+function buildRetryCommand(opts: { url?: string; repo?: string; screenshots?: string; title?: string; test?: boolean; model?: string; output?: string }): string {
+  const parts = ["helpbase", "generate"]
+  if (opts.url) parts.push("--url", opts.url)
+  if (opts.repo) parts.push("--repo", opts.repo)
+  if (opts.screenshots) parts.push("--screenshots", opts.screenshots)
+  if (opts.title) parts.push("--title", JSON.stringify(opts.title))
+  if (opts.test) parts.push("--test")
+  if (opts.model) parts.push("--model", opts.model)
+  return parts.join(" ")
 }

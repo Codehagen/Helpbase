@@ -229,6 +229,8 @@ export interface GenerateOptions {
   content: string
   sourceUrl: string
   model?: string
+  /** Hosted-proxy session token. Ignored when AI_GATEWAY_API_KEY is set. */
+  authToken?: string
 }
 
 /**
@@ -238,11 +240,13 @@ export async function generateArticlesFromContent({
   content,
   sourceUrl,
   model = DEFAULT_MODEL,
+  authToken,
 }: GenerateOptions): Promise<GeneratedArticle[]> {
   const result = await callGenerator<{ articles: GeneratedArticle[] }>({
     model,
     prompt: buildPrompt(content, sourceUrl),
     schema: generatedArticlesSchema,
+    authToken,
   })
   return result.articles
 }

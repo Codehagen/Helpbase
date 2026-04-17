@@ -18,11 +18,10 @@ This guide gets you from zero to your first proposal in five minutes.
 
 - A helpbase project (run `npx create-helpbase` if you don't have one yet).
 - Node 20+.
-- An `AI_GATEWAY_API_KEY` from [vercel.com/ai-gateway](https://vercel.com/ai-gateway). Free tier is enough for this walkthrough.
 
 ## Step 1 — See what a proposal looks like (30 seconds)
 
-Before touching your real repo, run the bundled demo. No key required.
+Before touching your real repo, run the bundled demo. No login required.
 
 ```bash
 helpbase sync --demo
@@ -38,15 +37,20 @@ The demo uses a fixture bundled with the CLI. It's the fastest way to check
 that `sync` is wired up correctly on your machine.
 </Callout>
 
-## Step 2 — Set your API key
+## Step 2 — Sign in
 
 ```bash
-export AI_GATEWAY_API_KEY=your_key_here
+helpbase login
 ```
 
-Drop it in `.env.local` next to your project if you don't want to export
-every session. The helpbase CLI picks up `.env.local` and `.env`
-automatically.
+Magic-link flow. Free tier is 500,000 tokens per day — enough for roughly 10
+full generates or 250 `context --ask` calls.
+
+<Callout type="note">
+Prefer your own key? Set `AI_GATEWAY_API_KEY` and helpbase will route through
+your Vercel AI Gateway account instead. See
+[helpbase.dev/docs/byok](https://helpbase.dev/docs/byok).
+</Callout>
 
 ## Step 3 — Make a code change worth documenting
 

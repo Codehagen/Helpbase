@@ -1,4 +1,3 @@
-import { generateObject, generateText } from "ai"
 import {
   generatedArticlesSchema,
   type GeneratedArticle,
@@ -6,20 +5,25 @@ import {
 } from "./schemas.js"
 import { slugify } from "./slugify.js"
 import type { z } from "zod"
+import { callLlmObject, isByokMode } from "./llm.js"
+import { AuthRequiredError, GatewayError as LlmGatewayError } from "./llm-errors.js"
+import type { WireQuotaStatus, WireUsage } from "./llm-wire.js"
 
 /**
  * Shared AI infrastructure for helpbase CLI and scaffolder.
  *
- * Architecture (after split):
+ * Architecture:
  *   ai.ts        — shared: model resolution, error classes, callGenerator,
  *                   extractJsonFromText, articleToMdx, planArticleWrites
  *   ai-text.ts   — text generation: scrapeUrl, generateArticlesFromContent,
  *                   buildPrompt
  *   ai-visual.ts — visual generation: generateArticlesFromScreenshots,
  *                   buildVisualPrompt
+ *   llm.ts       — hosted-proxy + BYOK router. `callGenerator` delegates here.
  *
- * Uses Vercel AI SDK + AI Gateway. One env var: AI_GATEWAY_API_KEY.
- * Model is passed as a string in `provider/model` form.
+ * BYOK (AI_GATEWAY_API_KEY set): direct Vercel AI SDK calls, user's own bill.
+ * Hosted (logged-in via helpbase): POST /api/v1/llm/generate-object with a
+ * bearer token, quota-gated server-side.
  */
 
 // ── Model constants ────────────────────────────────────────────────
@@ -81,84 +85,72 @@ export interface CallGeneratorOptions {
   schema: z.ZodType
   /** Optional inline images for multimodal generation. */
   images?: Array<{ mimeType: string; data: string }>
+  /**
+   * Hosted-proxy session token. Ignored in BYOK mode. When null/undefined
+   * and BYOK is not enabled, the call throws AuthRequiredError — the CLI
+   * command layer catches that and prompts login.
+   */
+  authToken?: string
+  /** Per-call output-token cap. Server may clamp lower for hosted calls. */
+  maxOutputTokens?: number
+}
+
+/** Metadata the hosted proxy returns alongside the generated object. */
+export interface CallGeneratorMeta {
+  usage?: WireUsage
+  quota?: WireQuotaStatus
+}
+
+/** Return shape that includes quota info when the hosted path is used. */
+export interface CallGeneratorResult<T> {
+  object: T
+  meta: CallGeneratorMeta
 }
 
 /**
- * Shared wrapper around Vercel AI SDK generation.
- * Tries generateObject first. If that fails with images (some model/SDK
- * combos don't support structured output + inline images), falls back
- * to generateText + JSON extraction.
+ * Shared wrapper around LLM generation.
+ *
+ * - BYOK (AI_GATEWAY_API_KEY set): direct Vercel AI SDK call, no usage returned.
+ * - Hosted: POST to /api/v1/llm/generate-object, usage + quota returned.
+ *
+ * The legacy `callGenerator` that returns `T` is kept for call sites that
+ * don't care about usage. New call sites should use `callGeneratorWithMeta`.
  */
-export async function callGenerator<T>({
-  model,
-  prompt,
-  schema,
-  images,
-}: CallGeneratorOptions): Promise<T> {
-  if (!process.env.AI_GATEWAY_API_KEY) {
+export async function callGenerator<T>(opts: CallGeneratorOptions): Promise<T> {
+  const { object } = await callGeneratorWithMeta<T>(opts)
+  return object
+}
+
+export async function callGeneratorWithMeta<T>(
+  opts: CallGeneratorOptions,
+): Promise<CallGeneratorResult<T>> {
+  // Preserve legacy error semantics: when NOT authed for the hosted path
+  // and BYOK is off, older tests expect MissingApiKeyError. We surface
+  // AuthRequiredError from llm.ts; keep a bridge so existing catch blocks
+  // that check for MissingApiKeyError keep behaving.
+  if (!isByokMode() && !opts.authToken) {
     throw new MissingApiKeyError()
   }
 
-  // Build messages array for multimodal requests
-  const messages = images?.length
-    ? [
-        {
-          role: "user" as const,
-          content: [
-            ...images.map((img) => ({
-              type: "image" as const,
-              image: `data:${img.mimeType};base64,${img.data}`,
-            })),
-            { type: "text" as const, text: prompt },
-          ],
-        },
-      ]
-    : undefined
-
   try {
-    if (messages) {
-      // Multimodal: try generateObject with messages
-      const { object } = await generateObject({
-        model,
-        schema,
-        messages,
-      })
-      return object as T
-    }
-    // Text-only: use prompt directly
-    const { object } = await generateObject({
-      model,
-      schema,
-      prompt,
+    const result = await callLlmObject<T>({
+      model: opts.model,
+      prompt: opts.prompt,
+      schema: opts.schema as z.ZodType<T>,
+      images: opts.images,
+      authToken: opts.authToken,
+      maxOutputTokens: opts.maxOutputTokens,
     })
-    return object as T
+    return { object: result.object, meta: { usage: result.usage, quota: result.quota } }
   } catch (err) {
-    if (err instanceof MissingApiKeyError) throw err
-
-    // If multimodal generateObject failed, try generateText fallback
-    if (images?.length) {
-      try {
-        const { text } = await generateText({
-          model,
-          messages: messages!,
-        })
-        const parsed = extractJsonFromText(text)
-        return schema.parse(parsed) as T
-      } catch (fallbackErr) {
-        if (fallbackErr instanceof MissingApiKeyError) throw fallbackErr
-        throw new GatewayError(
-          fallbackErr instanceof Error
-            ? fallbackErr.message
-            : "Unknown gateway error (fallback)",
-          fallbackErr,
-        )
-      }
+    if (err instanceof AuthRequiredError) {
+      // Preserve legacy MissingApiKeyError for existing callers.
+      throw new MissingApiKeyError()
     }
-
-    throw new GatewayError(
-      err instanceof Error ? err.message : "Unknown gateway error",
-      err,
-    )
+    if (err instanceof LlmGatewayError) {
+      throw new GatewayError(err.message, err.rawPreview)
+    }
+    throw err
   }
 }
 

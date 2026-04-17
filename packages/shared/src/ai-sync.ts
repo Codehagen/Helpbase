@@ -47,6 +47,8 @@ export interface GenerateSyncProposalsOptions {
    * Default: 20 full files, rest truncated.
    */
   maxFullFiles?: number
+  /** Hosted-proxy session token. Ignored when AI_GATEWAY_API_KEY is set. */
+  authToken?: string
 }
 
 /**
@@ -145,6 +147,7 @@ export async function generateSyncProposals(
     model: opts.model,
     prompt,
     schema: syncProposalsSchema,
+    authToken: opts.authToken,
   })
 
   // callGenerator returns schema-validated output; `raw.proposals` is

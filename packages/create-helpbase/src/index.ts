@@ -320,8 +320,10 @@ async function generateFromUrl(
 function printGenerationFallbackHint(err: unknown, url: string): void {
   if (err instanceof MissingApiKeyError) {
     note(
-      `Set ${pc.cyan("AI_GATEWAY_API_KEY")} (get one at ${pc.cyan("https://vercel.com/ai-gateway")}) then run:\n` +
-      `  ${pc.cyan(`helpbase generate --url ${url}`)}`,
+      `Run ${pc.cyan("helpbase login")} (free, no card) then:\n` +
+      `  ${pc.cyan(`helpbase generate --url ${url}`)}\n\n` +
+      `Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} ` +
+      `(docs: ${pc.cyan("helpbase.dev/docs/byok")})`,
       "AI generation skipped",
     )
     return

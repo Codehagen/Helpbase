@@ -18,7 +18,10 @@
     "./context-reader": "./src/context-reader.ts",
     "./ai-context": "./src/ai-context.ts",
     "./context-writer": "./src/context-writer.ts",
-    "./llms-txt": "./src/llms-txt.ts"
+    "./llms-txt": "./src/llms-txt.ts",
+    "./llm": "./src/llm.ts",
+    "./llm-errors": "./src/llm-errors.ts",
+    "./llm-wire": "./src/llm-wire.ts"
   },
   "scripts": {
     "test": "vitest run"

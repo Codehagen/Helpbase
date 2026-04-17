@@ -66,9 +66,15 @@ const HOSTED_TIER_EXCLUDES = [
   "app/(main)/errors/",
   "app/(main)/waitlist/",
   "app/api/",
+  // Device-flow UI is helpbase.dev-only — the CLI opens /device on the
+  // hosted app to complete sign-in. Scaffolded projects don't run auth,
+  // so they don't need this route (and importing better-auth/react would
+  // break their build).
+  "app/device/",
   "lib/tenant-content.ts",
   "lib/tenant-search.ts",
   "lib/hosted-mdx-components.tsx",
+  "lib/auth.ts",
   "lib/supabase.ts",
   "lib/supabase-admin.ts",
   "lib/waitlist.ts",

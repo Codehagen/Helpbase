@@ -13,11 +13,13 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "email": "email dev --dir emails --port 3001"
   },
   "dependencies": {
     "@helpbase/mcp": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@react-email/components": "^1.0.12",
     "@supabase/supabase-js": "^2.103.0",
     "@vercel/kv": "^3.0.0",
     "@workspace/shared": "workspace:*",
@@ -49,6 +51,7 @@
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9.39.2",
+    "react-email": "^6.0.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3"
   }

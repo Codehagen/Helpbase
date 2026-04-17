@@ -71,6 +71,10 @@ const HOSTED_TIER_EXCLUDES = [
   // so they don't need this route (and importing better-auth/react would
   // break their build).
   "app/device/",
+  // React Email templates are wired into Better Auth's magic-link sender
+  // in apps/web/lib/auth.ts — also hosted-only. Shipping them would drag
+  // @react-email/components into scaffolded projects for no reason.
+  "emails/",
   "lib/tenant-content.ts",
   "lib/tenant-search.ts",
   "lib/hosted-mdx-components.tsx",

@@ -97,8 +97,7 @@ export default async function TenantArticlePage({
     options: {
       mdxOptions: {
         remarkPlugins,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        rehypePlugins: rehypePlugins as any,
+        rehypePlugins,
       },
     },
   })

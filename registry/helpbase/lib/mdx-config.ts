@@ -1,9 +1,19 @@
+import type { compileMDX } from "next-mdx-remote/rsc"
 import remarkGfm from "remark-gfm"
 import rehypeSlug from "rehype-slug"
 import rehypePrettyCode, {
   type Options as PrettyCodeOptions,
 } from "rehype-pretty-code"
 import { createHighlighter, type Highlighter } from "shiki"
+
+// Mirror the exact type compileMDX expects for its plugin lists. Pulled
+// from next-mdx-remote's own signature so we don't need a direct dep on
+// `unified` (where `PluggableList` canonically lives). If next-mdx-remote
+// ever widens/narrows this, we follow it for free.
+type MdxOptions = NonNullable<
+  NonNullable<Parameters<typeof compileMDX>[0]["options"]>["mdxOptions"]
+>
+type PluginList = NonNullable<MdxOptions["rehypePlugins"]>
 
 /**
  * Shared MDX pipeline config used by both the apex docs site
@@ -89,8 +99,8 @@ export const prettyCodeOptions: PrettyCodeOptions = {
   getHighlighter: getSharedHighlighter,
 }
 
-export const remarkPlugins = [remarkGfm]
-export const rehypePlugins = [
+export const remarkPlugins: PluginList = [remarkGfm]
+export const rehypePlugins: PluginList = [
   rehypeSlug,
-  [rehypePrettyCode, prettyCodeOptions] as const,
+  [rehypePrettyCode, prettyCodeOptions],
 ]

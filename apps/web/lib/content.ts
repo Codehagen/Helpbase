@@ -95,10 +95,24 @@ export const getCategories = cache(async (): Promise<Category[]> => {
 
     let meta = { title: titleCase(slug), description: "", icon: "file-text", order: 999 }
     if (fs.existsSync(metaPath)) {
-      const raw = JSON.parse(fs.readFileSync(metaPath, "utf-8"))
-      const parsed = categoryMetaSchema.safeParse(raw)
-      if (parsed.success) {
-        meta = parsed.data
+      // Two failure modes surface the same way to the docs author: a typo'd
+      // _category.json silently reverts to defaults, which is confusing when
+      // the title/icon they set doesn't show up. Warn loudly on both
+      // (invalid JSON syntax + valid JSON that fails the schema).
+      try {
+        const raw = JSON.parse(fs.readFileSync(metaPath, "utf-8"))
+        const parsed = categoryMetaSchema.safeParse(raw)
+        if (parsed.success) {
+          meta = parsed.data
+        } else {
+          console.warn(
+            `⚠ Invalid _category.json for "${slug}": ${parsed.error.issues.map((i) => i.message).join(", ")} — using defaults`,
+          )
+        }
+      } catch (err) {
+        console.warn(
+          `⚠ Could not parse _category.json for "${slug}": ${err instanceof Error ? err.message : String(err)} — using defaults`,
+        )
       }
     }
 
@@ -144,8 +158,7 @@ export const getArticle = cache(
       options: {
         mdxOptions: {
           remarkPlugins,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          rehypePlugins: rehypePlugins as any,
+          rehypePlugins,
         },
       },
     })

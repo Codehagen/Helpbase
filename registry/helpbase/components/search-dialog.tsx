@@ -101,6 +101,7 @@ export function SearchDialog({ items }: SearchDialogProps) {
             <input
               ref={inputRef}
               type="text"
+              aria-label="Search articles"
               placeholder="Search articles..."
               value={query}
               onChange={(e) => {

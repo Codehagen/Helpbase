@@ -32,7 +32,9 @@ export default async function UsagePage() {
   // has dataUpdatedAt=0, so useSuspenseQuery treats it as stale and
   // refetches on mount — defeating the whole point of seeding.
   const queryClient = getQueryClient()
-  const data = await getUsageTodayForUser(session.user.id, session.user.email ?? "")
+  // Fallback to user id matches the layout's header display — an OAuth
+  // user with the email scope dropped still gets *something* identifying.
+  const data = await getUsageTodayForUser(session.user.id, session.user.email ?? session.user.id)
   queryClient.setQueryData(usageKeys.today(), data, { updatedAt: Date.now() })
 
   return (

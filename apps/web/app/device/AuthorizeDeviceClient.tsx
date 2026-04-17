@@ -186,8 +186,9 @@ export function AuthorizeDeviceClient({
           </div>
         )}
         <form onSubmit={handleMagicLink} className="space-y-4">
-          <label className="block text-sm font-medium">Email</label>
+          <label htmlFor="email-input" className="block text-sm font-medium">Email</label>
           <input
+            id="email-input"
             type="email"
             required
             value={email}

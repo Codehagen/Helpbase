@@ -88,6 +88,10 @@ describe("AuthorizeDeviceClient — derivation", () => {
     expect(
       await screen.findByRole("button", { name: /send sign-in link/i }),
     ).toBeInTheDocument()
+    // a11y: <label> is bound to <input> via htmlFor/id, so the email field
+    // has an accessible name. Screen readers announce it; regression would
+    // mean reverting to a stranded <label>.
+    expect(screen.getByRole("textbox", { name: /email/i })).toBeInTheDocument()
   })
 
   it("routes to signed-in when session + userCode present", async () => {

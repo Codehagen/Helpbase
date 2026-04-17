@@ -59,7 +59,10 @@ describe("phaseReducer — SESSION_RESOLVED", () => {
     expect(result).toEqual({ kind: "signed-out" })
   })
 
-  it("falls to signed-out when userCode is empty (session absent)", () => {
+  // The `!userCode` guard fires before `!session?.user`, so an empty userCode
+  // wins regardless of session shape. This asserts the guard ordering — if a
+  // future refactor swaps the checks, this test fails loudly.
+  it("empty userCode wins over null session (ordering: userCode check is first)", () => {
     const result = phaseReducer(
       initialPhase,
       baseAction({ session: null, userCode: "" }),

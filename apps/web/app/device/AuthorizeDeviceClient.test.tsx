@@ -187,7 +187,11 @@ describe("AuthorizeDeviceClient — magic-link handler", () => {
         callbackURL: "/device?user_code=ABCD-EFGH",
       })
     })
-    expect(await screen.findByText(/check/i)).toBeInTheDocument()
+    // Assert unique email-sent copy. The prior /check/i regex also matched
+    // "Checking session…" on the loading screen, so it was false-confidence.
+    expect(
+      await screen.findByText(/for your.*sign-in link/i),
+    ).toBeInTheDocument()
     expect(screen.getByText("x@y.com")).toBeInTheDocument()
   })
 
@@ -252,6 +256,35 @@ describe("AuthorizeDeviceClient — social sign-in handler", () => {
       await screen.findByRole("button", { name: /continue with github/i }),
     )
     expect(await screen.findByText("OAuth config bad")).toBeInTheDocument()
+  })
+
+  it("disables all sign-in surfaces while a social redirect is in flight", async () => {
+    // Prevents a user double-clicking Google (or clicking GitHub mid-flight)
+    // and firing two concurrent OAuth redirects. The component gates
+    // everything on `socialBusy || submitting`.
+    mockSignInSocial.mockImplementation(() => new Promise(() => {}))
+    const user = userEvent.setup()
+    render(
+      <AuthorizeDeviceClient
+        initialUserCode="ABCD-EFGH"
+        providers={bothProviders}
+      />,
+    )
+    await user.click(
+      await screen.findByRole("button", { name: /continue with google/i }),
+    )
+    await waitFor(() => {
+      // Label flips to "Redirecting…" once the submit starts.
+      expect(
+        screen.getByRole("button", { name: /redirecting…/i }),
+      ).toBeDisabled()
+    })
+    expect(
+      screen.getByRole("button", { name: /continue with github/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole("button", { name: /send sign-in link/i }),
+    ).toBeDisabled()
   })
 })
 
@@ -328,6 +361,30 @@ describe("AuthorizeDeviceClient — approve/deny handlers", () => {
     )
     await user.click(await screen.findByRole("button", { name: /cancel/i }))
     expect(await screen.findByText(/cancelled/i)).toBeInTheDocument()
+  })
+
+  it("disables both Authorize and Cancel buttons while approve is in flight", async () => {
+    // Never-resolving mock keeps us in the approving phase so we can
+    // assert the disabled state. Prevents a user from double-clicking
+    // Authorize OR pressing Cancel mid-flight, which would dispatch
+    // DENIED on top of an in-flight approve.
+    mockDeviceApprove.mockImplementation(() => new Promise(() => {}))
+    const user = userEvent.setup()
+    render(
+      <AuthorizeDeviceClient
+        initialUserCode="ABCD-EFGH"
+        providers={bothProviders}
+      />,
+    )
+    const authorize = await screen.findByRole("button", { name: /^authorize$/i })
+    const cancel = screen.getByRole("button", { name: /cancel/i })
+    await user.click(authorize)
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /authorizing…/i }),
+      ).toBeDisabled()
+    })
+    expect(cancel).toBeDisabled()
   })
 })
 

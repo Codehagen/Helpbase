@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useReducer, useState, type FormEvent } from "react"
 import { createAuthClient } from "better-auth/react"
 import { magicLinkClient, deviceAuthorizationClient } from "better-auth/client/plugins"
+import { initialPhase, phaseReducer } from "./phase-reducer"
 
 // Inline the auth client here (one consumer, one module) to side-step
 // TS's "inferred type cannot be named" portability complaint on the
@@ -12,16 +13,6 @@ import { magicLinkClient, deviceAuthorizationClient } from "better-auth/client/p
 const authClient = createAuthClient({
   plugins: [magicLinkClient(), deviceAuthorizationClient()],
 })
-
-type Phase =
-  | { kind: "loading" }
-  | { kind: "signed-out" }
-  | { kind: "email-sent"; email: string }
-  | { kind: "signed-in"; email: string; userCode: string }
-  | { kind: "approving" }
-  | { kind: "approved"; email: string }
-  | { kind: "denied" }
-  | { kind: "error"; message: string }
 
 export interface ProviderAvailability {
   google: boolean
@@ -37,30 +28,22 @@ export function AuthorizeDeviceClient({
 }) {
   const { data: session, isPending: sessionPending } = authClient.useSession()
   const [userCode, setUserCode] = useState(initialUserCode)
-  const [phase, setPhase] = useState<Phase>({ kind: "loading" })
+  const [phase, dispatch] = useReducer(phaseReducer, initialPhase)
   const [email, setEmail] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [socialSubmitting, setSocialSubmitting] = useState<"google" | "github" | null>(null)
 
   // Derive the UI phase from session state + URL-provided user_code.
+  // Transition rules live in ./phase-reducer so they're unit-testable
+  // without React + DOM. Here we just hand the reducer the raw inputs.
   useEffect(() => {
     if (sessionPending) {
-      setPhase({ kind: "loading" })
+      dispatch({ type: "SESSION_LOADING" })
       return
     }
-    if (!userCode) {
-      // No user_code on the URL — show an input. Rare path; the CLI
-      // always provides verification_uri_complete which carries it.
-      setPhase({ kind: "signed-out" })
-      return
-    }
-    if (!session?.user) {
-      setPhase({ kind: "signed-out" })
-      return
-    }
-    setPhase({
-      kind: "signed-in",
-      email: session.user.email ?? "",
+    dispatch({
+      type: "SESSION_RESOLVED",
+      session: session ?? null,
       userCode,
     })
   }, [sessionPending, session, userCode])
@@ -80,8 +63,8 @@ export function AuthorizeDeviceClient({
       // through to the catch.
     } catch (err) {
       setSocialSubmitting(null)
-      setPhase({
-        kind: "error",
+      dispatch({
+        type: "ERROR",
         message: err instanceof Error ? err.message : String(err),
       })
     }
@@ -100,16 +83,16 @@ export function AuthorizeDeviceClient({
         callbackURL: callback,
       })
       if (error) {
-        setPhase({
-          kind: "error",
+        dispatch({
+          type: "ERROR",
           message: error.message ?? "Couldn't send sign-in email.",
         })
       } else {
-        setPhase({ kind: "email-sent", email })
+        dispatch({ type: "MAGIC_LINK_SENT", email })
       }
     } catch (err) {
-      setPhase({
-        kind: "error",
+      dispatch({
+        type: "ERROR",
         message: err instanceof Error ? err.message : String(err),
       })
     } finally {
@@ -118,26 +101,26 @@ export function AuthorizeDeviceClient({
   }
 
   async function handleApprove() {
-    setPhase({ kind: "approving" })
+    dispatch({ type: "APPROVE_STARTED" })
     try {
       const { error } = await authClient.device.approve({ userCode })
       if (error) {
         // device.approve returns RFC-8628-shaped error codes
         // ("access_denied", "expired_token", etc.) rather than a plain
         // message field. error_description is the human-readable text.
-        setPhase({
-          kind: "error",
+        dispatch({
+          type: "ERROR",
           message: error.error_description ?? "Authorization failed.",
         })
         return
       }
-      setPhase({
-        kind: "approved",
+      dispatch({
+        type: "APPROVE_SUCCEEDED",
         email: session?.user?.email ?? "",
       })
     } catch (err) {
-      setPhase({
-        kind: "error",
+      dispatch({
+        type: "ERROR",
         message: err instanceof Error ? err.message : String(err),
       })
     }
@@ -149,7 +132,7 @@ export function AuthorizeDeviceClient({
     } catch {
       // best-effort — regardless, we show the denied screen
     }
-    setPhase({ kind: "denied" })
+    dispatch({ type: "DENIED" })
   }
 
   if (phase.kind === "loading") {
@@ -313,17 +296,13 @@ export function AuthorizeDeviceClient({
       <p className="text-sm text-red-600 dark:text-red-400">{phase.message}</p>
       <button
         type="button"
-        onClick={() => {
-          if (session?.user && userCode) {
-            setPhase({
-              kind: "signed-in",
-              email: session.user.email ?? "",
-              userCode,
-            })
-          } else {
-            setPhase({ kind: "signed-out" })
-          }
-        }}
+        onClick={() =>
+          dispatch({
+            type: "SESSION_RESOLVED",
+            session: session ?? null,
+            userCode,
+          })
+        }
         className="text-sm text-neutral-600 underline dark:text-neutral-400"
       >
         Try again

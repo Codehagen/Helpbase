@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Unit tests for the device-authorize state machine.** Extracted the
+  8-phase `Phase` union from `AuthorizeDeviceClient` into a pure
+  `phaseReducer` function so every transition can be verified without
+  React, the DOM, or Better Auth mocks. Adds 20 reducer unit tests
+  (100% branch coverage) and 15 thin integration tests covering the
+  effect derivation, providers-prop rendering, and async handler
+  dispatch sites. Also wires up `@vitejs/plugin-react` + jsdom so
+  future component tests in `apps/web` have a working harness.
 - **Branded HTML magic-link email.** The sign-in email is now a React
   Email component (`apps/web/emails/sign-in-magic-link.tsx`) matching
   the editorial-technical look of the site — helpbase wordmark, near-

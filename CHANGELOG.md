@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-17
+
+### Added
+- **Bundled AI key — `helpbase context`, `--ask`, and every other
+  LLM-backed CLI command now work without the user bringing an
+  `AI_GATEWAY_API_KEY`.** helpbase owns a Vercel AI Gateway key
+  server-side and proxies LLM calls through `helpbase.dev/api/v1/llm/*`.
+  First-time user flow is now `npx helpbase login` → `npx helpbase context .`
+  with no external signups in between.
+  - Per-user daily quota: `500,000` tokens, resets at UTC midnight.
+    `helpbase whoami` surfaces `used / cap / resets-in`.
+  - Auth: CLI bearer token from `helpbase login` (stored in
+    `~/.helpbase/auth.json`) or `HELPBASE_TOKEN` env var for CI.
+  - BYOK escape hatch preserved — setting `AI_GATEWAY_API_KEY`
+    bypasses the proxy and hits Gateway directly, no quota applied.
+    Recommended for power users and anyone who hits the daily cap.
+  - New endpoints: `POST /api/v1/llm/generate-text`,
+    `POST /api/v1/llm/generate-object`, `GET /api/v1/usage/today`.
+    All require `Authorization: Bearer <session-token>`; 401 on
+    missing/invalid, 429 on quota exceeded, 503 on global cap.
+  - Smoke harness: `scripts/smoke-llm-proxy.sh <base-url> <token>`
+    for post-deploy verification.
+
+### Packages
+- `helpbase` CLI: `0.2.0` → `0.3.0`
+
 ## [0.2.0] — 2026-04-16
 
 ### Added

@@ -1,5 +1,6 @@
 import type { Command } from "commander"
 import pc from "picocolors"
+import { renderBanner } from "./banner.js"
 
 /**
  * Grouped `--help` rendering.
@@ -46,6 +47,14 @@ export function renderGroupedHelp(program: Command): string {
   const byName = new Map(subcommands.map((c) => [c.name(), c] as const))
   const seen = new Set<string>()
   const lines: string[] = []
+
+  // Banner (suppressed under --json/--quiet and on narrow terminals).
+  const banner = renderBanner()
+  if (banner) {
+    lines.push("")
+    lines.push(banner.replace(/\n$/, ""))
+    lines.push("")
+  }
 
   // Synopsis + description
   lines.push(`${pc.bold("helpbase")} ${pc.dim(`v${program.version() ?? ""}`)}`)

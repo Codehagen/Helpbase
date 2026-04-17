@@ -27,6 +27,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.77",
+    "@ai-sdk/openai": "^2.0.103",
     "ai": "^5.0.0",
     "gray-matter": "^4.0.3",
     "zod": "^4.3.6"

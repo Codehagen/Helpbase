@@ -12,6 +12,7 @@ import {
   callLlmText,
   fetchUsageToday,
   isByokMode,
+  resolveByokModel,
   resolveProxyBase,
 } from "../llm.js"
 import type { WireErrorBody, WireQuotaStatus } from "../llm-wire.js"
@@ -30,6 +31,8 @@ const originalFetch = globalThis.fetch
 
 beforeEach(() => {
   delete process.env.AI_GATEWAY_API_KEY
+  delete process.env.ANTHROPIC_API_KEY
+  delete process.env.OPENAI_API_KEY
   delete process.env.HELPBASE_PROXY_URL
   fetchMock = vi.fn()
   // @ts-expect-error vitest-level override
@@ -61,6 +64,83 @@ describe("isByokMode", () => {
   it("true when AI_GATEWAY_API_KEY set", () => {
     process.env.AI_GATEWAY_API_KEY = "vck_test"
     expect(isByokMode()).toBe(true)
+  })
+
+  it("true when ANTHROPIC_API_KEY set", () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    expect(isByokMode()).toBe(true)
+  })
+
+  it("true when OPENAI_API_KEY set", () => {
+    process.env.OPENAI_API_KEY = "sk-test"
+    expect(isByokMode()).toBe(true)
+  })
+})
+
+describe("resolveByokModel — provider routing", () => {
+  it("returns the raw model string when Gateway key is set (accepts any provider)", () => {
+    process.env.AI_GATEWAY_API_KEY = "vck_test"
+    expect(resolveByokModel("google/gemini-3.1-flash-lite-preview")).toBe(
+      "google/gemini-3.1-flash-lite-preview",
+    )
+    expect(resolveByokModel("anthropic/claude-3-5-sonnet-latest")).toBe(
+      "anthropic/claude-3-5-sonnet-latest",
+    )
+  })
+
+  it("Gateway wins over Anthropic when both are set", () => {
+    process.env.AI_GATEWAY_API_KEY = "vck_test"
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    // String pass-through proves the Gateway branch was taken — the
+    // Anthropic branch would have returned an SDK object instead.
+    expect(typeof resolveByokModel("google/gemini-3.1-flash-lite-preview")).toBe("string")
+  })
+
+  it("returns an anthropic model object when ANTHROPIC_API_KEY + anthropic/ model", () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    const model = resolveByokModel("anthropic/claude-3-5-sonnet-latest")
+    expect(typeof model).toBe("object")
+  })
+
+  it("throws when ANTHROPIC_API_KEY is set but model is not anthropic/", () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    expect(() => resolveByokModel("google/gemini-3.1-flash-lite-preview")).toThrow(
+      /ANTHROPIC_API_KEY is set/,
+    )
+    expect(() => resolveByokModel("openai/gpt-4o")).toThrow(/ANTHROPIC_API_KEY is set/)
+  })
+
+  it("returns an openai model object when OPENAI_API_KEY + openai/ model", () => {
+    process.env.OPENAI_API_KEY = "sk-test"
+    const model = resolveByokModel("openai/gpt-4o-mini")
+    expect(typeof model).toBe("object")
+  })
+
+  it("throws when OPENAI_API_KEY is set but model is not openai/", () => {
+    process.env.OPENAI_API_KEY = "sk-test"
+    expect(() => resolveByokModel("google/gemini-3.1-flash-lite-preview")).toThrow(
+      /OPENAI_API_KEY is set/,
+    )
+  })
+
+  it("Anthropic wins over OpenAI when both are set but Gateway isn't", () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    process.env.OPENAI_API_KEY = "sk-test"
+    // anthropic/ model works; openai/ throws (because Anthropic branch is taken)
+    expect(typeof resolveByokModel("anthropic/claude-3-5-sonnet-latest")).toBe("object")
+    expect(() => resolveByokModel("openai/gpt-4o")).toThrow(/ANTHROPIC_API_KEY is set/)
+  })
+
+  it("throws clearly when called with no BYOK key (should not happen in practice)", () => {
+    expect(() => resolveByokModel("anthropic/claude-3-5-sonnet-latest")).toThrow(
+      /without any BYOK key/,
+    )
+  })
+
+  it("rejects empty model id after the provider slash", () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-test"
+    expect(() => resolveByokModel("anthropic/")).toThrow(/ANTHROPIC_API_KEY is set/)
+    expect(() => resolveByokModel("anthropic")).toThrow(/ANTHROPIC_API_KEY is set/)
   })
 })
 

@@ -32,9 +32,10 @@ export const whoamiCommand = new Command("whoami")
           `  Re-issue the token and try again.`,
         )
       } else if (byok) {
+        const which = byokKeyName()
         console.log(
-          `${pc.yellow("●")} Not logged in, but ${pc.cyan("AI_GATEWAY_API_KEY")} is set — ` +
-          `BYOK mode active. All LLM calls go direct to Vercel AI Gateway on your key.`,
+          `${pc.yellow("●")} Not logged in, but ${pc.cyan(which)} is set — ` +
+          `BYOK mode active. LLM calls go direct on your key.`,
         )
       } else {
         console.log(
@@ -94,7 +95,7 @@ export const whoamiCommand = new Command("whoami")
 
     if (byok) {
       console.log(
-        `    ${pc.yellow("BYOK mode:")} ${pc.cyan("AI_GATEWAY_API_KEY")} is set — calls bypass helpbase (no quota applied).`,
+        `    ${pc.yellow("BYOK mode:")} ${pc.cyan(byokKeyName())} is set — calls bypass helpbase (no quota applied).`,
       )
     } else if (usage) {
       const { usedToday, dailyLimit, resetAt } = usage.quota
@@ -105,7 +106,7 @@ export const whoamiCommand = new Command("whoami")
         `(${pct}%) ${pc.dim(`— resets in ${reset}`)}`,
       )
       console.log(
-        `    ${pc.dim("escape hatch:")} export ${pc.cyan("AI_GATEWAY_API_KEY")}=... for unlimited (see ${BYOK_DOCS_URL})`,
+        `    ${pc.dim("escape hatch:")} export ${pc.cyan("AI_GATEWAY_API_KEY")} or ${pc.cyan("ANTHROPIC_API_KEY")} or ${pc.cyan("OPENAI_API_KEY")} (see ${BYOK_DOCS_URL})`,
       )
     } else {
       console.log(`    ${pc.dim("usage: could not fetch (network blip — try again in a moment)")}`)
@@ -119,3 +120,15 @@ export const whoamiCommand = new Command("whoami")
     }
     console.log()
   })
+
+/**
+ * Return the name of whichever BYOK env var is set, in the same precedence
+ * order llm.ts::resolveByokModel uses. Caller must have already confirmed
+ * isByokMode() is true.
+ */
+function byokKeyName(): string {
+  if (process.env.AI_GATEWAY_API_KEY) return "AI_GATEWAY_API_KEY"
+  if (process.env.ANTHROPIC_API_KEY) return "ANTHROPIC_API_KEY"
+  if (process.env.OPENAI_API_KEY) return "OPENAI_API_KEY"
+  return "BYOK key" // unreachable when callers check isByokMode first
+}

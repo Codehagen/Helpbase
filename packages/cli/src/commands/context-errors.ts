@@ -24,14 +24,13 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   E_CONTEXT_MISSING_KEY: {
     problem: "No LLM API key is set in your environment.",
     cause:
-      "helpbase context needs AI_GATEWAY_API_KEY. Vercel AI Gateway is a FREE routing proxy — " +
-      "you configure your existing Anthropic/OpenAI key there and get one Gateway key back. " +
-      "You pay the provider once, not twice.",
+      "helpbase context accepts any one of: AI_GATEWAY_API_KEY (any provider), " +
+      "ANTHROPIC_API_KEY (--model anthropic/...), or OPENAI_API_KEY (--model openai/...). " +
+      "Set the one you already have.",
     fix: [
-      "Sign up free at https://vercel.com/ai-gateway (30 seconds).",
-      "Configure your Anthropic or OpenAI key in the Gateway dashboard.",
-      "export AI_GATEWAY_API_KEY=<gateway-key> and re-run.",
-      "(Direct @ai-sdk/anthropic + @ai-sdk/openai support ships in v1.1.)",
+      "If you have an Anthropic key: export ANTHROPIC_API_KEY=sk-ant-... and re-run with --model anthropic/claude-3-5-sonnet-latest.",
+      "If you have an OpenAI key: export OPENAI_API_KEY=sk-... and re-run with --model openai/gpt-4o-mini.",
+      "Or sign up for Vercel AI Gateway (free, routes any provider): https://vercel.com/ai-gateway — export AI_GATEWAY_API_KEY=<gateway-key>.",
     ],
   },
   E_CONTEXT_NO_SOURCES: {

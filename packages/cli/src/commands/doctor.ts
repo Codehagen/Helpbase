@@ -244,7 +244,13 @@ async function collectChecks(opts: CheckOptions): Promise<Check[]> {
   if (!opts.offline) {
     checks.push(await checkApiReachable())
     checks.push(await checkLlmProxyReachable())
-    if (session && !process.env.AI_GATEWAY_API_KEY) {
+    // BYOK mode skips the hosted usage check — the user isn't spending our
+    // quota. Any provider key counts: Gateway, Anthropic, or OpenAI direct.
+    const byok =
+      process.env.AI_GATEWAY_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY
+    if (session && !byok) {
       checks.push(await checkUsageEndpoint(session.accessToken))
     }
   }
@@ -319,7 +325,7 @@ async function checkLlmProxyReachable(): Promise<Check> {
         category: "network",
         severity: "warn",
         value: "/api/v1/llm/* not found (404)",
-        fix: "Proxy may not be deployed yet. BYOK still works — set AI_GATEWAY_API_KEY.",
+        fix: "Proxy may not be deployed yet. BYOK still works — set AI_GATEWAY_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.",
       }
     }
     return {
@@ -336,7 +342,7 @@ async function checkLlmProxyReachable(): Promise<Check> {
       category: "network",
       severity: "warn",
       value: aborted ? "timed out after 2s" : "unreachable",
-      fix: "Check your connection. BYOK (AI_GATEWAY_API_KEY) still works offline of helpbase.dev.",
+      fix: "Check your connection. BYOK (AI_GATEWAY_API_KEY / ANTHROPIC_API_KEY / OPENAI_API_KEY) still works offline of helpbase.dev.",
     }
   } finally {
     clearTimeout(timeout)

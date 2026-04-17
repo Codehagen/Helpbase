@@ -1,4 +1,6 @@
-import { generateObject, generateText } from "ai"
+import { generateObject, generateText, type LanguageModel } from "ai"
+import { anthropic } from "@ai-sdk/anthropic"
+import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
 import {
   LLM_API_BASE_PATH,
@@ -24,11 +26,13 @@ import {
 /**
  * One entry point for every LLM call the CLI + scaffolder make.
  *
- *   ┌─ AI_GATEWAY_API_KEY set?  → direct Vercel AI SDK (BYOK escape hatch)
- *   └─ else                     → POST helpbase.dev/api/v1/llm/* (hosted)
+ *   ┌─ AI_GATEWAY_API_KEY set?   → Vercel AI Gateway (any provider)
+ *   ├─ ANTHROPIC_API_KEY set?    → @ai-sdk/anthropic direct, requires anthropic/ model
+ *   ├─ OPENAI_API_KEY set?       → @ai-sdk/openai direct, requires openai/ model
+ *   └─ else                      → POST helpbase.dev/api/v1/llm/* (hosted, quota-gated)
  *
  * The hosted path applies per-user quota + global circuit breaker server-side.
- * BYOK skips both — the user eats their own cost against their own Gateway key.
+ * BYOK skips both — the user eats their own cost against their own key.
  *
  * Auth: hosted path requires a bearer token from the CLI's session (see
  * packages/cli/src/lib/auth.ts::getCurrentSession). BYOK path ignores the
@@ -44,9 +48,66 @@ export function resolveProxyBase(): string {
   return process.env.HELPBASE_PROXY_URL?.replace(/\/$/, "") ?? "https://helpbase.dev"
 }
 
-/** True when we should bypass the proxy and hit Gateway directly. */
+/** True when we should bypass the proxy — any provider key counts as BYOK. */
 export function isByokMode(): boolean {
-  return Boolean(process.env.AI_GATEWAY_API_KEY)
+  return Boolean(
+    process.env.AI_GATEWAY_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY,
+  )
+}
+
+/**
+ * Resolve which BYOK path to use, in priority order. Called only inside the
+ * BYOK branch — i.e. `isByokMode()` was already true. Returns the model
+ * factory to pass into the Vercel AI SDK, or throws a clear error when the
+ * user's key + model combination can't be satisfied without a signup.
+ *
+ * Precedence: Gateway > Anthropic > OpenAI.
+ *
+ * When Anthropic/OpenAI is set but the caller's model string doesn't match
+ * that provider (e.g. `google/gemini-...` while only ANTHROPIC_API_KEY is
+ * set), we throw an explicit error instead of silently routing to Gateway,
+ * because Gateway isn't configured and a "no key" error would be confusing.
+ */
+export function resolveByokModel(modelString: string): LanguageModel | string {
+  // Gateway wins: it accepts any provider-prefixed model string directly.
+  if (process.env.AI_GATEWAY_API_KEY) {
+    return modelString
+  }
+
+  const [provider, ...rest] = modelString.split("/")
+  const modelId = rest.join("/")
+
+  if (process.env.ANTHROPIC_API_KEY) {
+    if (provider !== "anthropic" || !modelId) {
+      throw new GatewayError(
+        `ANTHROPIC_API_KEY is set but the model is "${modelString}". ` +
+          `Pass an anthropic/ model via --model (e.g. ` +
+          `"anthropic/claude-3-5-sonnet-latest"), or set AI_GATEWAY_API_KEY ` +
+          `to use any provider.`,
+      )
+    }
+    return anthropic(modelId)
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    if (provider !== "openai" || !modelId) {
+      throw new GatewayError(
+        `OPENAI_API_KEY is set but the model is "${modelString}". ` +
+          `Pass an openai/ model via --model (e.g. "openai/gpt-4o-mini"), ` +
+          `or set AI_GATEWAY_API_KEY to use any provider.`,
+      )
+    }
+    return openai(modelId)
+  }
+
+  // Should be unreachable — callers gate on isByokMode() first. If the gate
+  // drifts, fail loudly rather than leaving the SDK to emit a cryptic
+  // "No API key" deep in its stack.
+  throw new GatewayError(
+    "resolveByokModel called without any BYOK key set — this is a bug.",
+  )
 }
 
 // ── Public: object mode ────────────────────────────────────────────────
@@ -136,6 +197,7 @@ async function byokGenerateObject<T>({
   images,
   maxOutputTokens,
 }: CallLlmObjectOptions<T>): Promise<T> {
+  const resolved = resolveByokModel(model)
   const messages = images?.length
     ? [
         {
@@ -154,7 +216,7 @@ async function byokGenerateObject<T>({
   try {
     if (messages) {
       const { object } = await generateObject({
-        model,
+        model: resolved,
         schema,
         messages,
         ...(maxOutputTokens ? { maxOutputTokens } : {}),
@@ -162,7 +224,7 @@ async function byokGenerateObject<T>({
       return object as T
     }
     const { object } = await generateObject({
-      model,
+      model: resolved,
       schema,
       prompt,
       ...(maxOutputTokens ? { maxOutputTokens } : {}),
@@ -173,7 +235,7 @@ async function byokGenerateObject<T>({
     if (images?.length) {
       try {
         const { text } = await generateText({
-          model,
+          model: resolved,
           messages: messages!,
           ...(maxOutputTokens ? { maxOutputTokens } : {}),
         })
@@ -195,6 +257,7 @@ async function byokGenerateText({
   messages,
   maxOutputTokens,
 }: CallLlmTextOptions): Promise<string> {
+  const resolved = resolveByokModel(model)
   try {
     // Vercel AI SDK requires `prompt` OR `messages` to be present (not both,
     // not neither). Branch explicitly so TS can narrow to a valid overload.
@@ -203,9 +266,9 @@ async function byokGenerateText({
     type GenTextArgs = Parameters<typeof generateText>[0] & { messages?: any; prompt?: any }
     let args: GenTextArgs
     if (messages !== undefined) {
-      args = { model, messages, ...cap } as GenTextArgs
+      args = { model: resolved, messages, ...cap } as GenTextArgs
     } else if (prompt !== undefined) {
-      args = { model, prompt, ...cap } as GenTextArgs
+      args = { model: resolved, prompt, ...cap } as GenTextArgs
     } else {
       throw new GatewayError("callLlmText requires either `prompt` or `messages`")
     }

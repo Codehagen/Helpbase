@@ -17,10 +17,6 @@ built on shadcn/ui.
 
 <br />
 
-<!-- TODO: add a hero screenshot or recording here. Recommended: docs page with sidebar + TOC, 1600x840, light mode, saved at apps/web/public/og.png -->
-
-<br />
-
 **[Website](https://helpbase.dev)** · **[Demo](https://helpbase.dev/docs)** · **[Registry](https://helpbase.dev/r/help-center.json)** · **[@CodeHagen](https://x.com/CodeHagen)**
 
 </div>

@@ -28,7 +28,23 @@ _None open._
 
 ## P3
 
-_None open._
+### TODO-004: Hero screenshot / OG image for README + site
+**What:** Capture a hero screenshot (or short recording) of the polished docs page and save it to `apps/web/public/og.png`. Then add it to the README under the badges block AND wire it as the OpenGraph image for `helpbase.dev`.
+
+**Why:** The README currently has no visual. Repos with hero images get more stars, and the OG image is what renders in Slack / X / LinkedIn previews when anyone shares a helpbase.dev link. Today the social preview is empty/default.
+
+**Pros:** Better launch surface. Higher conversion on GitHub visits. Decent social preview for when the Vegard-style walkthroughs get shared.
+**Cons:** Needs a human — I can't take a real screenshot.
+
+**Context:**
+- Target file: `apps/web/public/og.png`
+- Recommended shot: demo tenant docs page (sidebar populated + TOC on right), 1600×840, light mode
+- Once saved: add `![hero](./apps/web/public/og.png)` under the README badges, and wire `metadata.openGraph.images` in `apps/web/app/(main)/layout.tsx`
+- helpbase.dev is live so a real screenshot is possible today (no scaffolder dependency)
+
+**Effort:** S (~20 min human — screenshot + README edit + metadata tweak)
+**Priority:** P3
+**Source:** /plan-ceo-review 2026-04-09 system audit; re-filed 2026-04-17 after being prematurely dropped
 
 ## Completed
 
@@ -93,5 +109,5 @@ _None open._
 ### TODO-019: `helpbase context` — external-repo eval + nightly CI gate
 **Dropped:** 2026-04-17 — the eval infrastructure already exists locally (`pnpm eval`, `packages/cli/eval/`) and gates pre-prompt-change work adequately. A nightly 90-LLM-call GitHub Action is speculative value against real ongoing spend. If a regression ever surfaces that only appears on an unfamiliar codebase, add *that specific* fixture to the existing suite — don't build a perpetually-running guardrail for a failure mode we've never observed.
 
-### TODO-004: Hero screenshot for README
-**Dropped:** 2026-04-17 — the placeholder comment is gone from README.md. Drop an image at `apps/web/public/og.png` whenever ready and link it in; no open tracker needed. The website hero at helpbase.dev is the primary marketing surface anyway.
+<!-- TODO-004 re-opened 2026-04-17 (moved back to P3 above). The OG-image + README hero is still real work, the placeholder comment was just noise. -->
+

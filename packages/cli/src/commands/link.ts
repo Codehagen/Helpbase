@@ -3,7 +3,12 @@ import { intro, outro, select, text, cancel, isCancel, note } from "@clack/promp
 import { spinner } from "../lib/ui.js"
 import pc from "picocolors"
 import { getCurrentSession, isNonInteractive } from "../lib/auth.js"
-import { getAuthedSupabase } from "../lib/supabase-client.js"
+import {
+  checkSlugAvailability,
+  createTenant as apiCreateTenant,
+  listMyTenants,
+} from "../lib/tenants-client.js"
+import type { AuthSession } from "../lib/auth.js"
 import {
   readProjectConfig,
   removeProjectConfig,
@@ -53,11 +58,9 @@ export const linkCommand = new Command("link")
 
     intro(pc.bgCyan(pc.black(" helpbase link ")))
 
-    const client = await getAuthedSupabase(session)
-
     // Non-interactive path: --slug supplied.
     if (opts.slug) {
-      await linkBySlug(client, opts.slug)
+      await linkBySlug(opts.slug)
       outro(`Linked to ${pc.cyan(`${opts.slug}.helpbase.dev`)}`)
       return
     }
@@ -69,22 +72,15 @@ export const linkCommand = new Command("link")
 
     const s = spinner()
     s.start("Loading your tenants...")
-    const { data: tenants, error } = await client
-      .from("tenants")
-      .select("id, slug, name")
-      .eq("owner_id", session.userId)
-      .eq("active", true)
-      .order("created_at", { ascending: false })
-    s.stop(
-      error
-        ? "Failed to load tenants"
-        : `Found ${tenants?.length ?? 0} tenant(s)`,
-    )
-
-    if (error) {
-      cancel(`Failed to load tenants: ${error.message}`)
+    let tenants: Awaited<ReturnType<typeof listMyTenants>>
+    try {
+      tenants = await listMyTenants(session)
+    } catch (err) {
+      s.stop("Failed to load tenants")
+      cancel(`Failed to load tenants: ${err instanceof Error ? err.message : String(err)}`)
       process.exit(1)
     }
+    s.stop(`Found ${tenants.length} tenant(s)`)
 
     type Choice = string
     const CREATE_NEW: Choice = "__new__"
@@ -108,7 +104,7 @@ export const linkCommand = new Command("link")
 
     if (picked === CREATE_NEW) {
       const slug = await promptForNewSlug()
-      const created = await createTenant(client, session.userId, slug)
+      const created = await createTenant(session, slug)
       writeProjectConfig({ tenantId: created.id, slug: created.slug })
       outro(
         `${pc.green("✓")} Created and linked ${pc.cyan(`${created.slug}.helpbase.dev`)}\n` +
@@ -150,61 +146,37 @@ async function promptForNewSlug(): Promise<string> {
   return input as string
 }
 
-async function linkBySlug(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  slug: string,
-): Promise<void> {
-  const { data: tenant, error } = await client
-    .from("tenants")
-    .select("id, slug")
-    .eq("slug", slug)
-    .eq("active", true)
-    .single()
-
-  if (error || !tenant) {
+async function linkBySlug(slug: string): Promise<void> {
+  const availability = await checkSlugAvailability(slug)
+  if (availability.available) {
     cancel(
-      `Tenant "${slug}" not found or you don't have access.\n` +
-      `  Run ${pc.cyan("helpbase link")} without --slug to see your tenants.`,
+      `Tenant "${slug}" not found.\n` +
+      `  Run ${pc.cyan("helpbase link")} without --slug to see your tenants, ` +
+      `or ${pc.cyan(`helpbase deploy --slug ${slug}`)} to create one.`,
     )
     process.exit(1)
   }
-
-  writeProjectConfig({ tenantId: tenant.id, slug: tenant.slug })
+  if (!availability.id) {
+    cancel("Availability check did not return an id.")
+    process.exit(1)
+  }
+  writeProjectConfig({ tenantId: availability.id, slug: availability.slug ?? slug })
 }
 
 async function createTenant(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  userId: string,
+  session: AuthSession,
   slug: string,
 ): Promise<{ id: string; slug: string }> {
-  const { data: taken } = await client
-    .from("tenants")
-    .select("slug")
-    .eq("slug", slug)
-    .single()
-
-  if (taken) {
-    cancel(`Subdomain "${slug}" is already taken. Try another.`)
-    process.exit(1)
-  }
-
-  const { data, error } = await client
-    .from("tenants")
-    .insert({ slug, owner_id: userId, name: slug })
-    .select("id, slug")
-    .single()
-
-  if (error || !data) {
-    const msg = error?.message ?? "Unknown error"
-    if (msg.includes("duplicate") || msg.includes("unique")) {
-      cancel(`Subdomain "${slug}" was just taken. Try another.`)
+  try {
+    const created = await apiCreateTenant(session, slug)
+    return { id: created.id, slug: created.slug }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/slug_taken|slug_reserved/.test(msg)) {
+      cancel(`Subdomain "${slug}" is unavailable. Try another.`)
     } else {
       cancel(`Failed to create tenant: ${msg}`)
     }
     process.exit(1)
   }
-
-  return data
 }

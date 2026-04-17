@@ -6,7 +6,15 @@ import fs from "node:fs"
 import path from "node:path"
 import matter from "gray-matter"
 import { frontmatterSchema, categoryMetaSchema, type TenantChunk, type DeployReport } from "@workspace/shared/schemas"
-import { getAuthedSupabase } from "../lib/supabase-client.js"
+import {
+  checkSlugAvailability,
+  createTenant as apiCreateTenant,
+  deleteTenant as apiDeleteTenant,
+  deployTenant as apiDeployTenant,
+  getTenant as apiGetTenant,
+  listMyTenants,
+  rotateMcpToken as apiRotateMcpToken,
+} from "../lib/tenants-client.js"
 import {
   getCurrentSession,
   isNonInteractive,
@@ -77,22 +85,21 @@ Examples:
 
     // 2. Authenticate
     const session = await ensureAuthenticated()
-    const client = await getAuthedSupabase(session)
 
     // 3. Get or create tenant
-    //    Priority: .helpbase/project.json → owner lookup → create new
+    //    Priority: .helpbase/project.json → owner lookup → create new.
+    //    All tenant CRUD now goes through /api/v1/tenants/* — the CLI
+    //    talks to the hosted API instead of Supabase directly. Better
+    //    Auth session tokens are not Supabase JWTs, and the RLS *_own
+    //    policies were dropped in the 2026-04-17 migration; ownership
+    //    is enforced server-side.
     const linked = readProjectConfig()
     let existingTenant: { id: string; slug: string } | null = null
 
     if (linked) {
-      const { data } = await client
-        .from("tenants")
-        .select("id, slug")
-        .eq("id", linked.tenantId)
-        .eq("active", true)
-        .single()
-      if (data) {
-        existingTenant = data
+      const tenant = await apiGetTenant(session, linked.tenantId)
+      if (tenant && tenant.active) {
+        existingTenant = { id: tenant.id, slug: tenant.slug }
       } else {
         cancel(
           `Linked tenant "${linked.slug}" not found or inactive.\n` +
@@ -101,13 +108,9 @@ Examples:
         process.exit(1)
       }
     } else {
-      const { data } = await client
-        .from("tenants")
-        .select("id, slug")
-        .eq("owner_id", session.userId)
-        .eq("active", true)
-        .single()
-      existingTenant = data ?? null
+      const tenants = await listMyTenants(session)
+      const first = tenants[0]
+      existingTenant = first ? { id: first.id, slug: first.slug } : null
     }
 
     let tenantId: string
@@ -160,32 +163,19 @@ Examples:
       }
 
       // Check availability
-      const { data: taken } = await client
-        .from("tenants")
-        .select("slug")
-        .eq("slug", slug)
-        .single()
-
-      if (taken) {
+      const availability = await checkSlugAvailability(slug)
+      if (!availability.available) {
         cancel(`Subdomain "${slug}" is already taken. Try another with --slug <name>`)
         process.exit(1)
       }
 
-      const { data: newTenant, error: createError } = await client
-        .from("tenants")
-        .insert({
-          slug,
-          owner_id: session.userId,
-          name: slug,
-        })
-        .select()
-        .single()
-
-      if (createError || !newTenant) {
-        // Handle slug collision from concurrent creates (DB unique constraint)
-        const msg = createError?.message ?? "Unknown error"
-        if (msg.includes("duplicate") || msg.includes("unique")) {
-          cancel(`Subdomain "${slug}" was just taken. Try another with --slug <name>`)
+      let newTenant: Awaited<ReturnType<typeof apiCreateTenant>>
+      try {
+        newTenant = await apiCreateTenant(session, slug)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (/slug_taken|slug_reserved/.test(msg)) {
+          cancel(`Subdomain "${slug}" is unavailable. Try another with --slug <name>`)
         } else {
           cancel(`Failed to create tenant: ${msg}`)
         }
@@ -207,19 +197,12 @@ Examples:
     if (opts.rotateMcpToken) {
       const rotateSpinner = spinner()
       rotateSpinner.start("Rotating MCP token...")
-      // Generate a 32-byte hex token client-side so the CLI can print it
-      // without a second round-trip.
-      const newToken = Array.from(
-        crypto.getRandomValues(new Uint8Array(32)),
-        (b) => b.toString(16).padStart(2, "0"),
-      ).join("")
-      const { error: rotateErr } = await client
-        .from("tenants")
-        .update({ mcp_public_token: newToken })
-        .eq("id", tenantId)
-      if (rotateErr) {
+      let newToken: string
+      try {
+        newToken = await apiRotateMcpToken(session, tenantId)
+      } catch (err) {
         rotateSpinner.stop("Rotation failed")
-        cancel(`Failed to rotate token: ${rotateErr.message}`)
+        cancel(`Failed to rotate token: ${err instanceof Error ? err.message : String(err)}`)
         process.exit(1)
       }
       rotateSpinner.stop(`Rotated MCP token for ${tenantSlug}`)
@@ -378,68 +361,48 @@ Examples:
       dropped: [],
       ran_at: new Date().toISOString(),
     }
-    const { data: deployId, error: rpcError } = await client.rpc("deploy_tenant", {
-      p_tenant_id: tenantId,
-      p_categories: categories.map((c) => ({
-        slug: c.slug,
-        title: c.title,
-        description: c.description,
-        icon: c.icon,
-        order: c.order,
-      })),
-      p_articles: articles.map((a) => ({
-        slug: a.slug,
-        category: a.category,
-        title: a.title,
-        description: a.description,
-        content: a.content,
-        frontmatter: a.frontmatter,
-        order: a.order,
-        tags: a.tags,
-        hero_image: a.heroImage,
-        video_embed: a.videoEmbed,
-        featured: a.featured,
-        file_path: a.filePath,
-      })),
-      p_chunks: chunks,
-      p_validation_report: validationReport,
-    })
-
-    if (rpcError) {
+    let deployResult: Awaited<ReturnType<typeof apiDeployTenant>>
+    try {
+      deployResult = await apiDeployTenant(session, tenantId, {
+        categories: categories.map((c) => ({
+          slug: c.slug,
+          title: c.title,
+          description: c.description,
+          icon: c.icon,
+          order: c.order,
+        })),
+        articles: articles.map((a) => ({
+          slug: a.slug,
+          category: a.category,
+          title: a.title,
+          description: a.description,
+          content: a.content,
+          frontmatter: a.frontmatter,
+          order: a.order,
+          tags: a.tags,
+          hero_image: a.heroImage,
+          video_embed: a.videoEmbed,
+          featured: a.featured,
+          file_path: a.filePath,
+        })),
+        chunks,
+        validation_report: validationReport as unknown as Record<string, unknown>,
+      })
+    } catch (err) {
       s.stop("Deploy failed")
-      cancel(`Deploy RPC error: ${rpcError.message}`)
+      cancel(`Deploy error: ${err instanceof Error ? err.message : String(err)}`)
       process.exit(1)
     }
-    s.stop(`Published ${articles.length} articles, ${chunks.length} chunks (deploy ${String(deployId).slice(0, 8)})`)
+    s.stop(
+      `Published ${deployResult.article_count} articles, ${deployResult.chunk_count} chunks ` +
+      `(deploy ${deployResult.deploy_id.slice(0, 8)})`,
+    )
 
-    // 7. Fetch the tenant's MCP token for the copy-paste config snippet.
-    const { data: tenantAfter } = await client
-      .from("tenants")
-      .select("mcp_public_token")
-      .eq("id", tenantId)
-      .single()
+    // Fetch the tenant's MCP token for the copy-paste config snippet.
+    // Server-side revalidation runs inside /api/v1/tenants/:id/deploy, so
+    // no second round-trip for cache invalidation is needed.
+    const tenantAfter = await apiGetTenant(session, tenantId).catch(() => null)
     const mcpToken = tenantAfter?.mcp_public_token ?? ""
-
-    // 8. Trigger on-demand revalidation (fail-soft: warn but don't break the deploy).
-    try {
-      const revalUrl = `https://${tenantSlug}.helpbase.dev/api/revalidate`
-      const revalRes = await fetch(revalUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-        body: JSON.stringify({ tenant_id: tenantId }),
-      })
-      if (!revalRes.ok) {
-        note(
-          `Revalidation returned ${revalRes.status} — pages will catch up within 1h ISR window.`,
-          pc.yellow("Warning"),
-        )
-      }
-    } catch {
-      // network error or DNS not propagated; non-blocking
-    }
 
     // 9. Done.
     const liveUrl = `https://${tenantSlug}.helpbase.dev`
@@ -656,28 +619,24 @@ async function handleDelete(
   }
 
   const session = await ensureAuthenticated()
-  const client = await getAuthedSupabase(session)
 
-  // Resolve tenant + verify ownership.
-  const { data: tenant, error: lookupError } = await client
-    .from("tenants")
-    .select("id, slug, owner_id")
-    .eq("slug", slug)
-    .maybeSingle()
-
-  if (lookupError) {
-    cancel(`Failed to look up tenant: ${lookupError.message}`)
-    process.exit(1)
-  }
+  // Resolve the tenant row among the user's own tenants. Ownership
+  // filter is implicit: listMyTenants only returns rows the caller owns.
+  const tenants = await listMyTenants(session)
+  const tenant = tenants.find((t) => t.slug === slug) ?? null
   if (!tenant) {
-    cancel(`Tenant "${slug}" not found.`)
-    process.exit(1)
-  }
-  if (tenant.owner_id !== session.userId) {
-    cancel(
-      `Tenant "${slug}" is not owned by the current user.\n` +
-      `  Only the owner can delete a tenant.`,
-    )
+    // Either the slug doesn't exist, or it exists but the caller doesn't
+    // own it. Either way we refuse — the server-side DELETE endpoint
+    // would 403 anyway, but failing here gives a cleaner CLI message.
+    const availability = await checkSlugAvailability(slug).catch(() => null)
+    if (availability && !availability.available) {
+      cancel(
+        `Tenant "${slug}" is not owned by the current user.\n` +
+        `  Only the owner can delete a tenant.`,
+      )
+    } else {
+      cancel(`Tenant "${slug}" not found.`)
+    }
     process.exit(1)
   }
 
@@ -704,14 +663,11 @@ async function handleDelete(
   const s = spinner()
   s.start(`Deleting "${slug}"...`)
 
-  const { error: deleteError } = await client
-    .from("tenants")
-    .delete()
-    .eq("id", tenant.id)
-
-  if (deleteError) {
+  try {
+    await apiDeleteTenant(session, tenant.id)
+  } catch (err) {
     s.stop("Delete failed")
-    cancel(`Failed to delete tenant: ${deleteError.message}`)
+    cancel(`Failed to delete tenant: ${err instanceof Error ? err.message : String(err)}`)
     process.exit(1)
   }
 

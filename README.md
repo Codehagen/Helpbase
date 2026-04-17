@@ -432,6 +432,39 @@ Every package has its own `pnpm test`. Run the CLI locally with
 `pnpm --filter helpbase dev`, then use `node packages/cli/dist/index.js`
 from any directory to test against a scaffolded project.
 
+### Local auth development
+
+helpbase auth runs on [Better Auth](https://better-auth.com) against the
+same Supabase Postgres that backs tenant content. To run auth locally:
+
+1. **Copy the env template.** `cp apps/web/.env.example apps/web/.env.local`
+   and fill in the four auth values:
+   - `BETTER_AUTH_SECRET` — `openssl rand -base64 32`
+   - `BETTER_AUTH_URL` — `http://localhost:3000` (or whatever port Next picks)
+   - `DATABASE_URL` — Supabase dashboard → Project Settings → Database →
+     Connection string (Session / direct pooler). The migrations in
+     `scripts/migrate-auth-to-better-auth.sql` must already be applied
+     against this DB.
+   - `RESEND_API_KEY` — **leave blank**. Without it, magic-link URLs print
+     to the Next dev-server stderr so you can click them from your
+     terminal without signing up for a mail provider.
+
+2. **Start the web app.** `pnpm -F web dev`.
+3. **Verify auth is live.** `curl localhost:3000/api/auth/ok` → `{"ok":true}`.
+4. **Point the CLI at your local server.** Prefix any CLI invocation with
+   both env overrides:
+   ```bash
+   HELPBASE_BASE_URL=http://localhost:3000 \
+   HELPBASE_PROXY_URL=http://localhost:3000 \
+     node packages/cli/dist/index.js login
+   ```
+   `HELPBASE_BASE_URL` is the auth endpoint root; `HELPBASE_PROXY_URL` is
+   the LLM/usage proxy root. In prod they're the same host; in dev you
+   set both to the local dev port.
+5. **The magic link.** When you paste your email, watch the `pnpm -F web
+   dev` terminal — the verification URL shows up between `─── DEV MAGIC
+   LINK ───` fences. Paste the URL back into the CLI prompt to finish.
+
 ## Testing the CLI against a real project
 
 ```bash

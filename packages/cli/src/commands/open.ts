@@ -3,7 +3,7 @@ import { execSync } from "node:child_process"
 import pc from "picocolors"
 import { readProjectConfig } from "../lib/project-config.js"
 import { getCurrentSession } from "../lib/auth.js"
-import { getAuthedSupabase } from "../lib/supabase-client.js"
+import { listMyTenants } from "../lib/tenants-client.js"
 
 export const openCommand = new Command("open")
   .description("Open this project's help center in the default browser")
@@ -47,19 +47,12 @@ async function resolveSlug(): Promise<string | null> {
   const config = readProjectConfig()
   if (config) return config.slug
 
-  // Fallback: look up the user's active tenant if they're logged in.
+  // Fallback: ask the hosted API for the user's tenants if they're logged in.
   const session = await getCurrentSession()
   if (!session) return null
-
   try {
-    const client = await getAuthedSupabase(session)
-    const { data } = await client
-      .from("tenants")
-      .select("slug")
-      .eq("owner_id", session.userId)
-      .eq("active", true)
-      .single()
-    return data?.slug ?? null
+    const tenants = await listMyTenants(session)
+    return tenants[0]?.slug ?? null
   } catch {
     return null
   }

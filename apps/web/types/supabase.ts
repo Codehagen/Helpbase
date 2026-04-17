@@ -14,6 +14,115 @@ export type Database = {
   }
   public: {
     Tables: {
+      account: {
+        Row: {
+          accessToken: string | null
+          accessTokenExpiresAt: string | null
+          accountId: string
+          createdAt: string
+          id: string
+          idToken: string | null
+          password: string | null
+          providerId: string
+          refreshToken: string | null
+          refreshTokenExpiresAt: string | null
+          scope: string | null
+          updatedAt: string
+          userId: string
+        }
+        Insert: {
+          accessToken?: string | null
+          accessTokenExpiresAt?: string | null
+          accountId: string
+          createdAt?: string
+          id: string
+          idToken?: string | null
+          password?: string | null
+          providerId: string
+          refreshToken?: string | null
+          refreshTokenExpiresAt?: string | null
+          scope?: string | null
+          updatedAt?: string
+          userId: string
+        }
+        Update: {
+          accessToken?: string | null
+          accessTokenExpiresAt?: string | null
+          accountId?: string
+          createdAt?: string
+          id?: string
+          idToken?: string | null
+          password?: string | null
+          providerId?: string
+          refreshToken?: string | null
+          refreshTokenExpiresAt?: string | null
+          scope?: string | null
+          updatedAt?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deviceCode: {
+        Row: {
+          clientId: string | null
+          createdAt: string
+          deviceCode: string
+          expiresAt: string
+          id: string
+          lastPolledAt: string | null
+          pollingInterval: number | null
+          scope: string | null
+          status: string
+          updatedAt: string
+          userCode: string
+          userId: string | null
+        }
+        Insert: {
+          clientId?: string | null
+          createdAt?: string
+          deviceCode: string
+          expiresAt: string
+          id: string
+          lastPolledAt?: string | null
+          pollingInterval?: number | null
+          scope?: string | null
+          status: string
+          updatedAt?: string
+          userCode: string
+          userId?: string | null
+        }
+        Update: {
+          clientId?: string | null
+          createdAt?: string
+          deviceCode?: string
+          expiresAt?: string
+          id?: string
+          lastPolledAt?: string | null
+          pollingInterval?: number | null
+          scope?: string | null
+          status?: string
+          updatedAt?: string
+          userCode?: string
+          userId?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deviceCode_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_daily_tokens: {
         Row: {
           day: string
@@ -75,7 +184,56 @@ export type Database = {
           total_tokens?: number | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "llm_usage_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session: {
+        Row: {
+          createdAt: string
+          expiresAt: string
+          id: string
+          ipAddress: string | null
+          token: string
+          updatedAt: string
+          userAgent: string | null
+          userId: string
+        }
+        Insert: {
+          createdAt?: string
+          expiresAt: string
+          id: string
+          ipAddress?: string | null
+          token: string
+          updatedAt?: string
+          userAgent?: string | null
+          userId: string
+        }
+        Update: {
+          createdAt?: string
+          expiresAt?: string
+          id?: string
+          ipAddress?: string | null
+          token?: string
+          updatedAt?: string
+          userAgent?: string | null
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenant_articles: {
         Row: {
@@ -140,6 +298,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tenant_articles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tenant_categories: {
@@ -182,6 +347,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -241,6 +413,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tenant_chunks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tenant_deploys: {
@@ -282,6 +461,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tenant_deploys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tenant_mcp_queries: {
@@ -318,6 +504,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_mcp_queries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_public"
             referencedColumns: ["id"]
           },
         ]
@@ -359,6 +552,71 @@ export type Database = {
           theme_config?: Json
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "tenants_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user: {
+        Row: {
+          createdAt: string
+          email: string
+          emailVerified: boolean
+          id: string
+          image: string | null
+          name: string
+          updatedAt: string
+        }
+        Insert: {
+          createdAt?: string
+          email: string
+          emailVerified?: boolean
+          id: string
+          image?: string | null
+          name: string
+          updatedAt?: string
+        }
+        Update: {
+          createdAt?: string
+          email?: string
+          emailVerified?: boolean
+          id?: string
+          image?: string | null
+          name?: string
+          updatedAt?: string
+        }
+        Relationships: []
+      }
+      verification: {
+        Row: {
+          createdAt: string | null
+          expiresAt: string
+          id: string
+          identifier: string
+          updatedAt: string | null
+          value: string
+        }
+        Insert: {
+          createdAt?: string | null
+          expiresAt: string
+          id: string
+          identifier: string
+          updatedAt?: string | null
+          value: string
+        }
+        Update: {
+          createdAt?: string | null
+          expiresAt?: string
+          id?: string
+          identifier?: string
+          updatedAt?: string | null
+          value?: string
+        }
         Relationships: []
       }
       waitlist_signups: {
@@ -384,7 +642,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      tenants_public: {
+        Row: {
+          active: boolean | null
+          id: string | null
+          name: string | null
+          slug: string | null
+          theme_config: Json | null
+        }
+        Insert: {
+          active?: boolean | null
+          id?: string | null
+          name?: string | null
+          slug?: string | null
+          theme_config?: Json | null
+        }
+        Update: {
+          active?: boolean | null
+          id?: string | null
+          name?: string | null
+          slug?: string | null
+          theme_config?: Json | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       deploy_tenant: {

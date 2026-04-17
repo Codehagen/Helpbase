@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { getTenant, getTenantCategories, getTenantArticles } from "@/lib/tenant-content"
+import { getTenantSearchIndex } from "@/lib/tenant-search"
 import { DocsSidebar } from "@/components/docs-sidebar"
 import { MobileSidebar } from "@/components/mobile-sidebar"
+import { SearchDialog } from "@/components/search-dialog"
+import { TenantSearchTrigger } from "@/components/tenant-search-trigger"
 import type { Category } from "@workspace/shared/types"
 
 export async function generateMetadata({
@@ -35,9 +38,10 @@ export default async function TenantLayout({
 
   if (!tenant) notFound()
 
-  const [categories, articles] = await Promise.all([
+  const [categories, articles, searchIndex] = await Promise.all([
     getTenantCategories(tenant.id),
     getTenantArticles(tenant.id),
+    getTenantSearchIndex(tenant.id),
   ])
 
   // Build Category[] shape that DocsSidebar expects
@@ -67,12 +71,16 @@ export default async function TenantLayout({
     <div className="flex min-h-svh flex-col">
       {/* Tenant header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-          <Link href="/" className="text-sm font-semibold">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4">
+          <Link href="/" className="text-sm font-semibold shrink-0">
             {tenant.name || slug} Help Center
           </Link>
+          <TenantSearchTrigger />
         </div>
       </header>
+
+      {/* ⌘K search — fires from TenantSearchTrigger and from the shortcut */}
+      <SearchDialog items={searchIndex} />
 
       {/* Content */}
       <main className="flex-1">

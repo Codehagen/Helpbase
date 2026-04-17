@@ -1,8 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { compileMDX } from "next-mdx-remote/rsc"
-import remarkGfm from "remark-gfm"
-import rehypeSlug from "rehype-slug"
+import { remarkPlugins, rehypePlugins } from "@/lib/mdx-config"
 import {
   getTenant,
   getTenantArticle,
@@ -97,8 +96,9 @@ export default async function TenantArticlePage({
     components: createHostedArticleComponents(category, articleSlug, tenantSlug),
     options: {
       mdxOptions: {
-        remarkPlugins: [remarkGfm],
-        rehypePlugins: [rehypeSlug],
+        remarkPlugins,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        rehypePlugins: rehypePlugins as any,
       },
     },
   })

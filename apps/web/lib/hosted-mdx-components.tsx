@@ -94,5 +94,10 @@ export function createHostedArticleComponents(
         <table {...props} />
       </div>
     ),
+
+    // See mdx-components.tsx for the rationale — article template renders
+    // the title as h1 already, so a body `# Title` would produce a second h1.
+    // Downgrade to h2 to keep the document outline clean.
+    h1: (props) => <h2 {...sanitizeProps(props)} />,
   }
 }

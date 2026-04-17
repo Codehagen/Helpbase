@@ -361,3 +361,59 @@
 .article-content tr:last-child td {
   border-bottom: none;
 }
+
+/* ── Syntax highlighting (rehype-pretty-code + shiki) ────────────────────
+   Dual-theme emits both --shiki-light and --shiki-dark on each span/pre.
+   Map to the active theme. next-themes sets `.dark` on <html>. */
+
+html:not(.dark) [data-rehype-pretty-code-figure] code span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+  font-style: var(--shiki-light-font-style);
+  font-weight: var(--shiki-light-font-weight);
+  text-decoration: var(--shiki-light-text-decoration);
+}
+
+html.dark [data-rehype-pretty-code-figure] code span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+  font-style: var(--shiki-dark-font-style);
+  font-weight: var(--shiki-dark-font-weight);
+  text-decoration: var(--shiki-dark-text-decoration);
+}
+
+html:not(.dark) [data-rehype-pretty-code-figure] pre {
+  background-color: var(--shiki-light-bg);
+}
+html.dark [data-rehype-pretty-code-figure] pre {
+  background-color: var(--shiki-dark-bg);
+}
+
+[data-rehype-pretty-code-figure] {
+  position: relative;
+}
+
+[data-rehype-pretty-code-figure] pre {
+  background: transparent;
+}
+
+[data-rehype-pretty-code-figure] code {
+  display: grid;
+  padding: 0;
+  background: transparent;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+[data-rehype-pretty-code-figure] [data-line] {
+  padding: 0 1rem;
+}
+
+[data-rehype-pretty-code-figure] [data-highlighted-line] {
+  background-color: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+[data-rehype-pretty-code-figure] [data-highlighted-chars] {
+  background-color: color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 0.25rem;
+  padding: 0 0.125rem;
+}

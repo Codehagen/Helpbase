@@ -63,7 +63,10 @@ export type PhaseAction =
   | { type: "DENIED" }
   | { type: "ERROR"; message: string }
 
-export const initialPhase: Phase = { kind: "loading" }
+// Frozen so the exported reference can't be accidentally mutated. useReducer
+// passes this as the initial state without defensive copying, and any later
+// `initialPhase.kind = ...` somewhere would corrupt every fresh mount.
+export const initialPhase: Readonly<Phase> = Object.freeze({ kind: "loading" })
 
 export function phaseReducer(state: Phase, action: PhaseAction): Phase {
   switch (action.type) {

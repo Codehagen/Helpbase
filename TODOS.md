@@ -65,6 +65,26 @@ _All P1 items for the 2026-04-15 knowledge-layer plan shipped. See Completed._
 
 ## P3 (deferred)
 
+### TODO-021: AuthorizeDeviceClient — `SESSION_LOADING` shouldn't clobber non-loading phases
+
+**What:** `phaseReducer`'s `SESSION_LOADING` case unconditionally returns `{ kind: "loading" }` regardless of current state. The derivation effect fires on every `sessionPending` flip, so a background session refresh (Better Auth re-hydrating after an OAuth callback, session TTL refresh) will wipe the user out of `email-sent`, `approved`, `denied`, or `error` back to the spinner.
+
+**Why:** Confusing UX — user submits email, sees "Check your inbox", then Better Auth does a silent session refresh and they suddenly see "Checking session…" again. They may assume the submit didn't work and submit again, triggering a duplicate magic link. Not catastrophic but it's the kind of bug that erodes trust.
+
+**Pros:** State machine becomes safe against background refreshes. One-line reducer change.
+**Cons:** Makes the reducer slightly less "pure" (it reads current state to decide). Easy to forget when adding new phases.
+
+**Context:**
+- Identified by adversarial review on PR #6 (2026-04-17). Not introduced by the reducer extraction — the original `useState` code had the same behavior. PR #6 just made it visible and easy to test.
+- Fix sketch: in `apps/web/app/device/phase-reducer.ts`, the `SESSION_LOADING` case should be `return state.kind === "loading" || state.kind === "signed-out" || state.kind === "signed-in" ? { kind: "loading" } : state`. This keeps `email-sent` / `approving` / `approved` / `denied` / `error` intact across background refreshes.
+- Add a reducer test case: `phaseReducer({ kind: "email-sent", email: "x" }, { type: "SESSION_LOADING" })` should equal the prior state, not loading.
+
+**Effort:** S (human ~20m / CC ~5m)
+**Priority:** P3
+**Source:** /review adversarial subagent 2026-04-17 on PR #6
+
+---
+
 ### TODO-018: `helpbase context` — direct `@ai-sdk/anthropic` / `@ai-sdk/openai` BYOK (v1.1)
 
 **What:** `helpbase context` v1 routes through Vercel AI Gateway only. v1.1 should accept `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` directly via `@ai-sdk/anthropic` + `@ai-sdk/openai` so devs with a provider key can skip the Gateway signup entirely.

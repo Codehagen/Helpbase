@@ -1,0 +1,113 @@
+---
+schemaVersion: 1
+title: "Bring your own Gateway key (BYOK)"
+description: "When and how to bypass the helpbase hosted proxy with your own Vercel AI Gateway key. For CI, power users, and privacy-sensitive workflows."
+tags: ["byok", "advanced", "ci"]
+order: 99
+featured: false
+---
+
+helpbase is free to use with a one-command login — 500,000 tokens per day, no
+credit card. That covers most people.
+
+You might want your own key instead when:
+
+- **You're running in CI.** helpbase sessions are designed for interactive use;
+  machines need a token.
+- **You're already paying for Vercel AI Gateway.** Route everything through
+  the account you already meter and bill.
+- **Free-tier limits are too low for your workload.** 500k/day is ~10 full
+  `generate` runs or ~250 `context --ask` calls. If you run more, BYOK is
+  unlimited (well — limited to your own Gateway spend cap).
+- **You want zero helpbase.dev round-trips.** Every BYOK call goes direct
+  to Vercel AI Gateway. helpbase never sees your prompts.
+
+## How it works
+
+Set `AI_GATEWAY_API_KEY` in your environment. That's it. The CLI detects it
+and bypasses the helpbase proxy for every LLM call:
+
+```bash
+export AI_GATEWAY_API_KEY=vck_live_...
+helpbase generate --url https://docs.example.com
+```
+
+```
+┌──────────────────┐
+│ helpbase CLI     │─────► Vercel AI SDK direct ─────► Vercel AI Gateway
+│                  │                                    (your key, your bill)
+└──────────────────┘
+  (no quota check, no usage log, no helpbase.dev round-trip)
+```
+
+No changes to prompts, no different models — same output as the hosted
+path, just routed direct.
+
+## Getting a key
+
+1. Sign in at [vercel.com/ai-gateway](https://vercel.com/ai-gateway).
+2. Create an API key.
+3. Fund it (first $5 is typically free credit).
+4. `export AI_GATEWAY_API_KEY=vck_...` or drop it in `.env.local`.
+
+## CI usage
+
+In GitHub Actions and other CI, set `AI_GATEWAY_API_KEY` as a repo secret
+and pass it through:
+
+```yaml
+- run: helpbase generate --url https://docs.example.com
+  env:
+    AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+```
+
+CI users don't need `helpbase login`. If you still want to run `helpbase
+deploy` from CI (which requires a helpbase account), set `HELPBASE_TOKEN`
+as well — that's the helpbase session, separate from the Gateway key.
+
+## Switching back to hosted
+
+Unset the env var:
+
+```bash
+unset AI_GATEWAY_API_KEY
+```
+
+The next CLI command will use the helpbase hosted proxy again. No state to
+clear, no account to delete.
+
+## Verify which mode you're in
+
+```bash
+helpbase whoami
+```
+
+If `AI_GATEWAY_API_KEY` is set, `whoami` will show "BYOK mode active — calls
+bypass helpbase (no quota applied)". Otherwise it shows your usage against
+the free-tier cap.
+
+## Costs
+
+BYOK costs are whatever Gateway charges for the model you pick. As of this
+writing the default and `--test` are both `google/gemini-3.1-flash-lite-preview`
+(cheap + fast, ~1M context). Rough costs for a 9-article `helpbase generate`
+run (~50,000 tokens):
+
+- Gemini 3.1 Flash Lite (default / `--test`): ~$0.004 per run.
+- Claude Sonnet 4.6 (`--model anthropic/claude-sonnet-4.6`): ~$0.20–0.40.
+- GPT-4o-mini (`--model openai/gpt-4o-mini`): ~$0.01–0.03.
+
+## Troubleshooting
+
+**"AI_GATEWAY_API_KEY is not set" but I just exported it.** New terminal sessions
+don't see variables from old sessions. Re-export in the current shell, or
+persist in `.env.local`.
+
+**"BYOK mode active" but I want to use hosted.** Run `unset
+AI_GATEWAY_API_KEY`. You can also delete the line from `.env.local`.
+
+**CI passes the env var but still shows "not signed in".** `helpbase login`
+and `AI_GATEWAY_API_KEY` serve different purposes. Login is for hosted
+quota + deploy authorization. BYOK bypasses quota only. For deploy in CI,
+you also need `HELPBASE_TOKEN` (a helpbase session token) alongside the
+Gateway key.

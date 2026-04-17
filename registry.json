@@ -14,6 +14,8 @@
         "gray-matter",
         "rehype-slug",
         "remark-gfm",
+        "rehype-pretty-code",
+        "shiki",
         "zod",
         "lucide-react"
       ],
@@ -93,6 +95,16 @@
           "path": "registry/helpbase/lib/content.ts",
           "type": "registry:lib",
           "target": "lib/content.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/content-dir.ts",
+          "type": "registry:lib",
+          "target": "lib/content-dir.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/mdx-config.ts",
+          "type": "registry:lib",
+          "target": "lib/mdx-config.ts"
         },
         {
           "path": "registry/helpbase/components/mdx/callout.tsx",

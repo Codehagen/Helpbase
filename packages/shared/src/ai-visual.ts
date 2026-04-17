@@ -31,6 +31,8 @@ export interface VisualGenerateOptions {
   title?: string
   /** Model ID in provider/model form. */
   model?: string
+  /** Hosted-proxy session token. Ignored when AI_GATEWAY_API_KEY is set. */
+  authToken?: string
 }
 
 export interface VisualGenerateResult {
@@ -58,6 +60,7 @@ export async function generateArticlesFromScreenshots({
   sourceUrl,
   title,
   model = DEFAULT_MODEL,
+  authToken,
 }: VisualGenerateOptions): Promise<VisualGenerateResult> {
   const prompt = buildVisualPrompt({
     screenshotCount: screenshots.length,
@@ -78,6 +81,7 @@ export async function generateArticlesFromScreenshots({
     prompt,
     schema: generatedArticlesSchema,
     images,
+    authToken,
   })
 
   // The prompt asks for exactly 1 article. If the model returns multiple,

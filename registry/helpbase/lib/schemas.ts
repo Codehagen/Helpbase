@@ -218,3 +218,91 @@ export interface ArticleImage {
   /** Which Step this image belongs to (1-indexed) */
   step: number
 }
+
+/**
+ * Hosted tier (`helpbase deploy`) schemas — payload shapes for the
+ * `deploy_tenant` RPC and the hosted MCP route. Single source of truth.
+ */
+
+/**
+ * One search chunk uploaded by the CLI for a given article.
+ * Keys `article_slug` and `article_category` are what the RPC joins on
+ * to resolve `article_id` post-insert.
+ */
+export const tenantChunkSchema = z.object({
+  article_slug: z.string().min(1),
+  article_category: z.string().min(1),
+  chunk_index: z.number().int().nonnegative(),
+  content: z.string().min(1),
+  file_path: z.string(),
+  line_start: z.number().int().positive(),
+  line_end: z.number().int().positive(),
+  token_count: z.number().int().nonnegative().default(0),
+}).refine((c) => c.line_end >= c.line_start, {
+  message: "line_end must be >= line_start",
+  path: ["line_end"],
+})
+
+export type TenantChunk = z.infer<typeof tenantChunkSchema>
+
+/**
+ * Per-deploy validation report, written to `tenant_deploys.validation_report`
+ * JSONB. Mirrors the client-side report the CLI already generates in v2.
+ */
+export const deployReportSchema = z.object({
+  kept_count: z.number().int().nonnegative(),
+  dropped_count: z.number().int().nonnegative(),
+  dropped: z.array(z.object({
+    slug: z.string(),
+    reason: z.string(),
+  })).default([]),
+  ran_at: z.string(),
+})
+
+export type DeployReport = z.infer<typeof deployReportSchema>
+
+/**
+ * The full payload the CLI hands to `deploy_tenant` RPC.
+ * Categories + articles + chunks + validation report.
+ */
+export const deployPayloadSchema = z.object({
+  categories: z.array(z.object({
+    slug: z.string().min(1),
+    title: z.string().min(1),
+    description: z.string().default(""),
+    icon: z.string().optional().nullable(),
+    order: z.number().int().default(0),
+  })),
+  articles: z.array(z.object({
+    slug: z.string().min(1),
+    category: z.string().min(1),
+    title: z.string().min(1),
+    description: z.string().default(""),
+    content: z.string(),
+    frontmatter: z.record(z.string(), z.unknown()).default({}),
+    order: z.number().int().default(0),
+    tags: z.array(z.string()).optional().nullable(),
+    hero_image: z.string().optional().nullable(),
+    video_embed: z.string().optional().nullable(),
+    featured: z.boolean().default(false),
+    file_path: z.string(),
+  })),
+  chunks: z.array(tenantChunkSchema),
+  validation_report: deployReportSchema.optional(),
+})
+
+export type DeployPayload = z.infer<typeof deployPayloadSchema>
+
+/**
+ * MCP tool-call log entry for `tenant_mcp_queries`. Week-1 instrumentation
+ * to decide whether FTS retrieval is good enough or we need pgvector.
+ */
+export const tenantMcpQuerySchema = z.object({
+  tenant_id: z.string().uuid(),
+  tool_name: z.enum(["search_docs", "get_doc", "list_docs"]),
+  query: z.string().default(""),
+  result_count: z.number().int().nonnegative(),
+  matched: z.boolean(),
+})
+
+export type TenantMcpQuery = z.infer<typeof tenantMcpQuerySchema>

@@ -6,8 +6,8 @@ import pc from "picocolors"
  * "Something went wrong" message again.
  *
  * Doc URLs live at https://helpbase.dev/errors/<code>. Stubs exist at
- * apps/web/app/errors/[code]/page.tsx — add content there when you add a
- * new error code here.
+ * apps/web/app/(main)/errors/[code]/page.tsx — add content there when
+ * you add a new error code here.
  */
 
 export const ERROR_DOC_BASE = "https://helpbase.dev/errors"
@@ -48,6 +48,11 @@ export type ErrorCode =
   | "E_CONTEXT_PREVIEW_NO_DOCS"
   | "E_CONTEXT_PREVIEW_SCAFFOLD"
   | "E_CONTEXT_PREVIEW_INSTALL"
+  | "E_AUTH_REQUIRED"
+  | "E_QUOTA_EXCEEDED"
+  | "E_GLOBAL_CAP"
+  | "E_LLM_NETWORK"
+  | "E_LLM_GATEWAY"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

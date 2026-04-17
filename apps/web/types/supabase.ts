@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      global_daily_tokens: {
+        Row: {
+          day: string
+          tokens: number
+          updated_at: string
+        }
+        Insert: {
+          day: string
+          tokens?: number
+          updated_at?: string
+        }
+        Update: {
+          day?: string
+          tokens?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      llm_usage_events: {
+        Row: {
+          completion_tokens: number
+          cost_usd: number
+          created_at: string
+          id: string
+          latency_ms: number | null
+          model: string
+          prompt_tokens: number
+          request_id: string | null
+          route: string
+          status: string
+          total_tokens: number | null
+          user_id: string
+        }
+        Insert: {
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          model: string
+          prompt_tokens?: number
+          request_id?: string | null
+          route: string
+          status: string
+          total_tokens?: number | null
+          user_id: string
+        }
+        Update: {
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          model?: string
+          prompt_tokens?: number
+          request_id?: string | null
+          route?: string
+          status?: string
+          total_tokens?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tenant_articles: {
         Row: {
           category: string
@@ -298,6 +361,27 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist_signups: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -312,6 +396,12 @@ export type Database = {
           p_validation_report?: Json
         }
         Returns: string
+      }
+      get_global_tokens_today: { Args: never; Returns: number }
+      get_user_tokens_today: { Args: { p_user_id: string }; Returns: number }
+      increment_global_tokens: {
+        Args: { p_day: string; p_delta: number }
+        Returns: number
       }
     }
     Enums: {

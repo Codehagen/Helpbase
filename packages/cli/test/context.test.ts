@@ -62,8 +62,12 @@ describe("helpbase context", () => {
     }
   })
 
-  it("missing API key on a real repo surfaces E_CONTEXT_MISSING_KEY", () => {
+  it("no auth + no BYOK on a real repo surfaces E_AUTH_REQUIRED", () => {
     // Create a minimal repo the walker likes.
+    // With the hosted-proxy default, running context without a helpbase session
+    // AND without AI_GATEWAY_API_KEY in non-TTY mode returns E_AUTH_REQUIRED
+    // (the inline-login prompt can only fire on a real TTY). Interactive
+    // users on a TTY get the login prompt instead.
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ctx-nokey-"))
     try {
       fs.writeFileSync(path.join(tmp, "README.md"), "# Hello\n\nsample repo for test")
@@ -71,9 +75,10 @@ describe("helpbase context", () => {
         AI_GATEWAY_API_KEY: "",
         ANTHROPIC_API_KEY: "",
         OPENAI_API_KEY: "",
+        HELPBASE_TOKEN: "",
       })
       expect(result.exitCode).toBe(1)
-      expect(result.output).toContain("E_CONTEXT_MISSING_KEY")
+      expect(result.output).toContain("E_AUTH_REQUIRED")
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true })
     }

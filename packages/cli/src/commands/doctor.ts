@@ -243,6 +243,10 @@ async function collectChecks(opts: CheckOptions): Promise<Check[]> {
   // ── Network (opt-out via --offline) ─────────────────────────────
   if (!opts.offline) {
     checks.push(await checkApiReachable())
+    checks.push(await checkLlmProxyReachable())
+    if (session && !process.env.AI_GATEWAY_API_KEY) {
+      checks.push(await checkUsageEndpoint(session.accessToken))
+    }
   }
 
   return checks
@@ -282,6 +286,105 @@ async function checkApiReachable(): Promise<Check> {
       severity: "warn",
       value: aborted ? "timed out after 2s" : "unreachable",
       fix: "Check your connection, or run `helpbase doctor --offline`",
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+/**
+ * HEAD /api/v1/llm/generate-object. 405 is the "correct" response (we don't
+ * accept HEAD on a POST-only route) — any 4xx/5xx other than 405 means
+ * something is wrong with DNS, TLS, or routing, and subsequent `helpbase
+ * generate` calls will fail. We surface it BEFORE generate fails.
+ */
+async function checkLlmProxyReachable(): Promise<Check> {
+  const url = "https://helpbase.dev/api/v1/llm/generate-object"
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 2000)
+  try {
+    const res = await fetch(url, { method: "HEAD", signal: controller.signal })
+    // 405 = Method Not Allowed (POST-only route). 404 = route not deployed yet.
+    if (res.status === 405) {
+      return {
+        label: "llm proxy",
+        category: "network",
+        severity: "ok",
+        value: `/api/v1/llm/* reachable (405 as expected)`,
+      }
+    }
+    if (res.status === 404) {
+      return {
+        label: "llm proxy",
+        category: "network",
+        severity: "warn",
+        value: "/api/v1/llm/* not found (404)",
+        fix: "Proxy may not be deployed yet. BYOK still works — set AI_GATEWAY_API_KEY.",
+      }
+    }
+    return {
+      label: "llm proxy",
+      category: "network",
+      severity: "warn",
+      value: `unexpected status ${res.status}`,
+      fix: "Retry in a moment, or check Vercel status.",
+    }
+  } catch (err) {
+    const aborted = (err as { name?: string }).name === "AbortError"
+    return {
+      label: "llm proxy",
+      category: "network",
+      severity: "warn",
+      value: aborted ? "timed out after 2s" : "unreachable",
+      fix: "Check your connection. BYOK (AI_GATEWAY_API_KEY) still works offline of helpbase.dev.",
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+/**
+ * GET /api/v1/usage/today with the session token. Confirms the user can
+ * actually read their own quota. Only runs when the user is signed in AND
+ * not in BYOK mode (BYOK bypasses this endpoint entirely).
+ */
+async function checkUsageEndpoint(accessToken: string): Promise<Check> {
+  const url = "https://helpbase.dev/api/v1/usage/today"
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 2000)
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    })
+    if (res.ok) {
+      const body = (await res.json()) as { quota?: { usedToday?: number; dailyLimit?: number } }
+      const used = body.quota?.usedToday ?? 0
+      const cap = body.quota?.dailyLimit ?? 0
+      return {
+        label: "usage read",
+        category: "network",
+        severity: "ok",
+        value: `${used.toLocaleString()} / ${cap.toLocaleString()} tokens today`,
+      }
+    }
+    return {
+      label: "usage read",
+      category: "network",
+      severity: "warn",
+      value: `/api/v1/usage/today returned ${res.status}`,
+      fix: res.status === 401
+        ? "Session may be expired. Run `helpbase login` again."
+        : "Retry in a moment, or check Vercel status.",
+    }
+  } catch (err) {
+    const aborted = (err as { name?: string }).name === "AbortError"
+    return {
+      label: "usage read",
+      category: "network",
+      severity: "warn",
+      value: aborted ? "timed out after 2s" : "unreachable",
     }
   } finally {
     clearTimeout(timeout)

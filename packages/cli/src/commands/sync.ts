@@ -11,8 +11,10 @@ import {
 } from "@workspace/shared/ai-sync"
 import { resolveModel, MissingApiKeyError, GatewayError, TEST_MODEL } from "@workspace/shared/ai"
 import type { SyncProposal } from "@workspace/shared/schemas"
-import { HelpbaseError } from "../lib/errors.js"
+import { HelpbaseError, formatError } from "../lib/errors.js"
 import { spinner, ok, info, note } from "../lib/ui.js"
+import { resolveAuthOrPromptLogin } from "../lib/inline-auth.js"
+import { toCliLlmError } from "../lib/llm-errors-cli.js"
 
 /**
  * `helpbase sync` — codebase-grounded documentation updates.
@@ -137,27 +139,39 @@ Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
 
     // ── Call LLM ────────────────────────────────────────────────────
     const model = resolveModel({ test: opts.test, modelOverride: opts.model })
+    const auth = await resolveAuthOrPromptLogin({
+      verb: "sync",
+      retryCommand: "helpbase sync",
+    })
     const startedAt = Date.now()
     s.start("Generating doc proposals with AI...")
     let result
     try {
-      result = await generateSyncProposals({ codeDiff, mdxFiles, model })
+      result = await generateSyncProposals({
+        codeDiff,
+        mdxFiles,
+        model,
+        authToken: auth.authToken,
+      })
     } catch (err) {
       s.stop(pc.red("Failed"))
+      const wrapped = toCliLlmError(err, { retryCommand: "helpbase sync" })
+      if (wrapped instanceof HelpbaseError) throw wrapped
       if (err instanceof MissingApiKeyError) {
         throw new HelpbaseError({
-          code: "E_MISSING_API_KEY",
-          problem: "AI_GATEWAY_API_KEY is not set",
-          cause: "helpbase sync calls an LLM to propose doc edits; it needs a gateway key.",
+          code: "E_AUTH_REQUIRED",
+          problem: "Not signed in and no AI_GATEWAY_API_KEY set",
+          cause: "helpbase sync calls an LLM to propose doc edits; it needs auth or a BYOK key.",
           fix: [
-            `Export the key: ${pc.cyan("export AI_GATEWAY_API_KEY=your_key")}`,
-            "Get one free at https://vercel.com/ai-gateway",
+            `Run ${pc.cyan("helpbase login")} (free, no card), then re-run.`,
+            `Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")}`,
+            "Docs: https://helpbase.dev/docs/byok",
           ],
         })
       }
       if (err instanceof GatewayError) {
         throw new HelpbaseError({
-          code: "E_NETWORK",
+          code: "E_LLM_GATEWAY",
           problem: "LLM gateway call failed",
           cause: err.message,
           fix: ["Check your network and retry in a moment.", "Try --test to use the cheap model."],

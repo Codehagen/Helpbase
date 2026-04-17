@@ -138,16 +138,18 @@ async function run(directory: string | undefined, opts: RunOptions) {
     }
   }
 
-  // 3. Optional AI gateway key.
-  //    We prompt but never require — users can skip and wire it later via
-  //    `helpbase config set ai-gateway-key` or by exporting AI_GATEWAY_API_KEY.
-  //    Non-interactive runs skip this entirely; scripted setups are expected
-  //    to inject AI_GATEWAY_API_KEY via env or .env.local directly.
+  // 3. Optional BYOK key.
+  //    Most users skip this — the default flow is `helpbase login` post-scaffold,
+  //    which uses the free-tier hosted proxy (no card, 500k tokens/day).
+  //    BYOK (Vercel AI Gateway key) is for power users who want unlimited calls
+  //    on their own billing, CI runs without login, or privacy-sensitive setups.
+  //    Skipping here is the right default.
+  //    Non-interactive runs skip entirely; scripted setups inject via env / .env.local.
   let aiGatewayKey: string | undefined
   if (isInteractive) {
     const keyResponse = await text({
       message:
-        "Paste your AI gateway key (optional — get one at https://vercel.com/ai-gateway, or skip and set it later with `helpbase config set ai-gateway-key`)",
+        "BYOK? Paste a Vercel AI Gateway key (optional — most people skip this and run `helpbase login` instead)",
       placeholder: "skip",
     })
 
@@ -320,8 +322,10 @@ async function generateFromUrl(
 function printGenerationFallbackHint(err: unknown, url: string): void {
   if (err instanceof MissingApiKeyError) {
     note(
-      `Set ${pc.cyan("AI_GATEWAY_API_KEY")} (get one at ${pc.cyan("https://vercel.com/ai-gateway")}) then run:\n` +
-      `  ${pc.cyan(`helpbase generate --url ${url}`)}`,
+      `Run ${pc.cyan("helpbase login")} (free, no card) then:\n` +
+      `  ${pc.cyan(`helpbase generate --url ${url}`)}\n\n` +
+      `Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} ` +
+      `(docs: ${pc.cyan("helpbase.dev/docs/byok")})`,
       "AI generation skipped",
     )
     return

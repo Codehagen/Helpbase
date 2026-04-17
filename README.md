@@ -71,7 +71,7 @@ without any MCP client setup. Same content, two surfaces: humans read
 the MDX, agents query over MCP.
 
 ```bash
-export AI_GATEWAY_API_KEY=...                       # free proxy; your provider key routes through it
+npx helpbase login                                   # magic-link, no card, free 500k tokens/day
 npx helpbase context .                               # synthesize cited how-tos from your repo
 npx helpbase context . --ask "how do I log in?"     # answer in terminal, no MCP client required
 ```
@@ -113,19 +113,23 @@ teammates deploy to the same tenant. CI users can skip the prompt with
 
 ### Generate articles from your site with AI
 
-Pass `--url` and helpbase scrapes the page, sends it through the Vercel AI
-Gateway, and writes structured MDX articles to `content/`. Each article
+Pass `--url` and helpbase scrapes the page, generates structured MDX through
+the hosted helpbase proxy, and writes the articles to `content/`. Each article
 comes back with a title, description, tags, and a full markdown body.
 
 ```bash
-export AI_GATEWAY_API_KEY=your_key_here
+npx helpbase login                                   # once, free tier (500k tokens/day)
 npx create-helpbase my-help-center --url https://yourproduct.com --test
 ```
 
-Get your key at [vercel.com/ai-gateway](https://vercel.com/ai-gateway). The
-`--test` flag uses Gemini 3.1 Flash Lite for cheap, fast generation. Pass
+The `--test` flag uses Gemini 3.1 Flash Lite for cheap, fast generation. Pass
 `--model anthropic/claude-sonnet-4.6` (or any Gateway-supported model) to
 override.
+
+**Power users + CI:** skip the helpbase proxy entirely with your own
+[Vercel AI Gateway](https://vercel.com/ai-gateway) key — `export
+AI_GATEWAY_API_KEY=...` before running. See
+[helpbase.dev/docs/byok](https://helpbase.dev/docs/byok).
 
 ### Drop into an existing Next.js app
 

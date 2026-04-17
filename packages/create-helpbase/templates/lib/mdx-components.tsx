@@ -49,5 +49,13 @@ export function createArticleComponents(category: string, slug: string): MDXComp
         <table {...props} />
       </div>
     ),
+
+    // The article page template already renders the article title as an <h1>
+    // before the MDX body. Most authors still write `# Title` as the first
+    // heading, which produces a second <h1> on the page. That duplicates
+    // semantic page titles for assistive tech and surfaces in Lighthouse.
+    // Downgrading body h1 to h2 preserves author intent without breaking
+    // the document outline.
+    h1: (props) => <h2 {...props} />,
   }
 }

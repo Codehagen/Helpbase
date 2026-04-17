@@ -191,10 +191,28 @@ async function run(directory: string | undefined, opts: RunOptions) {
   // content (it's the natural fallback).
   if (siteUrl) {
     const model = resolveModel({ test: opts.test, modelOverride: opts.model })
-    s.start(`Generating articles from ${pc.cyan(siteUrl)} with ${pc.dim(model)}...`)
+    // Three-stage spinner: scrape → synthesize → write. The LLM call is the
+    // long step (10-25s on Flash Lite), and running all three under one
+    // spinner made users think the whole thing had hung. Separate stages let
+    // them see real state changes every few seconds.
     try {
       clearSampleContent(projectDir)
-      await generateFromUrl(projectDir, siteUrl, model)
+
+      s.start(`Scraping ${pc.cyan(siteUrl)}...`)
+      const content = await scrapeUrl(siteUrl)
+      s.stop("Site scraped.")
+
+      s.start(`Synthesizing articles with ${pc.dim(model)} ${pc.dim("(~10-25s)")}...`)
+      const articles = await generateArticlesFromContent({
+        content,
+        sourceUrl: siteUrl,
+        model,
+        authToken: readHelpbaseAuthToken(),
+      })
+      s.stop(`Synthesized ${articles.length} article${articles.length === 1 ? "" : "s"}.`)
+
+      s.start("Writing articles...")
+      writeArticlesToContentDir(projectDir, articles)
       s.stop("Articles generated!")
     } catch (err) {
       s.stop(pc.yellow("Couldn't generate articles. Sample content shipped with the scaffold remains."))
@@ -273,23 +291,15 @@ function detectPackageManager(): string {
 }
 
 /**
- * Scrape the URL, generate articles with the AI Gateway, and write them
- * into `<projectDir>/content/`. Throws on any failure so the caller can
- * fall back to sample content.
+ * Write generated articles into `<projectDir>/content/<category>/*.mdx` and
+ * scaffold the matching `_category.json` files. Split out from the caller
+ * so the main flow can own the three-stage spinner (scrape → synthesize →
+ * write) without hiding the last step behind a combined helper.
  */
-async function generateFromUrl(
+function writeArticlesToContentDir(
   projectDir: string,
-  url: string,
-  model: string,
-): Promise<void> {
-  const content = await scrapeUrl(url)
-  const articles = await generateArticlesFromContent({
-    content,
-    sourceUrl: url,
-    model,
-    authToken: readHelpbaseAuthToken(),
-  })
-
+  articles: Awaited<ReturnType<typeof generateArticlesFromContent>>,
+): void {
   const contentDir = path.join(projectDir, "content")
   fs.mkdirSync(contentDir, { recursive: true })
 

@@ -8,13 +8,15 @@ import {
 } from "./auth.js"
 import { HelpbaseError, formatError } from "./errors.js"
 import { authRequiredError } from "./llm-errors-cli.js"
+import { isByokMode } from "@workspace/shared/llm"
 
 /**
  * Resolve the CLI's current auth session, or prompt the user to log in
  * inline if we're in a TTY.
  *
  * Flow:
- *   1. If `AI_GATEWAY_API_KEY` is set → BYOK mode; return null (caller skips auth).
+ *   1. If any BYOK key is set (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`,
+ *      `OPENAI_API_KEY`) → BYOK mode; return null (caller skips auth).
  *   2. If a session already exists → return it.
  *   3. If `HELPBASE_TOKEN` is set but did not resolve to a session (invalid /
  *      expired) → throw E_AUTH_REQUIRED. We do NOT fall into an interactive
@@ -36,14 +38,18 @@ export interface ResolveAuthResult {
   authToken?: string
   /** Resolved session (when hosted). */
   session?: AuthSession
-  /** True when AI_GATEWAY_API_KEY is in env. */
+  /** True when any BYOK key is in env (Gateway / Anthropic / OpenAI). */
   byok: boolean
 }
 
 export async function resolveAuthOrPromptLogin(
   opts: ResolveAuthOptions,
 ): Promise<ResolveAuthResult> {
-  if (process.env.AI_GATEWAY_API_KEY) {
+  // Any of AI_GATEWAY_API_KEY / ANTHROPIC_API_KEY / OPENAI_API_KEY skips
+  // the hosted-login prompt. The downstream `callLlmObject` / `callLlmText`
+  // branch on isByokMode() too, so this keeps the UI consistent with the
+  // actual LLM-call routing.
+  if (isByokMode()) {
     return { byok: true }
   }
 

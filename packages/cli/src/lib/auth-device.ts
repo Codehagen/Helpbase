@@ -36,7 +36,11 @@ export async function deviceLogin(opts: DeviceLoginOptions = {}): Promise<AuthSe
   }
 
   const startedAt = Date.now()
-  let interval = Math.max(info.interval ?? 2, 1) * 1000
+  // Poll at 1s by default. RFC 8628 says "interval" is the minimum between
+  // polls, not a target, so 1s respects spec while cutting ~1s of perceived
+  // wait after the user clicks Authorize. Server-supplied interval still
+  // wins via `info.interval ?? 1`.
+  let interval = Math.max(info.interval ?? 1, 1) * 1000
   const deadline = startedAt + info.expires_in * 1000
   // Tolerate a short run of transient network failures (DNS blip, captive-
   // portal intercept, flaky LTE) during the polling window. Anything beyond

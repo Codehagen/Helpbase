@@ -70,32 +70,11 @@ export default function SignInMagicLinkEmail({
         <Preview>{`Sign in to helpbase — link expires in ${expiresInMinutes} minutes`}</Preview>
         <Body className="bg-wash font-sans py-10">
           <Container className="max-w-[520px] mx-auto bg-paper border border-solid border-border rounded-md px-10 py-8">
-            {/* Wordmark — matches the site header's `bg-foreground` "?"
-                square. Table-based so Outlook doesn't break alignment. */}
+            {/* Wordmark — plain text, matches the site header. */}
             <Section>
-              <table role="presentation" cellPadding={0} cellSpacing={0} border={0}>
-                <tr>
-                  <td
-                    className="bg-ink align-middle text-center"
-                    style={{
-                      width: "28px",
-                      height: "28px",
-                      borderRadius: "6px",
-                      color: "#ffffff",
-                      fontSize: "16px",
-                      fontWeight: 700,
-                      lineHeight: "28px",
-                    }}
-                  >
-                    ?
-                  </td>
-                  <td className="align-middle pl-2">
-                    <Text className="text-ink text-[15px] font-semibold m-0 leading-[28px]">
-                      helpbase
-                    </Text>
-                  </td>
-                </tr>
-              </table>
+              <Text className="text-ink text-[15px] font-semibold tracking-tight m-0">
+                helpbase
+              </Text>
             </Section>
 
             <Text className="text-ink text-2xl font-semibold tracking-tight mt-8 mb-2">

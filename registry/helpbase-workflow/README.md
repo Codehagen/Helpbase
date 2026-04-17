@@ -29,9 +29,11 @@ Actions → New repository secret**). You have two options:
   [vercel.com/ai-gateway](https://vercel.com/ai-gateway). Bypasses helpbase's
   hosted proxy entirely. Your Gateway account, your bill, no daily quota
   limit. See [helpbase.dev/docs/byok](https://helpbase.dev/docs/byok).
-- **`HELPBASE_TOKEN`** — a helpbase session token (get one with `helpbase
-  login` locally, then run `helpbase config get session.access_token`).
-  Uses helpbase's hosted proxy and the free-tier 500k tokens/day cap.
+- **`HELPBASE_TOKEN`** — a helpbase session access token. After running
+  `helpbase login` locally, pull the value from `~/.helpbase/auth.json`:
+  `jq -r .access_token ~/.helpbase/auth.json`. Uses helpbase's hosted proxy
+  and the free-tier 500k tokens/day cap. Note: session tokens are relatively
+  short-lived — rotate the secret when it expires.
 
 If both are set, `AI_GATEWAY_API_KEY` wins (BYOK mode).
 

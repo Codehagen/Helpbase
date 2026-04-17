@@ -15,6 +15,9 @@ export default function WaitlistPage({
   return <WaitlistContent searchParamsP={searchParams} />
 }
 
+/** Mirrors lib/waitlist.ts — same regex, same fallback. */
+const SAFE_SOURCE_RE = /^[a-z0-9_-]{1,40}$/
+
 async function WaitlistContent({
   searchParamsP,
 }: {
@@ -22,7 +25,8 @@ async function WaitlistContent({
 }) {
   const sp = (await searchParamsP) ?? {}
   const status = sp.status
-  const from = sp.from ?? "waitlist"
+  const rawFrom = sp.from ?? "waitlist"
+  const from = SAFE_SOURCE_RE.test(rawFrom) ? rawFrom : "waitlist"
 
   return (
     <main className="mx-auto max-w-xl px-6 py-24">

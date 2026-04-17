@@ -399,6 +399,10 @@ export type Database = {
       }
       get_global_tokens_today: { Args: never; Returns: number }
       get_user_tokens_today: { Args: { p_user_id: string }; Returns: number }
+      increment_global_tokens: {
+        Args: { p_day: string; p_delta: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

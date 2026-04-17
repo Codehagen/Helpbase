@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
-import { generateObject } from "ai"
-import { z } from "zod"
+import { generateObject, jsonSchema } from "ai"
 import type {
   GenerateObjectRequest,
   GenerateObjectResponse,
@@ -27,8 +26,11 @@ import {
  */
 
 export const runtime = "nodejs"
-// Vercel default body cap is 4.5 MB; multimodal requests with big base64 images
-// can push past that, so we allow generous decoding on the route.
+// `dynamic = "force-dynamic"` only disables static optimization — it does NOT
+// raise Vercel's 4.5 MB request body cap. Multimodal requests with large
+// base64 images will still 413 at the edge. If that becomes a real problem,
+// move image upload to a signed-URL flow (TODO) rather than trying to extend
+// the body cap here.
 export const dynamic = "force-dynamic"
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -49,13 +51,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!body.schema || typeof body.schema !== "object") {
     return wireError(400, "bad_request", "Missing required field: `schema` (JSON Schema object).")
   }
-  if (!body.prompt && !body.messages) {
-    return wireError(400, "bad_request", "Provide either `prompt` or `messages`.")
+  const hasMessages = Array.isArray(body.messages) && body.messages.length > 0
+  if (!body.prompt && !hasMessages) {
+    return wireError(400, "bad_request", "Provide either `prompt` or a non-empty `messages` array.")
   }
 
   // Clamp requested cap to the per-call ceiling AND to the remaining budget.
   const requested = body.maxOutputTokens ?? PER_CALL_CEILING
   const maxOutputTokens = Math.min(requested, remainingBudget)
+  if (maxOutputTokens <= 0) {
+    return wireError(429, "quota_exceeded", "Daily free-tier token quota reached.")
+  }
 
   // Build messages from images if provided.
   const messages = body.images?.length
@@ -79,9 +85,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const result = await generateObject({
       model: body.model,
-      // JSON Schema → Zod-free path: pass schema through as jsonSchema.
-      // Vercel AI SDK accepts { jsonSchema: ... } for pre-serialized schemas.
-      schema: jsonSchemaToZod(body.schema),
+      // Pass the client's JSON Schema straight through via Vercel AI SDK's
+      // `jsonSchema()` helper. The CLI sends a JSON Schema (from Zod v4's
+      // `z.toJSONSchema`), and the model is best guided by the full schema,
+      // not `z.any()`. The CLI re-parses the response with its own Zod
+      // schema before handing objects to commands, so we get defense-in-depth
+      // without needing a JSON-Schema→Zod compiler on the server.
+      schema: jsonSchema(body.schema as Parameters<typeof jsonSchema>[0]),
       ...(messages
         ? { messages }
         : { prompt: body.prompt! }),
@@ -131,17 +141,3 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json(resp)
 }
 
-/**
- * Turn a JSON Schema (from zod.toJSONSchema on the client side) into a Zod
- * schema usable by Vercel AI SDK's `generateObject`. We bypass actual parsing
- * and return a loose `z.any()` — the server-side schema is only used to
- * instruct the model; downstream the CLI re-parses the result with its
- * own Zod schema for safety.
- *
- * Trade-off: we lose server-side schema enforcement. CLI's own `schema.parse`
- * catches anything the model returns wrong. Keeps the proxy thin and
- * avoids a full JSON-Schema → Zod compiler as a server dep.
- */
-function jsonSchemaToZod(_jsonSchema: unknown): z.ZodType {
-  return z.any()
-}

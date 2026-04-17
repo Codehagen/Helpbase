@@ -6,8 +6,8 @@ import pc from "picocolors"
  * "Something went wrong" message again.
  *
  * Doc URLs live at https://helpbase.dev/errors/<code>. Stubs exist at
- * apps/web/app/errors/[code]/page.tsx — add content there when you add a
- * new error code here.
+ * apps/web/app/(main)/errors/[code]/page.tsx — add content there when
+ * you add a new error code here.
  */
 
 export const ERROR_DOC_BASE = "https://helpbase.dev/errors"

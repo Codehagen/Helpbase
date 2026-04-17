@@ -146,41 +146,24 @@ export async function logUsageEvent(input: LogUsageInput): Promise<void> {
 
   if (input.status === "ok" && total > 0) {
     const today = new Date().toISOString().slice(0, 10)
-    // Upsert + increment via raw SQL to keep atomicity.
-    await client
-      .from("global_daily_tokens")
-      .upsert(
-        {
-          day: today,
-          tokens: total,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "day", ignoreDuplicates: false },
-      )
-      .then(async ({ error }) => {
-        if (error) {
-          // Row existed — fall back to SQL increment.
-          await client.rpc("get_global_tokens_today") // noop to keep the client warm
-          await client
-            .from("global_daily_tokens")
-            .update({
-              tokens: total + (await currentGlobalTokens(today)),
-              updated_at: new Date().toISOString(),
-            })
-            .eq("day", today)
-        }
+    // Atomic increment via SQL function — see migration
+    // `atomic_increment_global_tokens`. The previous client-side upsert
+    // pattern (onConflict: "day") OVERWROTE the daily counter on every
+    // call, silently disabling the 10M/day global circuit breaker.
+    // Concurrent requests also need true atomicity; a read-modify-write
+    // is race-prone even on a single instance.
+    const { error: incrErr } = await client.rpc("increment_global_tokens", {
+      p_day: today,
+      p_delta: total,
+    })
+    if (incrErr) {
+      console.error("[global_daily_tokens increment failed]", {
+        today,
+        total,
+        message: incrErr.message,
       })
+    }
   }
-}
-
-async function currentGlobalTokens(day: string): Promise<number> {
-  const client = getServiceRoleClient()
-  const { data } = await client
-    .from("global_daily_tokens")
-    .select("tokens")
-    .eq("day", day)
-    .maybeSingle()
-  return Number(data?.tokens ?? 0)
 }
 
 // ── Quota snapshot (for response payloads) ─────────────────────────────

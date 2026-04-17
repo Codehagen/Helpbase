@@ -35,7 +35,12 @@ jobs:
 
       - name: Run helpbase sync
         env:
+          # Set one of these as a repo secret (see README):
+          #   AI_GATEWAY_API_KEY — BYOK, your Vercel AI Gateway account, unlimited.
+          #   HELPBASE_TOKEN     — hosted proxy, helpbase free-tier quota (500k tokens/day).
+          # If both are set, AI_GATEWAY_API_KEY wins (CLI checks env var first).
           AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+          HELPBASE_TOKEN: ${{ secrets.HELPBASE_TOKEN }}
         run: |
           npx -y helpbase sync \
             --since origin/main \

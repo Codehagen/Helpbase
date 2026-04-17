@@ -89,13 +89,13 @@ the free-tier cap.
 ## Costs
 
 BYOK costs are whatever Gateway charges for the model you pick. As of this
-writing:
+writing the default and `--test` are both `google/gemini-3.1-flash-lite-preview`
+(cheap + fast, ~1M context). Rough costs for a 9-article `helpbase generate`
+run (~50,000 tokens):
 
-- Gemini 3.1 Flash Lite (`--test`): ~$0.004 per full `generate` run.
-- Claude Sonnet 4.6: ~$0.20-0.40 per full `generate` run.
-- Gemini 3.1 Flash (the default): ~$0.01-0.03 per full `generate` run.
-
-A 9-article `helpbase generate` run uses roughly 50,000 tokens.
+- Gemini 3.1 Flash Lite (default / `--test`): ~$0.004 per run.
+- Claude Sonnet 4.6 (`--model anthropic/claude-sonnet-4.6`): ~$0.20–0.40.
+- GPT-4o-mini (`--model openai/gpt-4o-mini`): ~$0.01–0.03.
 
 ## Troubleshooting
 

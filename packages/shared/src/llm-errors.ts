@@ -87,20 +87,29 @@ export type LlmClientError =
  * consumers share the shape.
  */
 export function formatQuotaSuffix(q: WireQuotaStatus): string {
-  const pct = Math.round((q.usedToday / q.dailyLimit) * 100)
+  // Guard against degenerate inputs (dailyLimit == 0 would divide-by-zero,
+  // NaN would poison the rendered string). Fall back to `?%` in that case.
+  const pct =
+    q.dailyLimit > 0
+      ? Math.round((q.usedToday / q.dailyLimit) * 100)
+      : NaN
+  const pctStr = Number.isFinite(pct) ? `${pct}%` : "?%"
   const human = humanTokens(q.usedToday)
   const reset = humanUntil(q.resetAt)
-  return `used: ${human} tokens (${pct}% of today, resets in ${reset})`
+  return `used: ${human} tokens (${pctStr} of today, resets in ${reset})`
 }
 
 export function humanTokens(n: number): string {
-  if (n < 1000) return String(n)
+  if (!Number.isFinite(n) || n < 0) return "0"
+  if (n < 1000) return String(Math.floor(n))
   if (n < 1_000_000) return `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`
   return `${(n / 1_000_000).toFixed(2)}M`
 }
 
 export function humanUntil(iso: string): string {
-  const ms = new Date(iso).getTime() - Date.now()
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t)) return "soon"
+  const ms = t - Date.now()
   if (ms <= 0) return "now"
   const h = Math.floor(ms / 3_600_000)
   const m = Math.floor((ms % 3_600_000) / 60_000)

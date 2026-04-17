@@ -40,12 +40,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!body.model || typeof body.model !== "string") {
     return wireError(400, "bad_request", "Missing required field: `model` (string).")
   }
-  if (!body.prompt && !body.messages) {
-    return wireError(400, "bad_request", "Provide either `prompt` or `messages`.")
+  const hasMessages = Array.isArray(body.messages) && body.messages.length > 0
+  if (!body.prompt && !hasMessages) {
+    return wireError(400, "bad_request", "Provide either `prompt` or a non-empty `messages` array.")
   }
 
   const requested = body.maxOutputTokens ?? PER_CALL_CEILING
   const maxOutputTokens = Math.min(requested, remainingBudget)
+  // Defense in depth: `withAuthAndQuota` blocks at usedToday >= DAILY_USER_LIMIT,
+  // so remainingBudget should always be > 0 here. This guard protects against
+  // future refactors or edge-case drift in the quota math.
+  if (maxOutputTokens <= 0) {
+    return wireError(429, "quota_exceeded", "Daily free-tier token quota reached.")
+  }
 
   const t0 = Date.now()
   let text: string

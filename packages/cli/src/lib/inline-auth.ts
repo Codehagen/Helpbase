@@ -18,9 +18,12 @@ import { quotaExceededError, authRequiredError } from "./llm-errors-cli.js"
  * Flow:
  *   1. If `AI_GATEWAY_API_KEY` is set → BYOK mode; return null (caller skips auth).
  *   2. If a session already exists → return it.
- *   3. If `HELPBASE_TOKEN` is set but invalid → throw E_AUTH_REQUIRED (CI flow).
- *   4. If TTY: prompt "Not signed in. Run helpbase login now? (Y/n)" → inline OTP.
- *   5. If non-TTY or declined: throw E_AUTH_REQUIRED with the exact re-run command.
+ *   3. If `HELPBASE_TOKEN` is set but did not resolve to a session (invalid /
+ *      expired) → throw E_AUTH_REQUIRED. We do NOT fall into an interactive
+ *      prompt here: the env var signals explicit CI intent, and silently
+ *      replacing it with an interactive login would mask a broken CI token.
+ *   4. Else if TTY: prompt "Not signed in. Run helpbase login now? (Y/n)" → inline OTP.
+ *   5. Else (non-TTY or declined): throw E_AUTH_REQUIRED with the exact re-run command.
  */
 export interface ResolveAuthOptions {
   /** Verb shown in the prompt, e.g. "generate", "sync", "ask". */
@@ -50,8 +53,10 @@ export async function resolveAuthOrPromptLogin(
     return { byok: false, authToken: existing.accessToken, session: existing }
   }
 
-  // No session. In non-interactive mode, error with a clean next step.
-  if (isNonInteractive() || !process.stdout.isTTY) {
+  // No session resolved. If HELPBASE_TOKEN is set the user expressed CI
+  // intent — fail cleanly rather than silently override it with an
+  // interactive prompt (which would paper over a broken CI token).
+  if (process.env.HELPBASE_TOKEN || isNonInteractive() || !process.stdout.isTTY) {
     throw authRequiredError(opts.retryCommand)
   }
 

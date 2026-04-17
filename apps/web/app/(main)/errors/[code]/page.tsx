@@ -278,6 +278,90 @@ const ERRORS: Record<string, ErrorDoc> = {
       "Run `npx create-helpbase my-help-center` to start a fresh one.",
     ],
   },
+  "e-auth-required": {
+    code: "E_AUTH_REQUIRED",
+    title: "Not signed in to helpbase",
+    summary:
+      "A command that needs authentication (generate, sync, context) ran without a helpbase session and without a BYOK key.",
+    causes: [
+      "You haven't run `helpbase login` on this machine yet.",
+      "Your session expired and could not be refreshed.",
+      "In CI, `HELPBASE_TOKEN` is either not set or no longer valid.",
+    ],
+    fixes: [
+      "Run `helpbase login` — free tier, no card, 500k tokens/day.",
+      "For CI: set `HELPBASE_TOKEN` to a valid session token.",
+      "Or bring your own key: `export AI_GATEWAY_API_KEY=…` (see /docs/byok).",
+    ],
+    seeAlso: [{ label: "BYOK docs", href: "/docs/byok" }],
+  },
+  "e-quota-exceeded": {
+    code: "E_QUOTA_EXCEEDED",
+    title: "Daily free-tier quota reached",
+    summary:
+      "You've used today's free allocation of tokens across helpbase LLM calls. The limit resets at UTC midnight.",
+    causes: [
+      "You hit 500,000 tokens of generate / sync / context --ask calls today.",
+      "A single call would take you over the remaining budget.",
+    ],
+    fixes: [
+      "Wait for the UTC-midnight reset.",
+      "Join the paid-tier waitlist: https://helpbase.dev/waitlist",
+      "Bring your own Vercel AI Gateway key: `export AI_GATEWAY_API_KEY=…` (unlimited, your own bill).",
+    ],
+    seeAlso: [
+      { label: "Waitlist", href: "/waitlist" },
+      { label: "BYOK docs", href: "/docs/byok" },
+    ],
+  },
+  "e-global-cap": {
+    code: "E_GLOBAL_CAP",
+    title: "helpbase is over its daily cap",
+    summary:
+      "helpbase enforces a global 10M-token-per-day circuit breaker to protect against runaway spend. That cap was hit.",
+    causes: [
+      "A load spike (genuine or otherwise) exhausted the global daily allocation.",
+      "Resets at UTC midnight like the per-user cap.",
+    ],
+    fixes: [
+      "Wait for the UTC-midnight reset.",
+      "Bring your own Vercel AI Gateway key to bypass the hosted proxy entirely: `export AI_GATEWAY_API_KEY=…`",
+    ],
+    seeAlso: [{ label: "BYOK docs", href: "/docs/byok" }],
+  },
+  "e-llm-network": {
+    code: "E_LLM_NETWORK",
+    title: "Couldn't reach helpbase.dev",
+    summary:
+      "The CLI tried to call the hosted LLM proxy but the request never landed — likely a network problem between you and helpbase.dev.",
+    causes: [
+      "Internet connection is down or flaky.",
+      "A corporate proxy or firewall is blocking helpbase.dev.",
+      "DNS resolution is failing.",
+    ],
+    fixes: [
+      "Check your connection and retry — transient blips are common.",
+      "If you're behind a corporate proxy, verify helpbase.dev is reachable.",
+      "Fall back to BYOK so calls don't go through helpbase.dev: `export AI_GATEWAY_API_KEY=…`",
+    ],
+    seeAlso: [{ label: "BYOK docs", href: "/docs/byok" }],
+  },
+  "e-llm-gateway": {
+    code: "E_LLM_GATEWAY",
+    title: "LLM provider returned an error",
+    summary:
+      "The underlying model provider (e.g. Anthropic, Google) returned a non-success response. No tokens were charged against your quota.",
+    causes: [
+      "The model ID is wrong or unsupported by Vercel AI Gateway.",
+      "Upstream provider is degraded.",
+      "The prompt triggered a provider-side safety filter.",
+    ],
+    fixes: [
+      "Retry in a moment — transient upstream errors are common.",
+      "Try a different `--model` (e.g. `anthropic/claude-sonnet-4.6`).",
+      "Check status.anthropic.com / openai.com if the problem persists.",
+    ],
+  },
 }
 
 export function generateStaticParams() {

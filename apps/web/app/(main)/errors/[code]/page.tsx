@@ -362,6 +362,58 @@ const ERRORS: Record<string, ErrorDoc> = {
       "Check status.anthropic.com / openai.com if the problem persists.",
     ],
   },
+
+  // ── Device-authorization flow (RFC 8628) ──────────────────────────────
+  "e-auth-cancelled": {
+    code: "E_AUTH_CANCELLED",
+    title: "Login cancelled",
+    summary: "You aborted `helpbase login` before the browser finished authorizing.",
+    causes: [
+      "You pressed Ctrl-C during the spinner.",
+      "A programmatic signal interrupted the CLI's polling loop.",
+    ],
+    fixes: [
+      "Run `helpbase login` again when you're ready to sign in.",
+      "If you meant to use the email fallback, run `helpbase login --email`.",
+    ],
+  },
+  "e-device-denied": {
+    code: "E_DEVICE_DENIED",
+    title: "Authorization was cancelled in the browser",
+    summary:
+      "You clicked Cancel (or closed the tab) on the /device approval page before finishing sign-in.",
+    causes: [
+      "The browser tab was closed before Authorize.",
+      "You clicked Cancel on purpose.",
+      "A different browser session received the URL — possible phishing — and rejected it.",
+    ],
+    fixes: [
+      "Run `helpbase login` again if that wasn't you.",
+      "If you didn't start this login, no action is needed; the code is now void.",
+    ],
+  },
+  "e-device-expired": {
+    code: "E_DEVICE_EXPIRED",
+    title: "Device code expired",
+    summary:
+      "The browser didn't approve the CLI within the 10-minute window, so the one-time code is now void.",
+    causes: [
+      "You walked away or got distracted mid-flow.",
+      "Network delays pushed polling past the expiry.",
+      "The auth server rejected the code early (rare).",
+    ],
+    fixes: [
+      "Run `helpbase login` again to get a fresh code.",
+      "If you're on a slow network, `helpbase login --email` is more forgiving — the email link lives for 10 minutes after you click it.",
+    ],
+  },
+  // E_DEVICE_NETWORK, E_DEVICE_NO_BROWSER, E_LOGIN_RESEND_DOWN,
+  // E_LOGIN_STALE_TOKEN were drafted during the 2026-04-17 device-flow
+  // plan but the CLI never throws them — network errors surface as the
+  // generic login-failed cancel, headless envs are a behavior (URL
+  // printed, polling continues) rather than an error, and stale tokens
+  // are cleared silently with a fresh login prompt. Entries removed to
+  // keep /errors/<code> pages in sync with what the CLI actually emits.
 }
 
 export function generateStaticParams() {

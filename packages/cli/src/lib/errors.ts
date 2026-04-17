@@ -53,6 +53,9 @@ export type ErrorCode =
   | "E_GLOBAL_CAP"
   | "E_LLM_NETWORK"
   | "E_LLM_GATEWAY"
+  | "E_AUTH_CANCELLED"
+  | "E_DEVICE_DENIED"
+  | "E_DEVICE_EXPIRED"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

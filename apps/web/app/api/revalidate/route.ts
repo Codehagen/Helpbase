@@ -1,39 +1,33 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { revalidatePath } from "next/cache"
-import { createClient } from "@supabase/supabase-js"
-import type { Database } from "@/types/supabase"
+import { auth } from "@/lib/auth"
+import { getServiceRoleClient } from "@/lib/supabase-admin"
 
 /**
  * POST /api/revalidate
  *   body: { tenant_id: string }
- *   auth: Bearer <supabase-session-access-token> (from the CLI's authed session)
+ *   auth: Bearer <Better Auth session token> (from the CLI's authed session)
  *
  * Called by `helpbase deploy` after a successful RPC to flush the ISR cache
  * for the tenant's pages. Without this, pages served under
  * `{slug}.helpbase.dev/...` (ISR, 1h TTL) keep serving stale content for up
  * to an hour after the deploy — which breaks trust on the first deploy.
  *
- * Security: the caller's access-token must belong to the tenant owner.
- * We use the anon Supabase client with the user's JWT to read `tenants`
- * under RLS — the `tenants_select_public` policy + the owner_id check in
- * the query form a belt-and-suspenders filter. Service role is NOT used
- * here; only the rightful owner should be able to revalidate their tenant.
+ * Security: the caller's bearer must resolve to a Better Auth session whose
+ * userId matches tenants.owner_id. Tenant lookup goes through the service-
+ * role client because the 2026-04-17 migration dropped RLS owner-policies;
+ * the owner match is enforced in application code. Mirrors the pattern in
+ * /api/v1/llm/_shared.ts.
  */
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
-
 export async function POST(req: NextRequest) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 500 })
-  }
-
-  // Extract bearer token (Supabase session access token from the CLI).
-  const authHeader = req.headers.get("authorization") ?? ""
-  const match = /^Bearer\s+(.+)$/i.exec(authHeader.trim())
-  const accessToken = match?.[1]
-  if (!accessToken) {
-    return NextResponse.json({ error: "missing bearer token" }, { status: 401 })
+  // Better Auth bearer → session. Rejects cookie-only or missing headers.
+  const session = await auth.api.getSession({ headers: req.headers })
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "missing, malformed, or expired session token" },
+      { status: 401 },
+    )
   }
 
   // Parse body.
@@ -48,28 +42,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "tenant_id is required" }, { status: 400 })
   }
 
-  // Resolve tenant + verify ownership via the caller's JWT.
-  // createClient + Authorization header = queries run as that user under RLS.
-  const client = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  })
-
-  const { data: userData } = await client.auth.getUser(accessToken)
-  const userId = userData.user?.id
-  if (!userId) {
-    return NextResponse.json({ error: "invalid session" }, { status: 401 })
-  }
-
-  const { data: tenant, error } = await client
+  // Service-role lookup — RLS owner-policies were dropped in the Better Auth
+  // migration, so ownership is enforced in code below.
+  const admin = getServiceRoleClient()
+  const { data: tenant, error } = await admin
     .from("tenants")
     .select("slug, owner_id")
     .eq("id", tenantId)
-    .single()
+    .maybeSingle()
 
   if (error || !tenant) {
     return NextResponse.json({ error: "tenant not found" }, { status: 404 })
   }
-  if (tenant.owner_id !== userId) {
+  if (tenant.owner_id !== session.user.id) {
     return NextResponse.json({ error: "not tenant owner" }, { status: 403 })
   }
 

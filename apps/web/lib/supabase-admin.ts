@@ -27,16 +27,5 @@ export function getServiceRoleClient(): SupabaseClient<Database> {
   return cached
 }
 
-/**
- * Resolve the user behind a bearer token. Uses Supabase's getUser RPC — one
- * network call per request. Swap to local JWT verification if latency becomes
- * an issue (SUPABASE_JWT_SECRET + a signature library).
- */
-export async function verifyBearerToken(
-  token: string,
-): Promise<{ userId: string; email: string | null } | null> {
-  const client = getServiceRoleClient()
-  const { data, error } = await client.auth.getUser(token)
-  if (error || !data.user) return null
-  return { userId: data.user.id, email: data.user.email ?? null }
-}
+// verifyBearerToken removed 2026-04-17 — replaced by Better Auth's
+// auth.api.getSession({ headers }) in every call site. See DEVICE_FLOW_PLAN.md.

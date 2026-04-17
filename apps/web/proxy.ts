@@ -124,12 +124,14 @@ export async function proxy(request: NextRequest) {
 
   const supabase = createClient<Database>(supabaseUrl, supabaseKey)
 
+  // Read from the public-safe view (tenants_public hides mcp_public_token
+  // and owner_id from anon). Base tenants table has no anon read grant
+  // post-2026-04-17 migration.
   const { data: tenant } = await supabase
-    .from("tenants")
+    .from("tenants_public")
     .select("slug")
     .eq("slug", subdomain)
-    .eq("active", true)
-    .single()
+    .maybeSingle()
 
   if (!tenant) {
     // Unknown subdomain: show a "Create your help center" page

@@ -8,15 +8,19 @@ export type TenantCategory = Tables<"tenant_categories">
 
 /**
  * Look up a tenant by subdomain slug. Used by middleware and pages.
+ *
+ * Reads via `tenants_public` — a SECURITY DEFINER view that omits
+ * mcp_public_token + owner_id from anon-facing callers (see 2026-04-17
+ * tenants_public_view_hide_mcp_token migration). The view already filters
+ * `active = true`. Downstream callers only need the public columns.
  */
 export const getTenant = cache(async (slug: string): Promise<Tenant | null> => {
   const { data } = await supabase
-    .from("tenants")
+    .from("tenants_public")
     .select("*")
     .eq("slug", slug)
-    .eq("active", true)
-    .single()
-  return data
+    .maybeSingle()
+  return data as Tenant | null
 })
 
 /**

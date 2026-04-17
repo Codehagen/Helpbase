@@ -1,7 +1,7 @@
 import { Command } from "commander"
 import pc from "picocolors"
 import { getCurrentSession } from "../lib/auth.js"
-import { getAuthedSupabase } from "../lib/supabase-client.js"
+import { listMyTenants } from "../lib/tenants-client.js"
 import { fetchUsageToday, isByokMode } from "@workspace/shared/llm"
 import { humanTokens, humanUntil } from "@workspace/shared/llm-errors"
 import { BYOK_DOCS_URL } from "@workspace/shared/llm-wire"
@@ -48,16 +48,13 @@ export const whoamiCommand = new Command("whoami")
     const source = process.env.HELPBASE_TOKEN ? "HELPBASE_TOKEN" : "~/.helpbase/auth.json"
 
     // Best-effort tenant lookup — we don't fail whoami if this errors.
+    // Goes through /api/v1/tenants/mine (owner filter + active check are
+    // enforced server-side with the user's Better Auth bearer).
     let tenant: { slug: string; name: string } | null = null
     try {
-      const client = await getAuthedSupabase(session)
-      const { data } = await client
-        .from("tenants")
-        .select("slug, name")
-        .eq("owner_id", session.userId)
-        .eq("active", true)
-        .single()
-      if (data) tenant = data
+      const tenants = await listMyTenants(session)
+      const first = tenants[0]
+      if (first) tenant = { slug: first.slug, name: first.name }
     } catch {
       // ignore — tenant lookup is informational
     }

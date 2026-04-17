@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import type { WireErrorBody, WireErrorCode, WireQuotaStatus, WireUsage } from "@workspace/shared/llm-wire"
 import { BYOK_DOCS_URL, UPGRADE_URL } from "@workspace/shared/llm-wire"
-import { getServiceRoleClient, verifyBearerToken } from "@/lib/supabase-admin"
+import { getServiceRoleClient } from "@/lib/supabase-admin"
+import { auth } from "@/lib/auth"
 
 /**
  * Shared helpers for /api/v1/llm/generate-object and /generate-text.
@@ -36,22 +37,18 @@ export interface AuthedContext {
 export async function withAuthAndQuota(
   req: Request,
 ): Promise<AuthedContext | NextResponse> {
-  const authz = req.headers.get("authorization") ?? ""
-  const match = /^Bearer\s+(.+)$/i.exec(authz)
-  if (!match) {
-    return wireError(401, "auth_required", "Missing or malformed Authorization header.")
-  }
-  const token = match[1]!
-
-  const user = await verifyBearerToken(token)
-  if (!user) {
-    return wireError(401, "auth_required", "Invalid or expired session token.")
+  // Better Auth's bearer plugin reads Authorization: Bearer <token> and
+  // resolves it to a session via public.session.token. Same bearer shape
+  // as pre-migration (Supabase JWTs); callers see no API change.
+  const session = await auth.api.getSession({ headers: req.headers })
+  if (!session?.user?.id) {
+    return wireError(401, "auth_required", "Missing, malformed, or expired session token.")
   }
 
   // Parallel: read user's today-tokens + global counter.
   const client = getServiceRoleClient()
   const [userRes, globalRes] = await Promise.all([
-    client.rpc("get_user_tokens_today", { p_user_id: user.userId }),
+    client.rpc("get_user_tokens_today", { p_user_id: session.user.id }),
     client.rpc("get_global_tokens_today"),
   ])
 
@@ -90,7 +87,7 @@ export async function withAuthAndQuota(
   const maxOutputTokens = Math.min(PER_CALL_CEILING, remaining)
 
   return {
-    userId: user.userId,
+    userId: session.user.id,
     usedToday,
     resetAtIso,
     maxOutputTokens,

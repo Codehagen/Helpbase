@@ -131,14 +131,20 @@ if [ "$ARTICLE_SIZE" -lt 10000 ]; then
 fi
 echo "  ${GREEN}✓${RESET} ${ARTICLE_HTML##*/} is $ARTICLE_SIZE bytes"
 
-# MDX content must include at least one <h1> and one <h2> from the article.
-H1_COUNT=$(grep -cE '<h1[^>]*id=' "$ARTICLE_HTML" || true)
-H2_COUNT=$(grep -cE '<h2[^>]*id=' "$ARTICLE_HTML" || true)
-if [ "$H1_COUNT" -lt 1 ] || [ "$H2_COUNT" -lt 1 ]; then
-  echo "${RED}✖ Article HTML is missing MDX-rendered headings (h1: $H1_COUNT, h2: $H2_COUNT).${RESET}"
+# MDX content must include multiple rehype-slug'd headings — proves the
+# MDX pipeline ran (plugins, id anchors, content rendering).
+#
+# Since QA ISSUE-001 (commit 5cfe697) the layout renders the title h1 from
+# frontmatter, so MDX bodies no longer include a leading `# Title`. A
+# properly-rendered article still has 3+ h2/h3 headings with id= anchors
+# from rehype-slug. Count those instead of demanding an h1 from MDX.
+HEADING_COUNT=$(grep -cE '<h[2-3][^>]*id=' "$ARTICLE_HTML" || true)
+if [ "$HEADING_COUNT" -lt 3 ]; then
+  echo "${RED}✖ Article HTML has only $HEADING_COUNT id-anchored h2/h3 headings (expected 3+).${RESET}"
+  echo "  MDX pipeline may not be rendering content. Check mdx-config + rehype-slug setup."
   exit 1
 fi
-echo "  ${GREEN}✓${RESET} Article has $H1_COUNT h1 and $H2_COUNT h2 headings from MDX"
+echo "  ${GREEN}✓${RESET} Article has $HEADING_COUNT id-anchored h2/h3 headings from MDX"
 
 # Cleanup (unless KEEP_SMOKE=1)
 if [ "${KEEP_SMOKE:-0}" != "1" ]; then

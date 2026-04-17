@@ -14,17 +14,27 @@ import { getServiceRoleClient } from "@/lib/supabase-admin"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+// Must match the creation-side shape — otherwise we waste a DB round-trip
+// on values that can never be tenant slugs, and leave room for enumeration
+// via oversized inputs.
+const SLUG_REGEX = /^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$/
+
 export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ slug: string }> },
 ): Promise<NextResponse> {
   const { slug } = await ctx.params
+  if (!SLUG_REGEX.test(slug)) {
+    return NextResponse.json({ available: false }, { status: 400 })
+  }
   const admin = getServiceRoleClient()
+  // Don't filter by active=true — the DB's UNIQUE(slug) index ignores it,
+  // so an inactive tenant still blocks creation. Reporting "available"
+  // here would produce a confusing 409 downstream.
   const { data } = await admin
     .from("tenants")
-    .select("id, slug, active")
+    .select("id, slug")
     .eq("slug", slug)
-    .eq("active", true)
     .maybeSingle()
   if (!data) return NextResponse.json({ available: true })
   return NextResponse.json({

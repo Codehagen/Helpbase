@@ -48,7 +48,7 @@ export function AuthorizeDeviceClient({ initialUserCode }: { initialUserCode: st
     }
     setPhase({
       kind: "signed-in",
-      email: session.user.email,
+      email: session.user.email ?? "",
       userCode,
     })
   }, [sessionPending, session, userCode])
@@ -244,7 +244,17 @@ export function AuthorizeDeviceClient({ initialUserCode }: { initialUserCode: st
       <p className="text-sm text-red-600 dark:text-red-400">{phase.message}</p>
       <button
         type="button"
-        onClick={() => setPhase({ kind: "signed-out" })}
+        onClick={() => {
+          if (session?.user && userCode) {
+            setPhase({
+              kind: "signed-in",
+              email: session.user.email ?? "",
+              userCode,
+            })
+          } else {
+            setPhase({ kind: "signed-out" })
+          }
+        }}
         className="text-sm text-neutral-600 underline dark:text-neutral-400"
       >
         Try again

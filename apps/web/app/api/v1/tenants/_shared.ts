@@ -48,7 +48,14 @@ export async function requireOwnedTenant(
     .select("*")
     .eq("id", tenantId)
     .maybeSingle()
-  if (error || !tenant) {
+  if (error) {
+    // Separate infra failures from a genuine miss so we can alert on the
+    // former; otherwise a pooler/connectivity blip looks identical to
+    // "tenant doesn't exist" and the 404 silently swallows the signal.
+    console.error("[requireOwnedTenant] supabase error", { tenantId, error })
+    return NextResponse.json({ error: "tenant_lookup_failed" }, { status: 503 })
+  }
+  if (!tenant) {
     return NextResponse.json({ error: "tenant_not_found" }, { status: 404 })
   }
   if (tenant.owner_id !== userOrResp.userId) {

@@ -1,5 +1,5 @@
 import { Command } from "commander"
-import { intro, outro, text, note, cancel, isCancel, confirm } from "@clack/prompts"
+import { intro, outro, text, note, cancel, isCancel, confirm, select } from "@clack/prompts"
 import { spinner, nextSteps, summaryTable } from "../lib/ui.js"
 import pc from "picocolors"
 import fs from "node:fs"
@@ -18,8 +18,6 @@ import {
 import {
   getCurrentSession,
   isNonInteractive,
-  sendLoginCode,
-  verifyLoginCode,
   type AuthSession,
 } from "../lib/auth.js"
 import {
@@ -27,7 +25,6 @@ import {
   removeProjectConfig,
   writeProjectConfig,
 } from "../lib/project-config.js"
-import { HelpbaseError, formatError } from "../lib/errors.js"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
 // Kept in sync with RESERVED_SLUGS in link.ts and the subdomain-middleware allowlist.
@@ -97,20 +94,63 @@ Examples:
     let existingTenant: { id: string; slug: string } | null = null
 
     if (linked) {
-      const tenant = await apiGetTenant(session, linked.tenantId)
+      // apiGetTenant now throws on 403 (caller isn't the owner). Treat
+      // that as "fix your link" the same as a missing/inactive row.
+      const tenant = await apiGetTenant(session, linked.tenantId).catch(
+        () => null,
+      )
       if (tenant && tenant.active) {
         existingTenant = { id: tenant.id, slug: tenant.slug }
       } else {
         cancel(
-          `Linked tenant "${linked.slug}" not found or inactive.\n` +
+          `Linked tenant "${linked.slug}" not found, inactive, or not owned by you.\n` +
           `  Run ${pc.cyan("helpbase link --remove")} then ${pc.cyan("helpbase link")} to fix.`,
         )
         process.exit(1)
       }
     } else {
       const tenants = await listMyTenants(session)
-      const first = tenants[0]
-      existingTenant = first ? { id: first.id, slug: first.slug } : null
+      if (tenants.length === 0) {
+        existingTenant = null
+      } else if (tenants.length === 1) {
+        const only = tenants[0]!
+        existingTenant = { id: only.id, slug: only.slug }
+      } else if (opts.slug) {
+        // Multi-tenant + explicit --slug: honor the choice if it matches
+        // one the user owns; otherwise treat it as "create a new tenant
+        // with this slug" downstream (which will 409 if taken).
+        const match = tenants.find((t) => t.slug === opts.slug)
+        existingTenant = match ? { id: match.id, slug: match.slug } : null
+      } else if (isNonInteractive()) {
+        cancel(
+          `You own ${tenants.length} tenants. Pass ${pc.cyan("--slug <name>")} ` +
+          `to pick one in non-interactive mode.`,
+        )
+        process.exit(1)
+      } else {
+        // Interactive disambiguation — tenants[0] was non-deterministic.
+        const pickedValue = await select({
+          message: "You own multiple tenants. Which one should this project deploy to?",
+          options: [
+            ...tenants.map((t) => ({
+              value: t.id,
+              label: `${t.slug}.helpbase.dev`,
+              hint: t.name ?? undefined,
+            })),
+            { value: "__new__", label: pc.cyan("+ Create a new tenant") },
+          ],
+        })
+        if (isCancel(pickedValue)) {
+          cancel("Cancelled.")
+          process.exit(0)
+        }
+        if (pickedValue === "__new__") {
+          existingTenant = null
+        } else {
+          const picked = tenants.find((t) => t.id === pickedValue)!
+          existingTenant = { id: picked.id, slug: picked.slug }
+        }
+      }
     }
 
     let tenantId: string
@@ -536,61 +576,14 @@ async function ensureAuthenticated(): Promise<AuthSession> {
     process.exit(1)
   }
 
-  note("First time? Let's get you set up.", "Authentication")
-
-  const email = await text({
-    message: "Enter your email:",
-    placeholder: "you@company.com",
-    validate: (v) => {
-      if (!v.includes("@")) return "Please enter a valid email"
-      return undefined
-    },
-  })
-  if (isCancel(email)) {
-    cancel("Cancelled.")
-    process.exit(0)
-  }
-
-  const s = spinner()
-  s.start("Sending magic link...")
-  try {
-    await sendLoginCode(email as string)
-    s.stop("Magic link sent!")
-  } catch (err) {
-    s.stop("Failed to send magic link")
-    if (err instanceof HelpbaseError) {
-      cancel(formatError(err).trimEnd())
-    } else {
-      cancel(`Authentication error: ${String(err)}`)
-    }
-    process.exit(1)
-  }
-
-  const code = await text({
-    message: "Enter the 6-digit code from your email:",
-    placeholder: "123456",
-    validate: (v) => {
-      if (!/^\d{6}$/.test(v)) return "Enter the 6-digit code"
-      return undefined
-    },
-  })
-  if (isCancel(code)) {
-    cancel("Cancelled.")
-    process.exit(0)
-  }
-
-  try {
-    const session = await verifyLoginCode(email as string, code as string)
-    note(`Authenticated as ${pc.cyan(session.email)}`, "Success")
-    return session
-  } catch (err) {
-    if (err instanceof HelpbaseError) {
-      cancel(formatError(err).trimEnd())
-    } else {
-      cancel(`Verification failed: ${String(err)}`)
-    }
-    process.exit(1)
-  }
+  // Browser device-flow is the only supported interactive login path.
+  // Don't inline it here — `helpbase login` owns the full UX (progressive
+  // spinner hints, URL-paste fallback, retries). Telling the user to run
+  // that command keeps deploy focused on deploying.
+  cancel(
+    `Not signed in. Run ${pc.cyan("helpbase login")} first, then re-run ${pc.cyan("helpbase deploy")}.`,
+  )
+  process.exit(1)
 }
 
 /**

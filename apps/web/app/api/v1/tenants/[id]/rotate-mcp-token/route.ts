@@ -27,12 +27,21 @@ export async function POST(
   crypto.getRandomValues(bytes)
   const newToken = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
 
-  const { error } = await admin
+  const { data: updated, error } = await admin
     .from("tenants")
     .update({ mcp_public_token: newToken })
     .eq("id", tenant.id)
+    .select("id")
+    .maybeSingle()
   if (error) {
-    return jsonError(503, "rotate_failed", error.message)
+    console.error("[tenants.rotate-mcp-token] supabase error", { tenantId: tenant.id, error })
+    return jsonError(503, "rotate_failed", "Could not rotate token.")
+  }
+  // If the row disappeared between requireOwnedTenant and the update (race
+  // with DELETE, or soft-delete turning active=false), don't return a token
+  // that's stored nowhere — the MCP client would 401 forever.
+  if (!updated) {
+    return jsonError(404, "tenant_not_found", "Tenant disappeared before rotation completed.")
   }
   return NextResponse.json({ mcp_public_token: newToken })
 }

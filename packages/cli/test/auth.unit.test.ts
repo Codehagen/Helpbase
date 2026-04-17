@@ -1,13 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 
 // Isolate AUTH_FILE writes per test run by pointing HOME at a tmp dir
 // BEFORE importing the module that captures AUTH_DIR at load time.
+// Snapshot and restore HOME/USERPROFILE so shared-worker pools can't
+// leak the fake home into sibling test files. USERPROFILE is needed
+// because os.homedir() reads it on Windows instead of HOME.
+const originalHome = process.env.HOME
+const originalUserProfile = process.env.USERPROFILE
 const TMP_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-auth-unit-"))
 process.env.HOME = TMP_HOME
+process.env.USERPROFILE = TMP_HOME
 const AUTH_FILE = path.join(TMP_HOME, ".helpbase", "auth.json")
+
+afterAll(() => {
+  if (originalHome === undefined) delete process.env.HOME
+  else process.env.HOME = originalHome
+  if (originalUserProfile === undefined) delete process.env.USERPROFILE
+  else process.env.USERPROFILE = originalUserProfile
+})
 
 const realFetch = globalThis.fetch
 function stubFetch(handler: (url: string) => Response | Promise<Response>) {

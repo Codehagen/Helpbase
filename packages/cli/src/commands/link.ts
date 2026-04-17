@@ -6,6 +6,7 @@ import { getCurrentSession, isNonInteractive } from "../lib/auth.js"
 import {
   checkSlugAvailability,
   createTenant as apiCreateTenant,
+  getTenant as apiGetTenant,
   listMyTenants,
 } from "../lib/tenants-client.js"
 import type { AuthSession } from "../lib/auth.js"
@@ -60,7 +61,7 @@ export const linkCommand = new Command("link")
 
     // Non-interactive path: --slug supplied.
     if (opts.slug) {
-      await linkBySlug(opts.slug)
+      await linkBySlug(opts.slug, session)
       outro(`Linked to ${pc.cyan(`${opts.slug}.helpbase.dev`)}`)
       return
     }
@@ -146,7 +147,7 @@ async function promptForNewSlug(): Promise<string> {
   return input as string
 }
 
-async function linkBySlug(slug: string): Promise<void> {
+async function linkBySlug(slug: string, session: AuthSession): Promise<void> {
   const availability = await checkSlugAvailability(slug)
   if (availability.available) {
     cancel(
@@ -158,6 +159,34 @@ async function linkBySlug(slug: string): Promise<void> {
   }
   if (!availability.id) {
     cancel("Availability check did not return an id.")
+    process.exit(1)
+  }
+  // checkSlugAvailability hits a public endpoint — "taken" only proves
+  // the slug exists, not that this user owns it. Confirm ownership before
+  // writing .helpbase/project.json, otherwise the user gets a misleading
+  // 403 on the next `helpbase deploy`/`open`/`whoami`.
+  //
+  // getTenant returns null on 404 (gone between the availability check
+  // and now — rare, but possible) and throws on 403 (caller isn't the
+  // owner). Treat both as "you can't link this slug" but print the
+  // right copy for each.
+  let owned: Awaited<ReturnType<typeof apiGetTenant>>
+  try {
+    owned = await apiGetTenant(session, availability.id)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/\(403\)/.test(msg)) {
+      cancel(
+        `You don't own "${slug}.helpbase.dev".\n` +
+        `  Pick a different subdomain, or run ${pc.cyan("helpbase link")} to see what you own.`,
+      )
+      process.exit(1)
+    }
+    cancel(`Could not verify tenant ownership: ${msg}`)
+    process.exit(1)
+  }
+  if (!owned) {
+    cancel(`Tenant "${slug}" disappeared before linking. Try again.`)
     process.exit(1)
   }
   writeProjectConfig({ tenantId: availability.id, slug: availability.slug ?? slug })

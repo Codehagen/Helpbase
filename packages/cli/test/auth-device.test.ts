@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import os from "node:os"
 import path from "node:path"
 import fs from "node:fs"
@@ -6,13 +6,25 @@ import fs from "node:fs"
 // Stub the child_process spawn so deviceLogin's openBrowser call
 // doesn't actually launch a browser during tests.
 vi.mock("node:child_process", () => ({
-  spawn: vi.fn(() => ({ unref: () => {} })),
+  spawn: vi.fn(() => ({ unref: () => {}, on: () => {} })),
 }))
 
 // Isolate AUTH_FILE writes per test run by pointing HOME at a tmp dir
 // BEFORE importing the modules that capture AUTH_DIR at load time.
+// Snapshot the originals so a shared-worker pool doesn't leak the fake
+// HOME into other test files imported after this one.
+const originalHome = process.env.HOME
+const originalUserProfile = process.env.USERPROFILE
 const TMP_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-auth-test-"))
 process.env.HOME = TMP_HOME
+process.env.USERPROFILE = TMP_HOME
+
+afterAll(() => {
+  if (originalHome === undefined) delete process.env.HOME
+  else process.env.HOME = originalHome
+  if (originalUserProfile === undefined) delete process.env.USERPROFILE
+  else process.env.USERPROFILE = originalUserProfile
+})
 
 const realFetch = globalThis.fetch
 function stubFetch(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {

@@ -12,7 +12,9 @@ import { jsonError, requireSession } from "./_shared"
  * the DB's UNIQUE constraint; 409 on duplicate.
  */
 
-const SLUG_REGEX = /^[a-z0-9-]+$/
+// DNS-label shape: alphanumeric start+end, hyphens only in the middle.
+// Matches the CLI-side check in link.ts/deploy.ts so both paths agree.
+const SLUG_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/
 const RESERVED = new Set([
   "www", "app", "api", "admin", "dashboard", "docs", "help", "blog", "status",
   "mail", "mcp", "deploy", "login", "signup", "signin", "auth", "billing",
@@ -57,11 +59,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .maybeSingle()
 
   if (error) {
-    const msg = error.message ?? ""
-    if (/duplicate|unique/i.test(msg)) {
+    // Prefer Postgres error codes over regex on error.message — wording
+    // is locale/driver-dependent. 23505 = unique_violation.
+    if ((error as { code?: string }).code === "23505") {
       return jsonError(409, "slug_taken", `"${slug}" is already taken.`)
     }
-    return jsonError(503, "internal_error", msg)
+    console.error("[tenants.create] supabase error", { slug, error })
+    return jsonError(503, "internal_error", "Could not create tenant.")
   }
   if (!data) {
     return jsonError(503, "internal_error", "Tenant row not returned after insert.")

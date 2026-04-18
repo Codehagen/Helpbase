@@ -32,9 +32,62 @@ export interface TenantCreated extends TenantSummary {
 
 export interface DeployResult {
   deploy_id: string
+  new_deploy_version: number
   article_count: number
   chunk_count: number
   slug: string
+}
+
+/**
+ * One article in the /state response. Metadata only — no content bytes —
+ * so the payload stays small for tenants with many articles. Mirrors the
+ * server-side GET /api/v1/tenants/:id/state route.
+ */
+export interface StateArticle {
+  slug: string
+  category: string
+  title: string
+  description: string
+  file_path: string
+  content_hash: string
+  updated_at: string
+  order: number
+  tags: string[] | null
+  featured: boolean
+  hero_image: string | null
+  video_embed: string | null
+}
+
+export interface StateCategory {
+  slug: string
+  title: string
+  description: string
+  icon: string | null
+  order: number
+}
+
+export interface TenantState {
+  deploy_version: number
+  articles: StateArticle[]
+  categories: StateCategory[]
+}
+
+/**
+ * Thrown when the server rejects a deploy because another client bumped
+ * tenant.deploy_version between our preview fetch and our deploy RPC.
+ * `helpbase deploy` catches this, auto-refetches /state, re-renders the
+ * preview, and re-prompts — one retry only (D3A).
+ */
+export class PreviewStaleError extends Error {
+  readonly currentDeployVersion: number | null
+  constructor(currentDeployVersion: number | null, message?: string) {
+    super(
+      message ??
+        "Deploy version has advanced since the preview was fetched. Re-run `helpbase deploy` to see the current state.",
+    )
+    this.name = "PreviewStaleError"
+    this.currentDeployVersion = currentDeployVersion
+  }
 }
 
 export interface SlugAvailability {
@@ -138,6 +191,14 @@ export interface DeployPayload {
   articles: unknown[]
   chunks: unknown[]
   validation_report?: Record<string, unknown>
+  /**
+   * Optimistic concurrency: the deploy_version the client observed on
+   * its most recent /state fetch. When present, the server compares it
+   * against the current row; a mismatch raises PreviewStaleError. Omit
+   * (or pass null) for CI callers that skip --preview and accept last-
+   * writer-wins semantics.
+   */
+  expected_deploy_version?: number | null
 }
 
 export async function deployTenant(
@@ -158,8 +219,40 @@ export async function deployTenant(
     DEPLOY_TIMEOUT_MS,
   )
   const body = await parseBody(res)
+  // 409 = optimistic concurrency failure. Translate to a typed error so
+  // deploy.ts can catch it specifically and trigger the D3A auto-refetch.
+  if (res.status === 409) {
+    const obj = body as { error?: string; current_deploy_version?: number | null } | null
+    if (obj?.error === "stale_deploy_version") {
+      throw new PreviewStaleError(obj.current_deploy_version ?? null)
+    }
+  }
   if (!res.ok) throwHttp("deploy tenant", res, body)
   return body as DeployResult
+}
+
+/**
+ * Fetch the current deployed state of a tenant — metadata + content_hash
+ * per article, categories, and the authoritative deploy_version used for
+ * optimistic concurrency on the next `deployTenant` call.
+ *
+ * 404 = tenant doesn't exist (caller should treat as "first deploy, no
+ *       remote state yet" and render "all N new locally").
+ * 403 = tenant exists but caller isn't the owner.
+ * 5xx/network = throws; deploy.ts catches and offers the "deploy without
+ *       preview?" fallback.
+ */
+export async function getTenantState(
+  session: AuthSession,
+  tenantId: string,
+): Promise<TenantState | null> {
+  const res = await v1Fetch(`/${encodeURIComponent(tenantId)}/state`, {
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  })
+  if (res.status === 404) return null
+  const body = await parseBody(res)
+  if (!res.ok) throwHttp("get tenant state", res, body)
+  return body as TenantState
 }
 
 export async function deleteTenant(

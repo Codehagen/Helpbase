@@ -2,7 +2,7 @@ import { Command } from "commander"
 import pc from "picocolors"
 import { getCurrentSession } from "../lib/auth.js"
 import { listMyTenants } from "../lib/tenants-client.js"
-import { loadReservation } from "../lib/reservation.js"
+import { ensureReservation, loadReservation } from "../lib/reservation.js"
 import { fetchUsageToday, getActiveByokKey, isByokMode } from "@workspace/shared/llm"
 import { humanTokens, humanUntil } from "@workspace/shared/llm-errors"
 import { BYOK_DOCS_URL } from "@workspace/shared/llm-wire"
@@ -70,6 +70,19 @@ export const whoamiCommand = new Command("whoami")
     if (!tenant) {
       try {
         reservation = await loadReservation(session)
+        // Lazy-provision fallback: if the user has no deployed tenants
+        // AND no cached/remote reservation, they likely Ctrl-C'd login
+        // between session persist and auto-provision, or logged in
+        // before the feature existed. ensureReservation hits the
+        // idempotent POST /auto-provision — either returns their
+        // existing row or mints a fresh one. Soft-fails on 503
+        // (ensureReservation writes a stderr warning + returns null).
+        if (!reservation) {
+          const ensured = await ensureReservation(session)
+          if (ensured) {
+            reservation = await loadReservation(session)
+          }
+        }
       } catch {
         // ignore — reservation display is informational
       }

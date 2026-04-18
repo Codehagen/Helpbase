@@ -87,8 +87,15 @@ export async function loadReservation(
   try {
     remote = await getReservation(session)
   } catch {
-    // Network / 503 — fall back to whatever's cached (best-effort read).
-    return readCachedReservation()
+    // Network / 503 — fall back to whatever's cached, but ONLY if the
+    // cache belongs to the current user. Without this check, a user on
+    // a shared laptop logs in over a previous user's cache, hits a
+    // transient network blip on first whoami, and the UI leaks the
+    // previous user's reservation (including MCP token). Caught by
+    // /review codex + Claude adversarial on 2026-04-18.
+    const fallback = readCachedReservation()
+    if (fallback && fallback.userId === session.userId) return fallback
+    return null
   }
   if (!remote) return null
   cacheFromServer(session, remote)

@@ -1,20 +1,22 @@
-import Link from "next/link"
+import { notFound } from "next/navigation"
 
-export default function TenantNotFound() {
-  return (
-    <div className="flex min-h-svh flex-col items-center justify-center px-4">
-      <h1 className="text-2xl font-bold tracking-tight">
-        Help center not found
-      </h1>
-      <p className="mt-3 text-muted-foreground">
-        This subdomain hasn't been set up yet.
-      </p>
-      <a
-        href="https://helpbase.dev"
-        className="mt-6 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90"
-      >
-        Create your help center
-      </a>
-    </div>
-  )
+/**
+ * Tenant "not found" page. Rendered by the subdomain middleware for:
+ *   - unknown subdomains (never-existed tenants)
+ *   - reserved tenants at deep-link paths (articles/search/etc. — root
+ *     `/` still routes to the branded "coming soon" landing)
+ *
+ * Calling `notFound()` is the load-bearing bit: Next.js converts it into
+ * a true HTTP 404 response (not a 200 with "not found" copy). That
+ * matters because middleware-level rewrites preserve the destination's
+ * status, and we want crawlers + MCP clients + monitoring tools hitting
+ * unknown or reserved subdomain paths to see "nope, nothing here" at
+ * the protocol level, not "here's a page that claims nothing is here."
+ * The previous implementation rendered a 200 HTML page with a "Create
+ * your help center" CTA; that CTA can come back as a proper
+ * `not-found.tsx` route later. Ship correctness first.
+ * Caught by /review codex on 2026-04-18.
+ */
+export default function TenantNotFound(): never {
+  notFound()
 }

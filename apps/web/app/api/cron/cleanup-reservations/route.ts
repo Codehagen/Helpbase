@@ -2,25 +2,23 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getServiceRoleClient } from "@/lib/supabase-admin"
 
 /**
- * POST /api/cron/cleanup-reservations
+ * GET/POST /api/cron/cleanup-reservations
  *   auth: Authorization: Bearer $CRON_SECRET (Vercel Cron passes this automatically)
  *   query: ?dry=true — return candidate count + slugs without deleting
  *   returns: { deleted: number, slugs: string[] } on success
  *
  * Prunes abandoned reservations: rows that were auto-provisioned more than
- * 30 days ago, never deployed, and have no deploy history. The NOT EXISTS
- * guard against tenant_deploys is belt-and-suspenders — if deployed_at ever
- * failed to update for any reason, the deploys history still counts as
- * "this is a real tenant, don't delete". In practice the two conditions
- * should be equivalent.
+ * 30 days ago, never deployed, and have no deploy history.
  *
- * Scheduled via vercel.json cron entry (daily 03:00 UTC). Invoked by the
- * Vercel Cron runtime with Authorization: Bearer $CRON_SECRET. The secret
- * must be set in Vercel project env vars; a missing/mismatched secret
- * returns 401 (matches Vercel's guidance for hosted crons).
+ * Scheduled via vercel.json cron entry (daily 03:00 UTC). Vercel Cron
+ * invokes paths as an HTTP GET with Authorization: Bearer $CRON_SECRET,
+ * so GET is the primary export. POST is aliased so curl runbooks that
+ * default to `-X POST` also work. A POST-only handler (earlier iteration
+ * of this file) gets a 405 from Vercel Cron and the job silently never
+ * runs — caught by /review codex on 2026-04-18.
  *
- * Running it manually locally is supported for one-off cleanup:
- *   curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
+ * Running it manually locally:
+ *   curl -H "Authorization: Bearer $CRON_SECRET" \
  *     https://helpbase.dev/api/cron/cleanup-reservations?dry=true
  */
 
@@ -28,10 +26,24 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 const RESERVATION_TTL_DAYS = 30
+// Hard cap on candidates per run. Protects the Node runtime from OOM on
+// a runaway backlog and protects PostgREST from URL-length blowouts on
+// the follow-up IN (id, ...) filters. If the real backlog grows past
+// this, the cron catches up day-by-day (30-day TTL means anything truly
+// abandoned sits longer than one run).
+const MAX_CANDIDATES_PER_RUN = 500
+
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  return handle(req)
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  return handle(req)
+}
+
+async function handle(req: NextRequest): Promise<NextResponse> {
   // Vercel Cron sends Authorization: Bearer <CRON_SECRET>. Unauthenticated
-  // POSTs get 401 so the endpoint isn't a public /admin/prune button.
+  // hits get 401 so the endpoint isn't a public /admin/prune button.
   const secret = process.env.CRON_SECRET
   if (!secret) {
     console.error("[cron.cleanup-reservations] CRON_SECRET not configured")
@@ -42,17 +54,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
-  const dryRun = req.nextUrl.searchParams.get("dry") === "true"
+  // Accept common truthy values for the dry-run flag so a stressed operator
+  // typing `?dry=1` in a runbook doesn't accidentally delete.
+  const dryParam = (req.nextUrl.searchParams.get("dry") ?? "").toLowerCase()
+  const dryRun = dryParam === "true" || dryParam === "1" || dryParam === "yes"
 
   const admin = getServiceRoleClient()
 
-  // Find abandoned reservation candidates. Guards:
-  //   - auto_provisioned_at IS NOT NULL  — it was provisioned via /auto-provision
+  // Find abandoned reservation candidates. Guards on SELECT:
+  //   - auto_provisioned_at IS NOT NULL  — provisioned via /auto-provision
   //   - deployed_at IS NULL              — never went live
   //   - auto_provisioned_at < NOW() - 30d — old enough to be considered stale
-  // Then filter out anything that has tenant_deploys rows as a last-resort
-  // safety net (if deployed_at somehow failed to update, the deploy row is
-  // still the source of truth for "this tenant has published content").
+  // `.limit(MAX_CANDIDATES_PER_RUN)` caps memory + URL-length risk on the
+  // follow-up .in() filters. Day-over-day runs drain the backlog.
   const cutoff = new Date(Date.now() - RESERVATION_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
   const { data: candidates, error: selectError } = await admin
@@ -61,6 +75,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .not("auto_provisioned_at", "is", null)
     .is("deployed_at", null)
     .lt("auto_provisioned_at", cutoff)
+    .limit(MAX_CANDIDATES_PER_RUN)
 
   if (selectError) {
     console.error("[cron.cleanup-reservations] select error", { selectError })
@@ -72,8 +87,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ deleted: 0, slugs: [], dry: dryRun })
   }
 
-  // Belt-and-suspenders: check tenant_deploys. If any candidate has deploy
-  // history, skip it — something's off, log + preserve.
+  // Belt-and-suspenders: if any candidate has tenant_deploys rows despite
+  // deployed_at being null, something's off (deployed_at update failed,
+  // data-repair script ran, etc.) — preserve them and log for audit.
   const { data: deployedShadows, error: shadowError } = await admin
     .from("tenant_deploys")
     .select("tenant_id")
@@ -108,26 +124,47 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ deleted: 0, slugs: [] })
   }
 
-  const { error: deleteError } = await admin
+  // Race-safe delete: the WHERE clause repeats every predicate so a
+  // tenant that deployed AFTER the candidate select but BEFORE this
+  // DELETE is NOT dropped by this statement — PostgreSQL evaluates the
+  // filters at DELETE time, not at the earlier SELECT. Without these
+  // extra filters, the cron could race a concurrent first deploy and
+  // destroy a tenant that just went live. Codex caught this in the PR
+  // #10 /review pass 2026-04-18.
+  const { data: deleted, error: deleteError } = await admin
     .from("tenants")
     .delete()
     .in(
       "id",
       toDelete.map((c) => c.id),
     )
+    .not("auto_provisioned_at", "is", null)
+    .is("deployed_at", null)
+    .lt("auto_provisioned_at", cutoff)
+    .select("id, slug")
 
   if (deleteError) {
     console.error("[cron.cleanup-reservations] delete error", { deleteError })
     return NextResponse.json({ error: "delete_failed" }, { status: 503 })
   }
 
+  const actuallyDeleted = deleted ?? []
+  const raced = toDelete.length - actuallyDeleted.length
+  if (raced > 0) {
+    console.info(
+      "[cron.cleanup-reservations] skipped tenants that raced a deploy between select and delete",
+      { raced },
+    )
+  }
+
   console.info("[cron.cleanup-reservations] deleted", {
-    count: toDelete.length,
-    slugs: toDelete.map((c) => c.slug),
+    count: actuallyDeleted.length,
+    slugs: actuallyDeleted.map((c) => c.slug),
   })
 
   return NextResponse.json({
-    deleted: toDelete.length,
-    slugs: toDelete.map((c) => c.slug),
+    deleted: actuallyDeleted.length,
+    slugs: actuallyDeleted.map((c) => c.slug),
+    raced,
   })
 }

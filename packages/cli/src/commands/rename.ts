@@ -124,6 +124,33 @@ Rename rules:
           fix: ["Pick a different slug and retry."],
         })
       }
+      // Server-side slug validation failures. The CLI doesn't pre-validate
+      // so these fall through from the PATCH body check in
+      // /api/v1/tenants/reservation/slug/route.ts. Without these branches
+      // the user gets a raw `Rename failed: slug_invalid` cancel line
+      // instead of structured fix copy.
+      if (/slug_invalid/.test(msg)) {
+        throw new HelpbaseError({
+          code: "E_SLUG_RESERVED",
+          problem: `The slug "${newSlug}" is not a valid subdomain.`,
+          cause:
+            "Slugs must be lowercase letters, numbers, and hyphens only — 3 to 40 characters, starting and ending with an alphanumeric character.",
+          fix: [
+            "Examples of valid slugs: acme, acme-docs, my-product-42.",
+            "Examples that fail: ACME (uppercase), -acme (leading hyphen), a (too short).",
+          ],
+        })
+      }
+      if (/slug_required/.test(msg)) {
+        throw new HelpbaseError({
+          code: "E_MISSING_FLAG",
+          problem: "Rename needs a new slug.",
+          cause: "The PATCH call reached the server with an empty slug body.",
+          fix: [
+            `Pass the slug as an argument: ${pc.cyan("helpbase rename <new-slug>")}.`,
+          ],
+        })
+      }
       if (/reservation_locked/.test(msg)) {
         clearCachedReservation()
         throw new HelpbaseError({

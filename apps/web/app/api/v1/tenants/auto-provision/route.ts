@@ -125,39 +125,39 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       )
     }
 
-    // Postgres 23505 = unique_violation. Distinguish between slug UNIQUE
-    // (retry with a new slug) and owner-reservation UNIQUE (a concurrent
-    // request won — re-read the existing row and return it as if we were
-    // the idempotent path above).
+    // Postgres 23505 = unique_violation. Two constraints can fire on this
+    // INSERT: the slug UNIQUE (collision on the random docs-<6hex>) and the
+    // owner-reservation UNIQUE partial index (concurrent login won the race).
+    //
+    // We used to discriminate via substring-match on `details`/`message`
+    // looking for the partial-index name, but that's fragile to driver
+    // version and Postgres error-message format changes. Safer: re-read
+    // the caller's reservation unconditionally. If one exists, a concurrent
+    // call won — return it as the idempotent path (is_new: false). If
+    // nothing exists, the collision was on the slug — retry with a fresh
+    // suffix. Worst case: two round-trips per collision instead of one;
+    // collisions are vanishingly rare anyway (24 bits of entropy).
     const code = (insertError as { code?: string } | null)?.code
-    const constraint = (insertError as { details?: string; message?: string } | null)
-    const combined = `${constraint?.details ?? ""} ${constraint?.message ?? ""}`.toLowerCase()
-
     if (code === "23505") {
-      if (combined.includes("idx_tenants_owner_one_reservation")) {
-        // Concurrent race: someone else's request inserted first. Re-read.
-        const { data: raced } = await admin
-          .from("tenants")
-          .select("id, slug, name, mcp_public_token")
-          .eq("owner_id", userId)
-          .not("auto_provisioned_at", "is", null)
-          .is("deployed_at", null)
-          .maybeSingle<ReservationRow>()
-        if (raced) {
-          return NextResponse.json({
-            id: raced.id,
-            slug: raced.slug,
-            name: raced.name,
-            live_url: liveUrlFor(raced.slug),
-            mcp_public_token: raced.mcp_public_token,
-            is_new: false,
-          })
-        }
-        // No row after 23505 on owner reservation — something's off. Log + 503.
-        console.error("[tenants.auto-provision] owner-unique 23505 but no row on re-read", { userId })
-        return jsonError(503, "internal_error", "Reservation raced but could not re-read.")
+      const { data: raced } = await admin
+        .from("tenants")
+        .select("id, slug, name, mcp_public_token")
+        .eq("owner_id", userId)
+        .not("auto_provisioned_at", "is", null)
+        .is("deployed_at", null)
+        .maybeSingle<ReservationRow>()
+      if (raced) {
+        return NextResponse.json({
+          id: raced.id,
+          slug: raced.slug,
+          name: raced.name,
+          live_url: liveUrlFor(raced.slug),
+          mcp_public_token: raced.mcp_public_token,
+          is_new: false,
+        })
       }
-      // Must be the slug UNIQUE — retry with a fresh suffix on the next loop iteration.
+      // No reservation found → the 23505 was the slug UNIQUE. Retry with
+      // a fresh suffix on the next loop iteration.
       continue
     }
 

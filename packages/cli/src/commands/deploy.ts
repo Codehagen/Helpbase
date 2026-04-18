@@ -25,7 +25,7 @@ import {
   removeProjectConfig,
   writeProjectConfig,
 } from "../lib/project-config.js"
-import { loadReservation } from "../lib/reservation.js"
+import { ensureReservation, loadReservation } from "../lib/reservation.js"
 import { clearCachedReservation } from "../lib/reservation-cache.js"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
@@ -85,6 +85,119 @@ Examples:
     // 2. Authenticate
     const session = await ensureAuthenticated()
 
+    // 2.5. Read + validate content BEFORE resolving / creating a tenant.
+    //      Content failures must never leave an orphan tenant row — if
+    //      `deploy --slug foo` hit apiCreateTenant first and then failed
+    //      on frontmatter validation, the row would sit forever with
+    //      auto_provisioned_at=NULL + deployed_at=NULL, hidden from
+    //      /mine, invisible to /reservation, untouched by cleanup cron,
+    //      slug permanently burned. Validating first means content
+    //      problems fail with zero server-side state change. Skipped
+    //      for --rotate-mcp-token (it doesn't touch content).
+    //      Caught by /review codex on 2026-04-18.
+    const categories: Array<{
+      slug: string
+      title: string
+      description: string
+      icon: string
+      order: number
+    }> = []
+    const articles: Array<{
+      slug: string
+      category: string
+      title: string
+      description: string
+      content: string
+      frontmatter: Record<string, unknown>
+      order: number
+      tags: string[]
+      heroImage: string | null
+      videoEmbed: string | null
+      featured: boolean
+      filePath: string
+    }> = []
+    if (!opts.rotateMcpToken) {
+      const s = spinner()
+      s.start("Reading content...")
+      const errors: string[] = []
+      const categoryDirs = fs
+        .readdirSync(contentDir, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+
+      for (const dir of categoryDirs) {
+        const categorySlug = dir.name
+        const categoryPath = path.join(contentDir, categorySlug)
+
+        const metaPath = path.join(categoryPath, "_category.json")
+        let meta = { title: categorySlug, description: "", icon: "file-text", order: 999 }
+        if (fs.existsSync(metaPath)) {
+          try {
+            const raw = JSON.parse(fs.readFileSync(metaPath, "utf-8"))
+            const parsed = categoryMetaSchema.safeParse(raw)
+            if (parsed.success) meta = parsed.data
+          } catch {
+            errors.push(`${categorySlug}/_category.json: Invalid JSON`)
+          }
+        }
+
+        categories.push({ slug: categorySlug, ...meta })
+
+        const files = fs
+          .readdirSync(categoryPath)
+          .filter((f) => f.endsWith(".mdx") || f.endsWith(".md"))
+
+        for (const file of files) {
+          const filePath = path.join(categoryPath, file)
+          const raw = fs.readFileSync(filePath, "utf-8")
+          const { data, content } = matter(raw)
+
+          const parsed = frontmatterSchema.safeParse(data)
+          if (!parsed.success) {
+            errors.push(
+              `${categorySlug}/${file}: ${parsed.error.issues.map((i) => i.message).join(", ")}`,
+            )
+            continue
+          }
+
+          const articleSlug = file.replace(/\.mdx?$/, "")
+
+          articles.push({
+            slug: articleSlug,
+            category: categorySlug,
+            title: parsed.data.title,
+            description: parsed.data.description,
+            content,
+            frontmatter: data as Record<string, unknown>,
+            order: parsed.data.order,
+            tags: parsed.data.tags,
+            heroImage: parsed.data.heroImage ?? null,
+            videoEmbed: parsed.data.videoEmbed ?? null,
+            featured: parsed.data.featured ?? false,
+            filePath: `content/${categorySlug}/${file}`,
+          })
+        }
+      }
+
+      s.stop(`Found ${categories.length} categories, ${articles.length} articles`)
+
+      if (errors.length > 0) {
+        cancel(
+          `${errors.length} article(s) have invalid frontmatter:\n` +
+            errors.map((e) => `  ${pc.red("•")} ${e}`).join("\n") +
+            "\n\nFix these and run helpbase deploy again.",
+        )
+        process.exit(1)
+      }
+
+      if (articles.length === 0) {
+        cancel(
+          "No articles found in content/.\n" +
+            `Generate some: ${pc.cyan("helpbase generate --url <your-site>")}`,
+        )
+        process.exit(1)
+      }
+    }
+
     // 3. Get or create tenant
     //    Priority: .helpbase/project.json → owner lookup → create new.
     //    All tenant CRUD now goes through /api/v1/tenants/* — the CLI
@@ -122,8 +235,20 @@ Examples:
       // the common first-deploy happy path — matches the DX review's
       // "TTHW drops from 3-4 min to 90s" target. --slug override still
       // creates a new tenant (user intentionally chose a custom slug).
+      //
+      // Lazy-provision: if no cached/remote reservation exists, call
+      // ensureReservation (idempotent POST /auto-provision). Covers users
+      // who Ctrl-C'd login mid-auto-provision, or who logged in before
+      // reservations existed. Soft-fails on 503 → falls through to the
+      // interactive slug prompt.
       if (tenants.length === 0 && !opts.slug) {
-        const reservation = await loadReservation(session).catch(() => null)
+        let reservation = await loadReservation(session).catch(() => null)
+        if (!reservation) {
+          const ensured = await ensureReservation(session)
+          if (ensured) {
+            reservation = await loadReservation(session).catch(() => null)
+          }
+        }
         if (reservation) {
           existingTenant = { id: reservation.tenantId, slug: reservation.slug }
           usedReservation = true
@@ -295,113 +420,11 @@ Examples:
       return
     }
 
-    // 4. Read and validate content
+    // 5. Compute chunks (CLI-side chunking for MCP search_docs). Content
+    //    was already read + validated at step 2.5 (pre-tenant-resolution)
+    //    so by the time we reach this point `articles` + `categories` are
+    //    populated and known-valid.
     const s = spinner()
-    s.start("Reading content...")
-
-    const categories: Array<{
-      slug: string
-      title: string
-      description: string
-      icon: string
-      order: number
-    }> = []
-    const articles: Array<{
-      slug: string
-      category: string
-      title: string
-      description: string
-      content: string
-      frontmatter: Record<string, unknown>
-      order: number
-      tags: string[]
-      heroImage: string | null
-      videoEmbed: string | null
-      featured: boolean
-      filePath: string
-    }> = []
-    const errors: string[] = []
-
-    const categoryDirs = fs
-      .readdirSync(contentDir, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-
-    for (const dir of categoryDirs) {
-      const categorySlug = dir.name
-      const categoryPath = path.join(contentDir, categorySlug)
-
-      // Read _category.json if it exists
-      const metaPath = path.join(categoryPath, "_category.json")
-      let meta = { title: categorySlug, description: "", icon: "file-text", order: 999 }
-      if (fs.existsSync(metaPath)) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(metaPath, "utf-8"))
-          const parsed = categoryMetaSchema.safeParse(raw)
-          if (parsed.success) meta = parsed.data
-        } catch {
-          errors.push(`${categorySlug}/_category.json: Invalid JSON`)
-        }
-      }
-
-      categories.push({ slug: categorySlug, ...meta })
-
-      // Read MDX files
-      const files = fs
-        .readdirSync(categoryPath)
-        .filter((f) => f.endsWith(".mdx") || f.endsWith(".md"))
-
-      for (const file of files) {
-        const filePath = path.join(categoryPath, file)
-        const raw = fs.readFileSync(filePath, "utf-8")
-        const { data, content } = matter(raw)
-
-        const parsed = frontmatterSchema.safeParse(data)
-        if (!parsed.success) {
-          errors.push(
-            `${categorySlug}/${file}: ${parsed.error.issues.map((i) => i.message).join(", ")}`
-          )
-          continue
-        }
-
-        const articleSlug = file.replace(/\.mdx?$/, "")
-
-        articles.push({
-          slug: articleSlug,
-          category: categorySlug,
-          title: parsed.data.title,
-          description: parsed.data.description,
-          content,
-          frontmatter: data as Record<string, unknown>,
-          order: parsed.data.order,
-          tags: parsed.data.tags,
-          heroImage: parsed.data.heroImage ?? null,
-          videoEmbed: parsed.data.videoEmbed ?? null,
-          featured: parsed.data.featured ?? false,
-          filePath: `content/${categorySlug}/${file}`,
-        })
-      }
-    }
-
-    s.stop(`Found ${categories.length} categories, ${articles.length} articles`)
-
-    if (errors.length > 0) {
-      cancel(
-        `${errors.length} article(s) have invalid frontmatter:\n` +
-        errors.map((e) => `  ${pc.red("•")} ${e}`).join("\n") +
-        "\n\nFix these and run helpbase deploy again."
-      )
-      process.exit(1)
-    }
-
-    if (articles.length === 0) {
-      cancel(
-        "No articles found in content/.\n" +
-        `Generate some: ${pc.cyan("helpbase generate --url <your-site>")}`
-      )
-      process.exit(1)
-    }
-
-    // 5. Compute chunks (CLI-side chunking for MCP search_docs).
     s.start("Chunking content for search...")
     const chunks: TenantChunk[] = []
     for (const a of articles) {
@@ -477,11 +500,19 @@ Examples:
     if (usedReservation) {
       clearCachedReservation()
     }
-    const liveUrl = `https://${tenantSlug}.helpbase.dev`
-    const mcpUrl = `https://${tenantSlug}.helpbase.dev/mcp`
+    // Use the slug the SERVER echoes from deploy_tenant, not the local
+    // `tenantSlug` captured before the RPC. The local value can be stale:
+    // a concurrent `helpbase rename` in another terminal (or an admin
+    // rename in the dashboard) might have changed the slug between our
+    // loadReservation cache hit and this print. The deploy RPC resolves
+    // by tenantId and returns the canonical slug; trust that for the
+    // URL summary. Caught by /review codex on 2026-04-18.
+    const finalSlug = deployResult.slug || tenantSlug
+    const liveUrl = `https://${finalSlug}.helpbase.dev`
+    const mcpUrl = `https://${finalSlug}.helpbase.dev/mcp`
     outro(`${pc.green("✓")} Deployed! Your help center is live.`)
     summaryTable([
-      ["Tenant", `${tenantSlug}.helpbase.dev`],
+      ["Tenant", `${finalSlug}.helpbase.dev`],
       ["Articles", String(articles.length)],
       ["Chunks", String(chunks.length)],
       ["Categories", String(categories.length)],
@@ -494,7 +525,7 @@ Examples:
       const mcpConfig = JSON.stringify(
         {
           mcpServers: {
-            [tenantSlug]: {
+            [finalSlug]: {
               url: mcpUrl,
               headers: { Authorization: `Bearer ${mcpToken}` },
             },

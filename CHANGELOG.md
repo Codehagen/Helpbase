@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [create-helpbase 0.4.0] — 2026-04-18
+
+### Added
+- **Ship-it-now prompt at end of scaffold.** After `create-helpbase` finishes
+  scaffolding + generating articles + installing deps, the CLI now asks
+  "Ship it now?" with Y as the default. On Y it runs `helpbase login` (if
+  needed) and `helpbase deploy` inline, then prints the live URL and MCP
+  config block — cold TTHW from `pnpm dlx create-helpbase` to a public help
+  center collapses from ~3 min (scaffold → cd → login → deploy) to ~90s.
+  Declining falls through to today's "Run it locally" + auto-dev-server flow,
+  byte-for-byte. Skipped when the user picked sample content, when AI
+  generation failed, or when stdin is not a TTY.
+- **`--deploy` / `--no-deploy` flags** for non-interactive control. `--deploy`
+  skips the prompt and assumes Y (CI-friendly ship with `HELPBASE_TOKEN`
+  set). `--no-deploy` skips the prompt and keeps today's scaffold-only
+  behavior. Neither flag is needed for the common interactive path.
+
 ## [helpbase 0.6.0] — 2026-04-18
 
 ### Added

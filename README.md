@@ -60,36 +60,30 @@ log into.
 
 ## Quick start
 
-Live help center in 2 minutes. See it on `localhost` first, then ship
-it to your own subdomain. Works on macOS, Linux, and Windows. Requires
-Node 20+.
+Live help center in 90 seconds. Scaffold, answer Y, you're on the
+public internet. Works on macOS, Linux, and Windows. Requires Node 20+.
 
 ```bash
-# 1. Scaffold a full helpbase project — Next.js app + content + MCP config
 pnpm dlx create-helpbase@latest my-docs    # or: npx create-helpbase@latest my-docs
-cd my-docs
-
-# 2. See it locally — open http://localhost:3000
-pnpm dev                                   # or: npm run dev
-
-# 3. Reserve your subdomain (browser device-flow login, free 500k tokens/day)
-npx helpbase login                         # ↳ Reserved: docs-<hex>.helpbase.dev
-
-# 4. Pick a vanity slug before first deploy (optional)
-npx helpbase rename acme
-
-# 5. Preview what will ship, then deploy
-npx helpbase deploy --preview              # show the diff, no writes
-npx helpbase deploy                        # publish to your reserved URL
+# ↳ answer Y to "Ship it now?" — logs you in + deploys inline
+# ↳ prints your live URL: https://docs-<hex>.helpbase.dev
 ```
 
-That's it. You've got a live docs site on `localhost` AND on your
-reserved `.helpbase.dev` subdomain. Edit `content/` files, re-run
-`helpbase deploy` to push updates. `helpbase deploy --preview` shows
-added / updated / removed articles before you ship — silent on routine
-updates, prompts before any removal lands. After first deploy the URL
-is locked so existing links don't break; rename only works before that
-point. Run `helpbase whoami` to see what's reserved + deployed.
+That's it. Answering Y at the end runs `helpbase login` (browser
+device-flow, free 500k tokens/day, no card) and `helpbase deploy`
+back-to-back and prints the public URL + MCP config block. Answer `n`
+to keep the classic flow: the scaffolder starts `pnpm dev` locally and
+you run `helpbase login` + `helpbase deploy` yourself when ready. CI /
+pipelines pass `--no-deploy` (or `--deploy` with `HELPBASE_TOKEN`) to
+skip the prompt.
+
+Edit `content/` files, re-run `helpbase deploy` to push updates.
+`helpbase deploy --preview` shows added / updated / removed articles
+before you ship — silent on routine updates, prompts before any
+removal lands. `helpbase rename acme` claims a vanity slug
+(`acme.helpbase.dev`) — only works before the first deploy; after that,
+the URL is locked so existing links don't break. Run `helpbase whoami`
+to see what's reserved + deployed.
 
 > **Already have a Next.js app?** Skip the scaffolder:
 > `npx shadcn add https://helpbase.dev/r/help-center.json`

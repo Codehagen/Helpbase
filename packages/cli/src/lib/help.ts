@@ -28,14 +28,18 @@ interface GroupDef {
 }
 
 const GROUPS: GroupDef[] = [
-  { label: "Get started", commands: ["context", "preview", "new", "dev"] },
+  { label: "Get started", commands: ["ingest", "preview", "new", "dev"] },
   { label: "Ship", commands: ["deploy", "link", "open"] },
   { label: "Author", commands: ["generate", "sync", "mcp", "audit"] },
   { label: "Account", commands: ["login", "logout", "whoami", "config"] },
   { label: "Diagnose", commands: ["doctor", "feedback", "completion", "upgrade"] },
 ]
 
-const MOST_COMMON = ["helpbase context", "helpbase new", "helpbase dev"]
+const MOST_COMMON = ["helpbase ingest", "helpbase new", "helpbase dev"]
+
+// `context` is intentionally NOT listed in GROUPS above — it's deprecated and
+// falls into the auto-generated "Other" group at the bottom of --help. Users
+// running old scripts still see it; new users aren't guided toward it.
 
 /**
  * Render grouped help text for the top-level program. Returns a string

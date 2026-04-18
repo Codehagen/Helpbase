@@ -10,7 +10,7 @@ import { contextError } from "./context-errors.js"
 
 /**
  * `helpbase preview` — materialize a human-facing help center from the
- * `.helpbase/docs/` `helpbase context` just produced.
+ * `.helpbase/docs/` `helpbase ingest` just produced.
  *
  * The generated MDX is not a website on its own. This command bridges it
  * by caching a full Next.js renderer at `~/.helpbase/preview-<version>/`,
@@ -44,7 +44,7 @@ interface PreviewOpts {
 
 export const previewCommand = new Command("preview")
   .description(
-    "Open a browser-viewable help center from the docs `helpbase context` generated.",
+    "Open a browser-viewable help center from the docs `helpbase ingest` generated.",
   )
   .option("-p, --port <port>", "Port to serve on", "3000")
   .option("--reset", "Wipe the cached preview renderer and re-scaffold")
@@ -61,7 +61,7 @@ Examples:
 First run takes ~45-60s (scaffold + install). Every run after is ~3s.
 
 Pair with:
-  $ helpbase context .                # generate the docs first
+  $ helpbase ingest .                 # generate the docs first
 `,
   )
   .action(async (opts: PreviewOpts) => {

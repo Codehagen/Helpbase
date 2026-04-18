@@ -1,5 +1,5 @@
 /**
- * Citation validator for `helpbase context`.
+ * Citation validator for `helpbase ingest` (formerly `context`).
  *
  * Every generated how-to doc cites 1–5 specific file/line-range tuples.
  * This module verifies each citation against the repo on disk:

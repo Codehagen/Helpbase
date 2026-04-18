@@ -1,5 +1,5 @@
 /**
- * Error catalog for `helpbase context`.
+ * Error catalog for `helpbase ingest` (and its deprecated `helpbase context` alias).
  *
  * Every error path surfaces the same {problem, cause, fix} shape so the
  * user always knows what happened and what to do next. This is the
@@ -8,6 +8,14 @@
  *
  * Thin layer over HelpbaseError — the doc URL is derived automatically
  * from the `code` (see errors.ts `docUrl()`).
+ *
+ * NOTE: the `E_CONTEXT_*` prefix is intentional and NOT tied to the
+ * deprecated `helpbase context` command. These codes name the
+ * documentation-synthesis domain; they remain stable even after the
+ * command alias is removed in v0.7. Doc URLs live under
+ * /errors/e-context-* and agents/scripts that grep for the code strings
+ * keep working. Do not rename to E_INGEST_* without a migration plan
+ * for existing users who've linked to the doc URLs.
  */
 
 import { HelpbaseError, type ErrorCode } from "../lib/errors.js"
@@ -24,7 +32,7 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   E_CONTEXT_MISSING_KEY: {
     problem: "No LLM API key is set in your environment.",
     cause:
-      "helpbase context accepts any one of: AI_GATEWAY_API_KEY (any provider), " +
+      "helpbase ingest accepts any one of: AI_GATEWAY_API_KEY (any provider), " +
       "ANTHROPIC_API_KEY (--model anthropic/...), or OPENAI_API_KEY (--model openai/...). " +
       "Set the one you already have.",
     fix: [
@@ -36,11 +44,11 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   E_CONTEXT_NO_SOURCES: {
     problem: "No source files found in the target repo.",
     cause:
-      "helpbase context walks markdown + selected code extensions and skips " +
+      "helpbase ingest walks markdown + selected code extensions and skips " +
       "secret files, lockfile dirs, build output, and .gitignore-style paths. " +
       "Either the directory is empty or everything got filtered out.",
     fix: [
-      "Check the path you passed — `helpbase context .` uses the current directory.",
+      "Check the path you passed — `helpbase ingest .` uses the current directory.",
       "Add a README.md or source files with supported extensions (.md, .mdx, .ts, .tsx, .js, .py, .go, .rs, .rb, .java).",
     ],
   },
@@ -99,7 +107,7 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   },
   E_CONTEXT_REPO_PATH: {
     problem: "The repo path you passed does not exist or is not a directory.",
-    cause: "helpbase context needs a local directory to walk.",
+    cause: "helpbase ingest needs a local directory to walk.",
     fix: [
       "Check the path. Use `.` for the current directory. Absolute paths work too.",
     ],
@@ -110,14 +118,14 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
       "--reuse-existing skips the walk + LLM generation so an existing .helpbase/docs/ " +
       "can be queried with --ask. On its own it would do nothing.",
     fix: [
-      "Pair with --ask: `helpbase context . --reuse-existing --ask \"...\"`.",
+      "Pair with --ask: `helpbase ingest . --reuse-existing --ask \"...\"`.",
       "Or drop --reuse-existing to regenerate from scratch.",
     ],
   },
   E_CONTEXT_REUSE_EMPTY: {
     problem: "--reuse-existing was set but .helpbase/docs/ has no MDX files to reuse.",
     cause:
-      "The output directory is empty. You need to have run `helpbase context` at " +
+      "The output directory is empty. You need to have run `helpbase ingest` at " +
       "least once before --reuse-existing has anything to answer from.",
     fix: [
       "Run once without --reuse-existing to populate .helpbase/docs, then re-run with --reuse-existing.",
@@ -127,9 +135,9 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   E_CONTEXT_PREVIEW_NO_DOCS: {
     problem: "`helpbase preview` needs .helpbase/docs/ to exist in the current directory.",
     cause:
-      "Preview renders the MDX `helpbase context` produces. There's nothing to render yet.",
+      "Preview renders the MDX `helpbase ingest` produces. There's nothing to render yet.",
     fix: [
-      "Run `helpbase context .` first — that generates the docs.",
+      "Run `helpbase ingest .` first — that generates the docs.",
       "Then `helpbase preview` to open them in the browser.",
     ],
   },

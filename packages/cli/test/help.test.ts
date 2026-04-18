@@ -36,19 +36,34 @@ describe("helpbase --help", () => {
     expect(output).toContain("Diagnose")
   })
 
-  it("surfaces the three canonical commands up top (context leads — flagship AI-native flow)", () => {
+  it("surfaces the three canonical commands up top (ingest leads — flagship AI-native flow)", () => {
     const output = runNoColor("--help")
-    expect(output).toMatch(/Most common:[\s\S]*helpbase context/)
+    expect(output).toMatch(/Most common:[\s\S]*helpbase ingest/)
     expect(output).toMatch(/Most common:[\s\S]*helpbase new/)
     expect(output).toMatch(/Most common:[\s\S]*helpbase dev/)
   })
 
-  it("lists context under Get started, not Other", () => {
+  it("lists ingest under Get started (deprecated context falls into Other)", () => {
     const output = runNoColor("--help")
-    // Extract the "Get started" block — ends at the next group heading
-    // ("Ship") or EOL.
-    const getStarted = output.match(/Get started[\s\S]*?(?=Ship|$)/)?.[0] ?? ""
-    expect(getStarted).toContain("context")
+    // Extract the "Get started" block — anchor to the next group heading
+    // ("Ship") so a future group reorder can't make the regex swallow the
+    // Other section and flake the assertion below.
+    const getStartedMatch = output.match(/Get started\s*\n([\s\S]*?)\n\s*Ship/)
+    const getStarted = getStartedMatch?.[1] ?? ""
+    expect(getStarted).toContain("ingest")
+    // context still registered (deprecation shim) but NOT in the curated groups.
+    expect(getStarted).not.toContain("context")
+  })
+
+  it("lists deprecated context under Other so users still discover it", () => {
+    const output = runNoColor("--help")
+    // Other is the auto-generated group for any command not in GROUPS.
+    // Anchored between "Other" and the closing "Run `helpbase" help text
+    // so a future group addition doesn't break the capture.
+    const otherMatch = output.match(/Other\s*\n([\s\S]*?)\n\s*Run /)
+    const other = otherMatch?.[1] ?? ""
+    expect(other).toContain("context")
+    expect(other).toContain("deprecated")
   })
 
   it("advertises --json and --quiet as global options", () => {

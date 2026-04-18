@@ -1,5 +1,5 @@
 /**
- * Prompt + generator + MDX wrapper for `helpbase context`.
+ * Prompt + generator + MDX wrapper for `helpbase ingest` (formerly `context`).
  *
  * Responsibilities:
  *   - buildContextPrompt: wrap repo content in <untrusted-repo-content>
@@ -429,7 +429,7 @@ export interface BuildAskPromptInput {
  *
  * Decision #8: the magical moment has to happen where the user already
  * is — their terminal — not after a 5-step Claude Desktop config paste.
- * This prompt is what powers `helpbase context --ask "<question>"`.
+ * This prompt is what powers `helpbase ingest --ask "<question>"`.
  */
 export function buildLocalAskPrompt({
   question,

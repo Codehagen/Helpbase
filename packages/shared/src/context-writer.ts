@@ -1,5 +1,5 @@
 /**
- * Inventory-aware write planner for `helpbase context`.
+ * Inventory-aware write planner for `helpbase ingest` (formerly `context`).
  *
  * `planArticleWrites` (in ai.ts) blindly maps articles to target paths and
  * knows nothing about previously generated content or user-edited custom

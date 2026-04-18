@@ -1,7 +1,7 @@
 /**
  * LLM-as-judge grader for eval.
  *
- * Takes a question + rubric + the answer produced by `helpbase context --ask`,
+ * Takes a question + rubric + the answer produced by `helpbase ingest --ask`,
  * returns a numeric score (0–1) and structured reasoning. The grading
  * prompt is fixed so runs are reproducible across sessions.
  *

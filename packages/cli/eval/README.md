@@ -1,6 +1,6 @@
-# helpbase context — eval harness
+# helpbase ingest — eval harness
 
-Quantitative ship-block for `helpbase context`. An aggregate score ≥ 0.70 is the bar.
+Quantitative ship-block for `helpbase ingest`. An aggregate score ≥ 0.70 is the bar.
 
 ## Usage
 
@@ -13,8 +13,8 @@ The runner writes `packages/cli/eval/eval-report.json` and exits 0 on pass, 1 on
 
 ## What it does
 
-1. For each repo in `questions.ts`, runs `helpbase context <repo>` to generate `.helpbase/docs`.
-2. For each question, runs `helpbase context <repo> --ask <question>` to collect an in-terminal answer.
+1. For each repo in `questions.ts`, runs `helpbase ingest <repo>` to generate `.helpbase/docs`.
+2. For each question, runs `helpbase ingest <repo> --ask <question>` to collect an in-terminal answer.
 3. Passes each (question, rubric, answer) to `grader.ts` — an LLM-as-judge that returns `{ score, citationCorrect, reasoning }`.
 4. Aggregates per-repo + overall scores. Overall is the mean across repos.
 

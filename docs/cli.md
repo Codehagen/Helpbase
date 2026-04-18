@@ -3,7 +3,7 @@
 
 # helpbase CLI reference
 
-> Generated from commander metadata. CLI version: `0.0.1`.
+> Generated from commander metadata. CLI version: `0.5.0`.
 
 ## Commands
 
@@ -12,15 +12,16 @@
 - [`helpbase Author`](#helpbase-Author)
 - [`helpbase Account`](#helpbase-Account)
 - [`helpbase Diagnose`](#helpbase-Diagnose)
+- [`helpbase Other`](#helpbase-Other)
 
 ## `helpbase Get`
 
 ```
-helpbase v0.0.1
+helpbase v0.5.0
 CLI for managing your Helpbase help center
 
 Most common:
-  helpbase new  ·  helpbase dev  ·  helpbase deploy
+  helpbase ingest  ·  helpbase new  ·  helpbase dev
 
 Usage:
   helpbase [global-options] <command> [command-options]
@@ -34,6 +35,8 @@ Global options:
 Commands:
 
   Get started
+    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
+    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
     new         Create a new article from a template
     dev         Start the development server
 
@@ -51,7 +54,7 @@ Commands:
   Account
     login       Log in to helpbase cloud
     logout      Log out of helpbase cloud
-    whoami      Print the current login and linked tenant
+    whoami      Print the current login, linked tenant, and today's usage
     config      Read or write CLI preferences (~/.helpbase/config.json)
 
   Diagnose
@@ -59,6 +62,9 @@ Commands:
     feedback    Open a prefilled GitHub issue with your environment info
     completion  Print a shell completion script
     upgrade     Print the command to upgrade helpbase (does not execute it)
+
+  Other
+    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
 
 Run `helpbase <command> --help` for command-specific options.
 Docs: https://helpbase.dev
@@ -67,11 +73,11 @@ Docs: https://helpbase.dev
 ## `helpbase Ship`
 
 ```
-helpbase v0.0.1
+helpbase v0.5.0
 CLI for managing your Helpbase help center
 
 Most common:
-  helpbase new  ·  helpbase dev  ·  helpbase deploy
+  helpbase ingest  ·  helpbase new  ·  helpbase dev
 
 Usage:
   helpbase [global-options] <command> [command-options]
@@ -85,6 +91,8 @@ Global options:
 Commands:
 
   Get started
+    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
+    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
     new         Create a new article from a template
     dev         Start the development server
 
@@ -102,7 +110,7 @@ Commands:
   Account
     login       Log in to helpbase cloud
     logout      Log out of helpbase cloud
-    whoami      Print the current login and linked tenant
+    whoami      Print the current login, linked tenant, and today's usage
     config      Read or write CLI preferences (~/.helpbase/config.json)
 
   Diagnose
@@ -110,6 +118,9 @@ Commands:
     feedback    Open a prefilled GitHub issue with your environment info
     completion  Print a shell completion script
     upgrade     Print the command to upgrade helpbase (does not execute it)
+
+  Other
+    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
 
 Run `helpbase <command> --help` for command-specific options.
 Docs: https://helpbase.dev
@@ -118,11 +129,11 @@ Docs: https://helpbase.dev
 ## `helpbase Author`
 
 ```
-helpbase v0.0.1
+helpbase v0.5.0
 CLI for managing your Helpbase help center
 
 Most common:
-  helpbase new  ·  helpbase dev  ·  helpbase deploy
+  helpbase ingest  ·  helpbase new  ·  helpbase dev
 
 Usage:
   helpbase [global-options] <command> [command-options]
@@ -136,6 +147,8 @@ Global options:
 Commands:
 
   Get started
+    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
+    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
     new         Create a new article from a template
     dev         Start the development server
 
@@ -153,7 +166,7 @@ Commands:
   Account
     login       Log in to helpbase cloud
     logout      Log out of helpbase cloud
-    whoami      Print the current login and linked tenant
+    whoami      Print the current login, linked tenant, and today's usage
     config      Read or write CLI preferences (~/.helpbase/config.json)
 
   Diagnose
@@ -161,6 +174,9 @@ Commands:
     feedback    Open a prefilled GitHub issue with your environment info
     completion  Print a shell completion script
     upgrade     Print the command to upgrade helpbase (does not execute it)
+
+  Other
+    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
 
 Run `helpbase <command> --help` for command-specific options.
 Docs: https://helpbase.dev
@@ -169,11 +185,11 @@ Docs: https://helpbase.dev
 ## `helpbase Account`
 
 ```
-helpbase v0.0.1
+helpbase v0.5.0
 CLI for managing your Helpbase help center
 
 Most common:
-  helpbase new  ·  helpbase dev  ·  helpbase deploy
+  helpbase ingest  ·  helpbase new  ·  helpbase dev
 
 Usage:
   helpbase [global-options] <command> [command-options]
@@ -187,6 +203,8 @@ Global options:
 Commands:
 
   Get started
+    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
+    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
     new         Create a new article from a template
     dev         Start the development server
 
@@ -204,7 +222,7 @@ Commands:
   Account
     login       Log in to helpbase cloud
     logout      Log out of helpbase cloud
-    whoami      Print the current login and linked tenant
+    whoami      Print the current login, linked tenant, and today's usage
     config      Read or write CLI preferences (~/.helpbase/config.json)
 
   Diagnose
@@ -212,6 +230,9 @@ Commands:
     feedback    Open a prefilled GitHub issue with your environment info
     completion  Print a shell completion script
     upgrade     Print the command to upgrade helpbase (does not execute it)
+
+  Other
+    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
 
 Run `helpbase <command> --help` for command-specific options.
 Docs: https://helpbase.dev
@@ -220,11 +241,11 @@ Docs: https://helpbase.dev
 ## `helpbase Diagnose`
 
 ```
-helpbase v0.0.1
+helpbase v0.5.0
 CLI for managing your Helpbase help center
 
 Most common:
-  helpbase new  ·  helpbase dev  ·  helpbase deploy
+  helpbase ingest  ·  helpbase new  ·  helpbase dev
 
 Usage:
   helpbase [global-options] <command> [command-options]
@@ -238,6 +259,8 @@ Global options:
 Commands:
 
   Get started
+    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
+    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
     new         Create a new article from a template
     dev         Start the development server
 
@@ -255,7 +278,7 @@ Commands:
   Account
     login       Log in to helpbase cloud
     logout      Log out of helpbase cloud
-    whoami      Print the current login and linked tenant
+    whoami      Print the current login, linked tenant, and today's usage
     config      Read or write CLI preferences (~/.helpbase/config.json)
 
   Diagnose
@@ -263,6 +286,65 @@ Commands:
     feedback    Open a prefilled GitHub issue with your environment info
     completion  Print a shell completion script
     upgrade     Print the command to upgrade helpbase (does not execute it)
+
+  Other
+    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
+
+Run `helpbase <command> --help` for command-specific options.
+Docs: https://helpbase.dev
+```
+
+## `helpbase Other`
+
+```
+helpbase v0.5.0
+CLI for managing your Helpbase help center
+
+Most common:
+  helpbase ingest  ·  helpbase new  ·  helpbase dev
+
+Usage:
+  helpbase [global-options] <command> [command-options]
+
+Global options:
+  -V, --version  output the version number
+  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
+  --quiet        Suppress decorative output (spinners, next-steps, summaries)
+  -h, --help     display help for command
+
+Commands:
+
+  Get started
+    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
+    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
+    new         Create a new article from a template
+    dev         Start the development server
+
+  Ship
+    deploy      Deploy your help center to helpbase cloud
+    link        Link this project to a helpbase cloud tenant
+    open        Open this project's help center in the default browser
+
+  Author
+    generate    Generate help articles using AI
+    sync        Propose MDX edits grounded in a code diff (no writes by default)
+    mcp         Run the Helpbase MCP server (stdio or HTTP)
+    audit       Check content health: missing fields, broken links, schema errors
+
+  Account
+    login       Log in to helpbase cloud
+    logout      Log out of helpbase cloud
+    whoami      Print the current login, linked tenant, and today's usage
+    config      Read or write CLI preferences (~/.helpbase/config.json)
+
+  Diagnose
+    doctor      Print diagnostic info about your helpbase install and project
+    feedback    Open a prefilled GitHub issue with your environment info
+    completion  Print a shell completion script
+    upgrade     Print the command to upgrade helpbase (does not execute it)
+
+  Other
+    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
 
 Run `helpbase <command> --help` for command-specific options.
 Docs: https://helpbase.dev

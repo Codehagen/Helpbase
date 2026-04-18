@@ -125,7 +125,7 @@ function walkMarkdownFiles(rootDir: string): string[] {
         const ext = path.extname(entry.name).toLowerCase()
         if (MARKDOWN_EXTENSIONS.has(ext)) {
           // Drop files whose NAMES indicate a secret (.env*, *.pem, *.key, ...).
-          // Content-level secret scanning runs separately in helpbase context;
+          // Content-level secret scanning runs separately in helpbase ingest;
           // this gate protects even generate --repo from slurping secrets into
           // an LLM prompt.
           if (isSecretFile(entry.name)) continue

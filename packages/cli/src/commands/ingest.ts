@@ -9,7 +9,6 @@ import { resolveModel, TEST_MODEL, GatewayError, MissingApiKeyError } from "@wor
 import {
   readContextSources,
   totalChars,
-  type ContextSource,
 } from "@workspace/shared/context-reader"
 import {
   buildContextPrompt,
@@ -37,7 +36,7 @@ import {
   generateLlmsTxt,
   LLMS_FULL_MAX_BYTES,
 } from "@workspace/shared/llms-txt"
-import type { GeneratedContextDoc, ContextCitation } from "@workspace/shared/schemas"
+import type { GeneratedContextDoc } from "@workspace/shared/schemas"
 import { slugify } from "@workspace/shared/slugify"
 
 import { HelpbaseError } from "../lib/errors.js"
@@ -47,90 +46,112 @@ import { formatQuotaSuffix } from "@workspace/shared/llm-errors"
 import { resolveAuthOrPromptLogin } from "../lib/inline-auth.js"
 import { toCliLlmError } from "../lib/llm-errors-cli.js"
 
-export const contextCommand = new Command("context")
-  .description(
+/**
+ * Apply the full ingest option surface to a Command. Shared between
+ * `ingestCommand` and the deprecated `contextCommand` (in context.ts) so
+ * any flag added here is automatically available on `helpbase context`
+ * while the shim is alive. Keeps the two surfaces in lockstep without
+ * option-by-option duplication.
+ */
+export function applyIngestOptions(cmd: Command): Command {
+  return cmd
+    .argument("[repoPath]", "Path to the repo to ingest", ".")
+    .option("-o, --output <dir>", "Output directory for generated content", ".helpbase")
+    .option("--max-tokens <n>", "Token budget for the LLM input (per run)", "100000")
+    .option(
+      "--chars-per-token <n>",
+      "Chars-per-token ratio used for the budget estimate (3.5 = mid-range; 2.8 for code-heavy, 4.2 for prose)",
+      "3.5",
+    )
+    .option("--model <id>", "Override the model ID (e.g. anthropic/claude-sonnet-4.6)")
+    .option("--test", `Use the cheap test model (${TEST_MODEL}) and print model info`)
+    .option(
+      "--debug",
+      "Write the raw assembled prompt to <output>/_prompt.txt before calling the LLM",
+    )
+    .option("--dry-run", "Walk the repo and print what would be sent to the LLM, without spending tokens")
+    .option("--allow-dirty", "Explicitly allow generating from a dirty working tree (default behavior; kept for clarity)")
+    .option("--require-clean", "Exit 1 if the working tree has uncommitted changes (CI mode)")
+    .option("--overwrite", "Overwrite existing docs, including source:custom (default preserves custom files)")
+    .option("--yes", "Skip interactive confirmations (for CI/scripted use)")
+    .option("--only <category>", "Only (re)generate docs in one category slug")
+    .option("--prompt <file>", "Override the default prompt with a file path (content is still wrapped in untrusted-content delimiters)")
+    .option("--ask <question>", "After generating, answer a question against the fresh docs in-terminal (no MCP client required)")
+    .option("--reuse-existing", "With --ask: skip generation, answer against the existing .helpbase/docs/ on disk (for eval/batch runs)")
+}
+
+/**
+ * Shared action handler for `helpbase ingest` and the deprecated
+ * `helpbase context` alias. Wraps `runIngest` with the error-translation
+ * layer (TokenBudget / Schema / Gateway / MissingApiKey → HelpbaseError).
+ */
+export async function runIngestAction(
+  repoPathArg: string,
+  opts: IngestOpts,
+): Promise<void> {
+  try {
+    await runIngest(repoPathArg, opts)
+  } catch (err) {
+    if (err instanceof HelpbaseError) throw err
+    // Translate hosted-proxy errors (AuthRequired/Quota/GlobalCap/Network/Gateway)
+    // into HelpbaseError with per-code fix copy. Untranslated errors fall through.
+    const llmWrapped = toCliLlmError(err, {
+      retryCommand: `helpbase ingest ${repoPathArg}${opts.ask ? ` --ask ${JSON.stringify(opts.ask)}` : ""}`,
+    })
+    if (llmWrapped instanceof HelpbaseError) throw llmWrapped
+    if (err instanceof MissingApiKeyError) throw contextError("E_CONTEXT_MISSING_KEY")
+    if (err instanceof TokenBudgetExceededError) {
+      const top = err.files
+        .slice()
+        .sort((a, b) => b.chars - a.chars)
+        .slice(0, 10)
+        .map((f) => `    ${f.path}  ${formatChars(f.chars)}`)
+        .join("\n")
+      throw contextError("E_CONTEXT_OVER_BUDGET", {
+        cause: `Estimated ${err.estimatedTokens} tokens (cap ${err.maxTokens}). Biggest files:\n${top}`,
+      })
+    }
+    if (err instanceof SchemaGenerationError) throw contextError("E_CONTEXT_SCHEMA")
+    if (err instanceof GatewayError) {
+      throw new HelpbaseError({
+        code: "E_NETWORK",
+        problem: "The LLM gateway call failed.",
+        cause: err.message,
+        fix: [
+          "Retry in a moment — transient gateway errors are common.",
+          "Check your AI_GATEWAY_API_KEY is valid.",
+          "Try --model anthropic/claude-sonnet-4.6 to switch providers.",
+        ],
+      })
+    }
+    throw err
+  }
+}
+
+export const ingestCommand = applyIngestOptions(
+  new Command("ingest").description(
     "Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.",
-  )
-  .argument("[repoPath]", "Path to the repo to ingest", ".")
-  .option("-o, --output <dir>", "Output directory for generated content", ".helpbase")
-  .option("--max-tokens <n>", "Token budget for the LLM input (per run)", "100000")
-  .option(
-    "--chars-per-token <n>",
-    "Chars-per-token ratio used for the budget estimate (3.5 = mid-range; 2.8 for code-heavy, 4.2 for prose)",
-    "3.5",
-  )
-  .option("--model <id>", "Override the model ID (e.g. anthropic/claude-sonnet-4.6)")
-  .option("--test", `Use the cheap test model (${TEST_MODEL}) and print model info`)
-  .option(
-    "--debug",
-    "Write the raw assembled prompt to <output>/_prompt.txt before calling the LLM",
-  )
-  .option("--dry-run", "Walk the repo and print what would be sent to the LLM, without spending tokens")
-  .option("--allow-dirty", "Explicitly allow generating from a dirty working tree (default behavior; kept for clarity)")
-  .option("--require-clean", "Exit 1 if the working tree has uncommitted changes (CI mode)")
-  .option("--overwrite", "Overwrite existing docs, including source:custom (default preserves custom files)")
-  .option("--yes", "Skip interactive confirmations (for CI/scripted use)")
-  .option("--only <category>", "Only (re)generate docs in one category slug")
-  .option("--prompt <file>", "Override the default prompt with a file path (content is still wrapped in untrusted-content delimiters)")
-  .option("--ask <question>", "After generating, answer a question against the fresh docs in-terminal (no MCP client required)")
-  .option("--reuse-existing", "With --ask: skip generation, answer against the existing .helpbase/docs/ on disk (for eval/batch runs)")
+  ),
+)
   .addHelpText(
     "after",
     `
 Examples:
-  $ helpbase context .                              # ingest current repo
-  $ helpbase context ./path/to/repo                 # ingest a specific path
-  $ helpbase context . --dry-run                    # preview without spending tokens
-  $ helpbase context . --ask "how do I log in?"     # ingest + answer in terminal
-  $ helpbase context . --only auth                  # regen just one category
-  $ helpbase context . --require-clean              # fail if tree is dirty (CI mode)
+  $ helpbase ingest .                               # ingest current repo
+  $ helpbase ingest ./path/to/repo                  # ingest a specific path
+  $ helpbase ingest . --dry-run                     # preview without spending tokens
+  $ helpbase ingest . --ask "how do I log in?"      # ingest + answer in terminal
+  $ helpbase ingest . --only auth                   # regen just one category
+  $ helpbase ingest . --require-clean               # fail if tree is dirty (CI mode)
 
 Auth: run ${pc.cyan("helpbase login")} (free, 500k tokens/day, no card)
   OR export one of ${pc.cyan("ANTHROPIC_API_KEY")} / ${pc.cyan("OPENAI_API_KEY")} / ${pc.cyan("AI_GATEWAY_API_KEY")}
   (BYOK — first key found wins; --model overrides)
 `,
   )
-  .action(async (repoPathArg: string, opts) => {
-    try {
-      await runContext(repoPathArg, opts)
-    } catch (err) {
-      if (err instanceof HelpbaseError) throw err
-      // Translate hosted-proxy errors (AuthRequired/Quota/GlobalCap/Network/Gateway)
-      // into HelpbaseError with per-code fix copy. Untranslated errors fall through.
-      const llmWrapped = toCliLlmError(err, {
-        retryCommand: `helpbase context ${repoPathArg}${opts.ask ? ` --ask ${JSON.stringify(opts.ask)}` : ""}`,
-      })
-      if (llmWrapped instanceof HelpbaseError) throw llmWrapped
-      if (err instanceof MissingApiKeyError) throw contextError("E_CONTEXT_MISSING_KEY")
-      if (err instanceof TokenBudgetExceededError) {
-        const top = err.files
-          .slice()
-          .sort((a, b) => b.chars - a.chars)
-          .slice(0, 10)
-          .map((f) => `    ${f.path}  ${formatChars(f.chars)}`)
-          .join("\n")
-        throw contextError("E_CONTEXT_OVER_BUDGET", {
-          cause: `Estimated ${err.estimatedTokens} tokens (cap ${err.maxTokens}). Biggest files:\n${top}`,
-        })
-      }
-      if (err instanceof SchemaGenerationError) throw contextError("E_CONTEXT_SCHEMA")
-      if (err instanceof GatewayError) {
-        throw new HelpbaseError({
-          code: "E_NETWORK",
-          problem: "The LLM gateway call failed.",
-          cause: err.message,
-          fix: [
-            "Retry in a moment — transient gateway errors are common.",
-            "Check your AI_GATEWAY_API_KEY is valid.",
-            "Try --model anthropic/claude-sonnet-4.6 to switch providers.",
-          ],
-        })
-      }
-      throw err
-    }
-  })
+  .action(runIngestAction)
 
-interface ContextOpts {
+export interface IngestOpts {
   output: string
   maxTokens: string
   charsPerToken: string
@@ -148,7 +169,7 @@ interface ContextOpts {
   reuseExisting?: boolean
 }
 
-async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void> {
+async function runIngest(repoPathArg: string, opts: IngestOpts): Promise<void> {
   // ─── 1. Resolve repo path ───────────────────────────────────────
   const repoRoot = path.resolve(process.cwd(), repoPathArg || ".")
   if (!fs.existsSync(repoRoot) || !fs.statSync(repoRoot).isDirectory()) {
@@ -172,7 +193,7 @@ async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void>
     const model = resolveModel({ test: opts.test, modelOverride: opts.model })
     const auth = await resolveAuthOrPromptLogin({
       verb: "ask",
-      retryCommand: `helpbase context --reuse-existing --ask ${JSON.stringify(opts.ask)}`,
+      retryCommand: `helpbase ingest --reuse-existing --ask ${JSON.stringify(opts.ask)}`,
     })
     await runLocalAsk(opts.ask, serialized, model, auth.authToken)
     return
@@ -237,8 +258,8 @@ async function runContext(repoPathArg: string, opts: ContextOpts): Promise<void>
 
   // ─── 6.5. Auth resolution — BYOK env var OR helpbase session ──────
   const auth = await resolveAuthOrPromptLogin({
-    verb: "context",
-    retryCommand: `helpbase context ${repoPathArg}${opts.ask ? ` --ask ${JSON.stringify(opts.ask)}` : ""}`,
+    verb: "ingest",
+    retryCommand: `helpbase ingest ${repoPathArg}${opts.ask ? ` --ask ${JSON.stringify(opts.ask)}` : ""}`,
   })
 
   // ─── 7. LLM synthesis ───────────────────────────────────────────
@@ -449,7 +470,7 @@ function printNextSteps(repoArg: string, outputDir: string): void {
     `  ${pc.dim("1. Open it in a browser:")} ${pc.cyan("helpbase preview")}`,
   )
   console.log(
-    `  ${pc.dim("2. Try it in-terminal:")} ${pc.cyan(`helpbase context ${repoArg} --ask "how do I log in?"`)}`,
+    `  ${pc.dim("2. Try it in-terminal:")} ${pc.cyan(`helpbase ingest ${repoArg} --ask "how do I log in?"`)}`,
   )
   console.log(`  ${pc.dim("3. Share with an MCP client — copy a block from:")}`)
   console.log(`     ${pc.cyan(path.join(outputDir, "mcp.json"))}`)
@@ -465,7 +486,7 @@ function printNextSteps(repoArg: string, outputDir: string): void {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function checkDirtyTree(repoRoot: string, opts: ContextOpts): void {
+function checkDirtyTree(repoRoot: string, opts: IngestOpts): void {
   let dirtyLines = ""
   try {
     dirtyLines = execSync("git status --porcelain", {
@@ -530,7 +551,7 @@ function emitLlmsTxt(repoRoot: string, docsDir: string, outputDir: string): void
     }
   }
   if (!projectSummary) {
-    projectSummary = `Docs for ${projectName}, generated by helpbase context.`
+    projectSummary = `Docs for ${projectName}, generated by helpbase ingest.`
   }
 
   const { llmsTxt, llmsFullTxt, docCount, fullBytes } = generateLlmsTxt({
@@ -718,7 +739,7 @@ async function runLocalAsk(
     }
   } catch (err) {
     throw toCliLlmError(err, {
-      retryCommand: `helpbase context --ask ${JSON.stringify(question)}`,
+      retryCommand: `helpbase ingest --ask ${JSON.stringify(question)}`,
     })
   }
   const ms = Date.now() - started

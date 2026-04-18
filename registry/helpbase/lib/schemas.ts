@@ -33,7 +33,7 @@ function isAllowedEmbedHost(url: string): boolean {
 }
 
 /**
- * A citation produced by `helpbase context` — points at the specific file
+ * A citation produced by `helpbase ingest` — points at the specific file
  * + line range that justifies a generated how-to guide.
  *
  * v2 contract: the LLM returns `{ file, startLine, endLine, reason? }` and
@@ -86,7 +86,7 @@ export const frontmatterSchema = z.object({
     })
     .optional(),
   ogImage: z.string().optional(),
-  // Fields set by `helpbase context` on generated docs. Optional so hand-
+  // Fields set by `helpbase ingest` on generated docs. Optional so hand-
   // written articles and scaffolded content keep validating unchanged.
   citations: z.array(contextCitationSchema).optional(),
   source: z.enum(["generated", "custom"]).optional(),
@@ -134,7 +134,7 @@ export const generatedArticlesSchema = z.object({
 export type GeneratedArticle = z.infer<typeof generatedArticleSchema>
 
 /**
- * Generated context doc — what the LLM returns for `helpbase context`. Extends
+ * Generated context doc — what the LLM returns for `helpbase ingest`. Extends
  * the article shape with citations (1–5 per doc, enforced; literal-text
  * validated before write) and a list of source file paths the model was
  * inspired by. Dropped docs (zero valid citations) never reach disk.

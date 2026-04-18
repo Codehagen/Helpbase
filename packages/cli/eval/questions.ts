@@ -1,5 +1,5 @@
 /**
- * Eval question set for `helpbase context`.
+ * Eval question set for `helpbase ingest`.
  *
  * v1 scope: the helpbase repo itself. Each question has an expected
  * citation target (a path the correct doc should reference) and a

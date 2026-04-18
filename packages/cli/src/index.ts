@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import { devCommand } from "./commands/dev.js"
 import { generateCommand } from "./commands/generate.js"
+import { ingestCommand } from "./commands/ingest.js"
 import { contextCommand } from "./commands/context.js"
 import { previewCommand } from "./commands/preview.js"
 import { syncCommand } from "./commands/sync.js"
@@ -73,6 +74,12 @@ program.helpInformation = () => renderGroupedHelp(program)
 
 program.addCommand(devCommand)
 program.addCommand(generateCommand)
+program.addCommand(ingestCommand)
+// Deprecated alias for `helpbase ingest`. Slated for removal in v0.7.
+// TODO(v0.7): delete this addCommand + the context.ts file + the
+// "helpbase context (deprecated alias)" describe block in
+// packages/cli/test/ingest.test.ts together. `grep -rn 'v0.7'` should
+// surface all deletion sites.
 program.addCommand(contextCommand)
 program.addCommand(previewCommand)
 program.addCommand(syncCommand)
@@ -95,15 +102,26 @@ program.addCommand(upgradeCommand)
 // opted in. Records command name, duration, exit code, and flag names
 // (not values). Never slows the CLI — 2s timeout, swallows errors.
 const startedAt = Date.now()
+// Map of deprecated aliases to their canonical command name. Keep telemetry
+// dashboards continuous across renames: a user running `helpbase context foo`
+// reports `command: "ingest"` + `alias: "context"` — total invocations of
+// the pipeline stay accurate, and alias-adoption rate stays measurable.
+// TODO(v0.7): remove the "context" entry when the shim is deleted.
+const DEPRECATED_ALIASES: Record<string, string> = {
+  context: "ingest",
+}
 program.hook("postAction", (_thisCommand, actionCommand) => {
-  const cmdName = actionCommand.name()
+  const invokedName = actionCommand.name()
+  const canonicalName = DEPRECATED_ALIASES[invokedName] ?? invokedName
+  const alias = canonicalName === invokedName ? undefined : invokedName
   const flags = actionCommand.opts()
   const flagNames = Object.keys(flags).filter(
     (k) => flags[k] !== undefined && flags[k] !== false,
   )
   sendEvent(
     {
-      command: cmdName,
+      command: canonicalName,
+      ...(alias ? { alias } : {}),
       durationMs: Date.now() - startedAt,
       exitCode: 0,
       flags: flagNames,

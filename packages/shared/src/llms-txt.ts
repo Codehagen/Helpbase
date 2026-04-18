@@ -10,7 +10,7 @@
  *
  * Extracted from apps/web/scripts/generate-llms.mjs and
  * packages/create-helpbase/template-assets/generate-llms.mjs so both
- * scripts can become thin wrappers + the `helpbase context` command
+ * scripts can become thin wrappers + the `helpbase ingest` command
  * can emit the same format into `.helpbase/`.
  *
  * Pure: no fs writes. Caller decides where to persist.

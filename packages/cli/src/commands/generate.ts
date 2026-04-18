@@ -302,7 +302,7 @@ ${"ANTHROPIC_API_KEY"} / ${"OPENAI_API_KEY"} / ${"AI_GATEWAY_API_KEY"} (BYOK, fi
               `\n${pc.red("✖")} Generated file has invalid frontmatter: ${plan.filePath}\n` +
                 `  Reason: ${parseErr instanceof Error ? parseErr.message : "parse error"}\n` +
                 `  Fix: This is a bug in articleToMdx — please file an issue with the file contents.\n` +
-                `  Docs: https://helpbase.dev/docs/troubleshooting#bad-frontmatter\n`,
+                `  Docs: https://helpbase.dev/errors/e-invalid-frontmatter\n`,
             )
             process.exit(1)
           }
@@ -438,7 +438,7 @@ ${"ANTHROPIC_API_KEY"} / ${"OPENAI_API_KEY"} / ${"AI_GATEWAY_API_KEY"} (BYOK, fi
             `\n${pc.red("✖")} Generated file has invalid frontmatter: ${plan.filePath}\n` +
               `  Reason: ${parseErr instanceof Error ? parseErr.message : "parse error"}\n` +
               `  Fix: This is a bug in articleToMdx — please file an issue with the file contents.\n` +
-              `  Docs: https://helpbase.dev/docs/troubleshooting#bad-frontmatter\n`,
+              `  Docs: https://helpbase.dev/errors/e-invalid-frontmatter\n`,
           )
           process.exit(1)
         }
@@ -560,7 +560,7 @@ ${"ANTHROPIC_API_KEY"} / ${"OPENAI_API_KEY"} / ${"AI_GATEWAY_API_KEY"} (BYOK, fi
             `\n${pc.red("✖")} Generated file has invalid frontmatter: ${plan.filePath}\n` +
               `  Reason: ${parseErr instanceof Error ? parseErr.message : "parse error"}\n` +
               `  Fix: This is a bug in articleToMdx — please file an issue with the file contents.\n` +
-              `  Docs: https://helpbase.dev/docs/troubleshooting#bad-frontmatter\n`,
+              `  Docs: https://helpbase.dev/errors/e-invalid-frontmatter\n`,
           )
           process.exit(1)
         }
@@ -612,8 +612,7 @@ function printRepoError(repoPath: string, err: unknown): void {
   console.error(
     `\n${pc.red("✖")} Could not read repository ${pc.cyan(repoPath)}\n` +
     `  Reason: ${reason}\n` +
-    `  Fix: Pass a local path to a directory with markdown files (e.g. ${pc.cyan("--repo .")}).\n` +
-    `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
+    `  Fix: Pass a local path to a directory with markdown files (e.g. ${pc.cyan("--repo .")}).\n`,
   )
 }
 
@@ -622,8 +621,7 @@ function printScrapeError(url: string, err: unknown): void {
   console.error(
     `\n${pc.red("✖")} Could not generate articles from ${pc.cyan(url)}\n` +
     `  Reason: ${reason}\n` +
-    `  Fix: Check the URL is accessible and try again.\n` +
-    `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
+    `  Fix: Check the URL is accessible and try again.\n`,
   )
 }
 
@@ -659,7 +657,7 @@ function printGenerateError(err: unknown, opts?: { url?: string; repo?: string; 
       `  Reason: ${err.message}\n` +
       `  Fix: Check the model ID is valid and your Gateway quota is not exhausted.\n` +
       `       Try ${pc.cyan("--test")} to use a cheap fallback model, or ${pc.cyan("--model <id>")} to override.\n` +
-      `  Docs: https://helpbase.dev/docs/troubleshooting#gateway-errors\n`,
+      `  Docs: https://helpbase.dev/errors/e-llm-gateway\n`,
     )
     return
   }
@@ -668,8 +666,7 @@ function printGenerateError(err: unknown, opts?: { url?: string; repo?: string; 
   console.error(
     `\n${pc.red("✖")} Could not generate articles\n` +
     `  Reason: ${reason}\n` +
-    `  Fix: Check the source and try again.\n` +
-    `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
+    `  Fix: Check the source and try again.\n`,
   )
 }
 

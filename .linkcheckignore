@@ -1,0 +1,16 @@
+# .linkcheckignore — URLs that the grep picks up but aren't real links.
+# One exact URL per line. Lines starting with `#` are comments.
+# Consumed by scripts/check-links.sh.
+
+# ERROR_DOC_BASE const in packages/cli/src/lib/errors.ts. Used only as
+# a template base: `${ERROR_DOC_BASE}/${code}` → /errors/e-foo (real).
+# The bare string is never linked directly.
+https://helpbase.dev/errors
+
+# Placeholder text in `helpbase login --email` prompt (login.ts). The
+# endpoint exists; the shown `token=` value is illustrative only.
+https://helpbase.dev/api/auth/magic-link/verify?token=
+
+# Default prop in the React Email preview component. Never sent to real
+# users; only rendered in dev preview tooling.
+https://helpbase.dev/api/auth/magic-link/verify?token=preview_token_1234567890abcdef

@@ -74,4 +74,4 @@ and OS.
 ## Full reference
 
 `helpbase <command> --help` for any command. Full reference:
-<https://helpbase.dev/docs/cli>.
+<https://helpbase.dev/cli/commands>.

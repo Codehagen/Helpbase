@@ -70,6 +70,22 @@ done < <(
   | sort -u
 )
 
+# Apply .linkcheckignore (one URL per line, exact match, # for comments).
+# Lets us allow-list known template bases like ERROR_DOC_BASE const, which
+# reads as a bare URL in source but only ever renders as ${base}/${code}.
+if [ -f .linkcheckignore ]; then
+  FILTERED=()
+  # Build a grep pattern of ignore URLs (exact-line match).
+  IGNORE=$(grep -vE '^\s*(#|$)' .linkcheckignore | sed 's|[][\.^$*]|\\&|g')
+  for url in "${URLS[@]}"; do
+    if [ -n "$IGNORE" ] && echo "$url" | grep -qxE "$(echo "$IGNORE" | tr '\n' '|' | sed 's|\|$||')"; then
+      continue
+    fi
+    FILTERED+=("$url")
+  done
+  URLS=("${FILTERED[@]}")
+fi
+
 TOTAL=${#URLS[@]}
 if [ "$TOTAL" -eq 0 ]; then
   echo "${Y}No helpbase.dev links found in source files.${N} Nothing to check."
@@ -103,8 +119,9 @@ for url in "${URLS[@]}"; do
       printf '  %s✓%s %s %s(%s)%s\n' "$G" "$N" "$url" "$D" "$status" "$N"
       PASS=$((PASS + 1))
       ;;
-    401|403|405)
-      # URL exists but is auth-gated or rejects HEAD — not a broken link.
+    401|403|405|429)
+      # URL exists but is auth-gated, rejects HEAD, or is rate-limited —
+      # not a broken link.
       printf '  %s✓%s %s %s(%s, exists)%s\n' "$G" "$N" "$url" "$D" "$status" "$N"
       PASS=$((PASS + 1))
       ;;

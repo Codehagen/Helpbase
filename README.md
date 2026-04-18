@@ -17,7 +17,7 @@ built on shadcn/ui.
 
 <br />
 
-**[Website](https://helpbase.dev)** · **[Demo](https://helpbase.dev/docs)** · **[Registry](https://helpbase.dev/r/help-center.json)** · **[@CodeHagen](https://x.com/CodeHagen)**
+**[Website](https://helpbase.dev)** · **[Demo](https://helpbase.dev/getting-started/introduction)** · **[Registry](https://helpbase.dev/r/help-center.json)** · **[@CodeHagen](https://x.com/CodeHagen)**
 
 </div>
 
@@ -292,8 +292,16 @@ automatically; pass `--json` or `--quiet` to guarantee composable output.
 | `helpbase generate` | `--url <url>` (or `--repo <path>`) + `--yes` |
 | `helpbase new` | `--type <type> --title "..."` (optional `--category`, `--slug`) |
 
-Tokens are issued from `https://helpbase.dev/account/tokens`. Export
-once in CI and the CLI auths non-interactively for every command.
+Grab a session token by running `helpbase login` locally, then reading
+it from `~/.helpbase/auth.json`:
+
+```bash
+jq -r .access_token ~/.helpbase/auth.json
+```
+
+Set the value as a `HELPBASE_TOKEN` secret in your CI and the CLI auths
+non-interactively for every command. (A web dashboard for token management
+is not yet live — cut one from the local file for now.)
 
 ## Shell completion
 

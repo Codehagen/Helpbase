@@ -294,7 +294,7 @@ async function run(directory: string | undefined, opts: RunOptions) {
 
   outro(
     `${pc.green("Your help center is ready!")}\n` +
-    `  Docs: ${pc.dim("https://helpbase.dev/docs")}`,
+    `  Docs: ${pc.dim("https://helpbase.dev/getting-started/introduction")}`,
   )
 
   // 9. Start dev server + auto-open browser on "Ready" signal.

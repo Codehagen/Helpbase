@@ -273,14 +273,45 @@ Examples:
       //    fetched remoteState successfully, so concurrent deploys get
       //    rejected with PreviewStaleError. D3A auto-retry handles that
       //    once; a second stale is surfaced to the user.
-      const result = await performDeploy(session, resolved, content, {
+      const outcome = await performDeploy(session, resolved, content, {
         expectedVersion: remoteState?.deploy_version ?? null,
-        initiallyUsedReservation: resolved.usedReservation,
         previouslyDiffed: remoteState,
         diff,
       })
 
-      printDeploySuccess(session, resolved.tenantSlug, content, result)
+      // Reservation cache clearing runs for BOTH the direct-success and
+      // the stale-retry-success paths — previously it only ran on direct
+      // success, so a first-deploy that landed via the retry path left a
+      // stale "reserved" entry in whoami. Caught by codex /review on
+      // 2026-04-18.
+      if (resolved.usedReservation && outcome.kind !== "aborted") {
+        clearCachedReservation()
+      }
+
+      if (outcome.kind === "noop") {
+        // Concurrent client shipped the same content while we were
+        // reviewing. The tenant is in the state we intended, so exit 0.
+        // Previously this path exited 1, which broke CI loops. Caught by
+        // codex /review on 2026-04-18.
+        return
+      }
+      if (outcome.kind === "aborted") {
+        // User cancelled at the retry prompt, or a non-PreviewStale error
+        // inside the retry. cancel() already printed the reason; exit 1
+        // so shells/CI see a failure.
+        process.exit(1)
+      }
+
+      // Fetch mcp_public_token post-deploy so we can print the paste-ready
+      // MCP client config block. Best-effort — the deploy already succeeded
+      // so a token-read failure should degrade to "no config snippet" not
+      // a visible error.
+      const tenantAfter = await apiGetTenant(session, outcome.finalTenantId).catch(
+        () => null,
+      )
+      const mcpToken = tenantAfter?.mcp_public_token ?? ""
+
+      printDeploySuccess(resolved.tenantSlug, content, outcome, mcpToken)
     },
   )
 
@@ -731,23 +762,35 @@ function renderPreviewOutput(
 
 interface PerformDeployInput {
   expectedVersion: number | null
-  initiallyUsedReservation: boolean
   previouslyDiffed: TenantState | null
   diff: ReturnType<typeof computeDiff>
 }
+
+/**
+ * Tri-state outcome so the caller can distinguish "we shipped" (deployed)
+ * from "someone else shipped the same content while we were reviewing"
+ * (noop, still a success — the tenant is in the state we wanted) from
+ * "the user cancelled or we hit a hard retry failure" (aborted).
+ */
+type DeployOutcome =
+  | {
+      kind: "deployed"
+      deployId: string
+      newDeployVersion: number
+      articleCount: number
+      chunkCount: number
+      finalSlug: string
+      finalTenantId: string
+    }
+  | { kind: "noop" }
+  | { kind: "aborted" }
 
 async function performDeploy(
   session: AuthSession,
   resolved: ResolvedTenant,
   content: ReadContent,
   ctx: PerformDeployInput,
-): Promise<{
-  deployId: string
-  newDeployVersion: number
-  articleCount: number
-  chunkCount: number
-  finalSlug: string
-}> {
+): Promise<DeployOutcome> {
   const { tenantId } = resolved
 
   const chunks = computeChunks(content)
@@ -770,9 +813,7 @@ async function performDeploy(
       // D3A auto-retry: refetch /state, recompute diff, re-prompt (if
       // removes) or proceed silently (if not). Capped at one retry to
       // avoid infinite loops under contention.
-      const retried = await stalePreviewRetry(session, resolved, content, validationReport, chunks)
-      if (retried) return retried
-      process.exit(1)
+      return stalePreviewRetry(session, resolved, content, validationReport, chunks)
     }
     s.stop("Deploy failed")
     cancel(`Deploy error: ${err instanceof Error ? err.message : String(err)}`)
@@ -783,18 +824,14 @@ async function performDeploy(
       `(deploy ${result.deploy_id.slice(0, 8)}, version ${result.new_deploy_version})`,
   )
 
-  if (ctx.initiallyUsedReservation) {
-    // Reservation was consumed — drop the cache so whoami stops showing it
-    // as "reserved".
-    clearCachedReservation()
-  }
-
   return {
+    kind: "deployed",
     deployId: result.deploy_id,
     newDeployVersion: result.new_deploy_version,
     articleCount: result.article_count,
     chunkCount: result.chunk_count,
     finalSlug: result.slug,
+    finalTenantId: tenantId,
   }
 }
 
@@ -804,14 +841,7 @@ async function stalePreviewRetry(
   content: ReadContent,
   validationReport: DeployReport,
   chunks: TenantChunk[],
-): Promise<{
-  deployId: string
-  newDeployVersion: number
-  articleCount: number
-  chunkCount: number
-  finalSlug: string
-} | null> {
-  // Fetch fresh state and recompute the diff.
+): Promise<DeployOutcome> {
   const s = spinner()
   s.start("Fetching updated state...")
   let freshState: TenantState | null
@@ -823,31 +853,35 @@ async function stalePreviewRetry(
       `${pc.red("✖")} Deploy aborted: remote state changed and refresh failed (${err instanceof Error ? err.message : String(err)}).\n` +
         `  Run ${pc.cyan("helpbase deploy --preview")} to see the current state.`,
     )
-    return null
+    return { kind: "aborted" }
   }
   s.stop("Fetched updated state")
 
   const freshDiff = computeDiff(toDiffInput(content), freshState ?? { articles: [], categories: [] })
 
+  // "Remote now matches" = concurrent client shipped the same content we
+  // were about to ship. Our intent is satisfied; treat as a success exit
+  // so CI loops don't spuriously fail. Previously returned null and the
+  // caller exit 1. Caught by codex /review on 2026-04-18.
+  if (!diffHasChanges(freshDiff)) {
+    outro(`${pc.green("✓")} Remote now matches your local content. No changes to publish.`)
+    return { kind: "noop" }
+  }
+
   process.stdout.write(
     `\n${pc.yellow("⚠")} Remote changed while you were reviewing. Current diff:\n\n${renderPreviewTable(freshDiff)}\n\n`,
   )
 
-  // Re-prompt: removes detected OR anything changed at all (since the
-  // user's confirmation was based on stale info, they should re-confirm
-  // either way). --yes semantics from the first attempt don't carry
-  // across a stale-retry, per D3A.
-  if (!diffHasChanges(freshDiff)) {
-    outro(`${pc.green("✓")} Remote now matches your local content. No changes to publish.`)
-    return null
-  }
+  // Re-prompt: the user's first confirmation was based on stale info,
+  // so they re-confirm against the current state. --yes from the first
+  // attempt doesn't carry across a stale-retry, per D3A.
   const proceed = await confirm({
     message: "Still deploy with the current state?",
     initialValue: false,
   })
   if (isCancel(proceed) || !proceed) {
     cancel("Cancelled — nothing deployed.")
-    return null
+    return { kind: "aborted" }
   }
 
   // Re-run the deploy with the fresh deploy_version. A SECOND stale
@@ -862,11 +896,13 @@ async function stalePreviewRetry(
         `(deploy ${result.deploy_id.slice(0, 8)}, version ${result.new_deploy_version})`,
     )
     return {
+      kind: "deployed",
       deployId: result.deploy_id,
       newDeployVersion: result.new_deploy_version,
       articleCount: result.article_count,
       chunkCount: result.chunk_count,
       finalSlug: result.slug,
+      finalTenantId: resolved.tenantId,
     }
   } catch (err) {
     s2.stop("Deploy failed")
@@ -875,10 +911,10 @@ async function stalePreviewRetry(
         `${pc.red("✖")} Remote changed AGAIN during retry. Giving up to avoid an infinite loop.\n` +
           `  Re-run ${pc.cyan("helpbase deploy")} to start fresh.`,
       )
-      return null
+      return { kind: "aborted" }
     }
     cancel(`Deploy error: ${err instanceof Error ? err.message : String(err)}`)
-    return null
+    return { kind: "aborted" }
   }
 }
 
@@ -937,16 +973,10 @@ function computeChunks(content: ReadContent): TenantChunk[] {
 }
 
 function printDeploySuccess(
-  _session: AuthSession,
   tenantSlug: string,
   content: ReadContent,
-  result: {
-    deployId: string
-    newDeployVersion: number
-    articleCount: number
-    chunkCount: number
-    finalSlug: string
-  },
+  result: Extract<DeployOutcome, { kind: "deployed" }>,
+  mcpToken: string,
 ): void {
   // Use the slug the SERVER echoed — local tenantSlug could be stale after
   // a concurrent rename. Caught by /review codex on 2026-04-18.
@@ -963,6 +993,31 @@ function printDeploySuccess(
     ["Live URL", liveUrl],
     ["MCP URL", mcpUrl],
   ])
+
+  // MCP client config block — paste into Claude Desktop, Claude Code,
+  // Cursor, or any MCP-compatible agent. Dropped from printDeploySuccess
+  // during the v2 refactor and restored via /review 2026-04-18.
+  if (mcpToken) {
+    const mcpConfig = JSON.stringify(
+      {
+        mcpServers: {
+          [finalSlug]: {
+            url: mcpUrl,
+            headers: { Authorization: `Bearer ${mcpToken}` },
+          },
+        },
+      },
+      null,
+      2,
+    )
+    note(
+      `Paste this into your Claude Desktop / Claude Code / Cursor MCP config:\n\n${pc.dim(mcpConfig)}\n\n` +
+        `${pc.yellow("⚠")}  Anyone with this token has full MCP access to this tenant.\n` +
+        `    Rotate with ${pc.cyan("helpbase deploy --rotate-mcp-token")} (invalidates all active clients).`,
+      "MCP config",
+    )
+  }
+
   nextSteps({
     commands: ["helpbase open", "helpbase deploy --preview"],
     urls: [

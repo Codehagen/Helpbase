@@ -118,6 +118,19 @@ export async function POST(
   const deployId = row?.deploy_id ?? null
   const newDeployVersion = row?.new_deploy_version ?? 0
 
+  // Re-read the slug AFTER the RPC commits. `tenant.slug` captured by
+  // requireOwnedTenant was read before the RPC ran; a concurrent
+  // reservation rename between requireOwnedTenant and the RPC could have
+  // changed the slug. Pull the authoritative post-deploy value so the
+  // response and the revalidatePath both point at the right subdomain.
+  // Caught by codex /review on 2026-04-18.
+  const { data: freshTenant } = await admin
+    .from("tenants")
+    .select("slug")
+    .eq("id", tenant.id)
+    .single()
+  const finalSlug = freshTenant?.slug ?? tenant.slug
+
   // Count rows post-deploy so the CLI can print a helpful summary.
   const [{ count: articleCount }, { count: chunkCount }] = await Promise.all([
     admin
@@ -130,10 +143,11 @@ export async function POST(
       .eq("tenant_id", tenant.id),
   ])
 
-  // Fire ISR revalidation for the tenant's subdomain pages. Safe-to-ignore
-  // errors — cache will self-heal on the next 1h TTL.
+  // Fire ISR revalidation for the tenant's subdomain pages using the
+  // post-RPC slug so we don't accidentally revalidate a stale subdomain.
+  // Safe-to-ignore errors — cache will self-heal on the next 1h TTL.
   try {
-    revalidatePath(`/t/${tenant.slug}`, "layout")
+    revalidatePath(`/t/${finalSlug}`, "layout")
   } catch {
     // best-effort
   }
@@ -143,6 +157,6 @@ export async function POST(
     new_deploy_version: newDeployVersion,
     article_count: articleCount ?? 0,
     chunk_count: chunkCount ?? 0,
-    slug: tenant.slug,
+    slug: finalSlug,
   })
 }

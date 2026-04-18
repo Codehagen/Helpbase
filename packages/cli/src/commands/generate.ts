@@ -612,7 +612,8 @@ function printRepoError(repoPath: string, err: unknown): void {
   console.error(
     `\n${pc.red("✖")} Could not read repository ${pc.cyan(repoPath)}\n` +
     `  Reason: ${reason}\n` +
-    `  Fix: Pass a local path to a directory with markdown files (e.g. ${pc.cyan("--repo .")}).\n`,
+    `  Fix: Pass a local path to a directory with markdown files (e.g. ${pc.cyan("--repo .")}).\n` +
+    `  Docs: https://helpbase.dev/cli/commands\n`,
   )
 }
 
@@ -621,7 +622,8 @@ function printScrapeError(url: string, err: unknown): void {
   console.error(
     `\n${pc.red("✖")} Could not generate articles from ${pc.cyan(url)}\n` +
     `  Reason: ${reason}\n` +
-    `  Fix: Check the URL is accessible and try again.\n`,
+    `  Fix: Check the URL is accessible and try again.\n` +
+    `  Docs: https://helpbase.dev/cli/commands\n`,
   )
 }
 
@@ -666,7 +668,8 @@ function printGenerateError(err: unknown, opts?: { url?: string; repo?: string; 
   console.error(
     `\n${pc.red("✖")} Could not generate articles\n` +
     `  Reason: ${reason}\n` +
-    `  Fix: Check the source and try again.\n`,
+    `  Fix: Check the source and try again.\n` +
+    `  Docs: https://helpbase.dev/cli/commands\n`,
   )
 }
 

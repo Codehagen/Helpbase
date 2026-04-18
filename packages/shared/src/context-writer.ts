@@ -3,13 +3,13 @@
  *
  * `planArticleWrites` (in ai.ts) blindly maps articles to target paths and
  * knows nothing about previously generated content or user-edited custom
- * files. For context, regen must:
+ * files. For ingest, regen must:
  *   - preserve files whose frontmatter says `source: custom`
  *   - replace files whose frontmatter says `source: generated`
  *   - delete stale generated files (previous run had them; this run doesn't)
  *   - leave anything else alone
  *
- * This module does the inventory + diffing in pure code so the context
+ * This module does the inventory + diffing in pure code so the ingest
  * command's action handler reads top-to-bottom.
  */
 

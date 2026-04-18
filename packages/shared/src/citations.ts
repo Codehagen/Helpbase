@@ -184,7 +184,7 @@ export interface ArticleValidationResult {
 /**
  * Validate all citations on an article. Returns the subset that passed
  * ("kept") and the failures with reasons ("dropped"). Callers decide what
- * to do with a 0-kept article (context.ts drops it entirely and writes the
+ * to do with a 0-kept article (ingest.ts drops it entirely and writes the
  * reason to `.helpbase/synthesis-report.json`).
  */
 export function validateArticleCitations(

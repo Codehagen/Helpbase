@@ -109,7 +109,10 @@ lines.push("")
 for (const cmd of commands) {
   lines.push(`## \`helpbase ${cmd}\``)
   lines.push("")
-  lines.push("```")
+  // Language identifier `text` silences markdownlint MD040 on every
+  // command block. `text` is the right tag — this is literal `--help`
+  // output, not a shell transcript (no `$` prompts).
+  lines.push("```text")
   lines.push(help(`${cmd} --help`).trim())
   lines.push("```")
   lines.push("")

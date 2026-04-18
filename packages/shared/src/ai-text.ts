@@ -83,7 +83,7 @@ export const MAX_REPO_CONTENT_CHARS = 200_000
 
 // Kept local to avoid a circular import between shared modules; these live
 // in a dedicated `./secrets.ts` module that both `ai-text` (walker) and the
-// CLI `context` command import from.
+// CLI `ingest` command (plus its deprecated `context` shim) import from.
 import { isSecretFile } from "./secrets.js"
 
 const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx", ".markdown"])

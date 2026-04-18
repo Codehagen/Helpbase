@@ -91,7 +91,7 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
     fix: [
       "Check .helpbase/synthesis-report.json for per-citation drop reasons.",
       "If snippets were paraphrased, retry with --model anthropic/claude-sonnet-4.6.",
-      "If cited code files were missing from the reader, use --include-ext to widen it.",
+      "If cited files were skipped, make sure the relevant code uses one of the supported extensions (.md, .mdx, .ts, .tsx, .js, .py, .go, .rs, .rb, .java) — or add a README bridging them.",
     ],
   },
   E_CONTEXT_SECRET: {

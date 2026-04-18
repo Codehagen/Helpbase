@@ -265,6 +265,7 @@ Edit, delete, or regenerate any of them. You own them.
 
 ```bash
 helpbase dev                    # start the Next.js dev server
+helpbase ingest [repo]          # turn a repo into cited how-tos + llms.txt + MCP (.helpbase/)
 helpbase generate --url <url>   # generate articles from a URL
 helpbase audit                  # validate frontmatter, categories, schema
 helpbase new                    # create a new article from a template (interactive or --type/--title)

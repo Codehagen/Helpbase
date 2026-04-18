@@ -191,7 +191,7 @@ export function readContextSources(
       if (rawBuf.byteLength > maxBytes) {
         const placeholder = `// [file too large, skipped: ${rawBuf.byteLength} bytes > ${maxBytes}B cap]`
         process.stderr.write(
-          `[helpbase-context] Skipping ${rel} (${rawBuf.byteLength} bytes > ${maxBytes}B cap)\n`,
+          `[helpbase-ingest] Skipping ${rel} (${rawBuf.byteLength} bytes > ${maxBytes}B cap)\n`,
         )
         sources.push({
           path: rel,

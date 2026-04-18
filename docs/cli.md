@@ -30,7 +30,7 @@
 
 ## `helpbase ingest`
 
-```
+```text
 Usage: helpbase ingest [options] [repoPath]
 
 Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited
@@ -87,7 +87,7 @@ Auth: run helpbase login (free, 500k tokens/day, no card)
 
 ## `helpbase preview`
 
-```
+```text
 Usage: helpbase preview [options]
 
 Open a browser-viewable help center from the docs `helpbase ingest` generated.
@@ -112,7 +112,7 @@ Pair with:
 
 ## `helpbase new`
 
-```
+```text
 Usage: helpbase new [options]
 
 Create a new article from a template
@@ -136,7 +136,7 @@ Examples:
 
 ## `helpbase dev`
 
-```
+```text
 Usage: helpbase dev [options]
 
 Start the development server
@@ -150,7 +150,7 @@ Options:
 
 ## `helpbase deploy`
 
-```
+```text
 Usage: helpbase deploy [options]
 
 Deploy your help center to helpbase cloud
@@ -176,7 +176,7 @@ Examples:
 
 ## `helpbase link`
 
-```
+```text
 Usage: helpbase link [options]
 
 Link this project to a helpbase cloud tenant
@@ -189,7 +189,7 @@ Options:
 
 ## `helpbase open`
 
-```
+```text
 Usage: helpbase open [options]
 
 Open this project's help center in the default browser
@@ -201,7 +201,7 @@ Options:
 
 ## `helpbase generate`
 
-```
+```text
 Usage: helpbase generate [options] [repoPath]
 
 Generate help articles using AI
@@ -247,7 +247,7 @@ ANTHROPIC_API_KEY / OPENAI_API_KEY / AI_GATEWAY_API_KEY (BYOK, first found wins)
 
 ## `helpbase sync`
 
-```
+```text
 Usage: helpbase sync [options]
 
 Propose MDX edits grounded in a code diff (no writes by default)
@@ -277,7 +277,7 @@ Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
 
 ## `helpbase mcp`
 
-```
+```text
 Usage: helpbase mcp [options] [command]
 
 Run the Helpbase MCP server (stdio or HTTP)
@@ -301,7 +301,7 @@ HTTP mode reads two env vars:
 
 ## `helpbase audit`
 
-```
+```text
 Usage: helpbase audit [options]
 
 Check content health: missing fields, broken links, schema errors
@@ -314,7 +314,7 @@ Options:
 
 ## `helpbase login`
 
-```
+```text
 Usage: helpbase login [options]
 
 Log in to helpbase cloud
@@ -326,7 +326,7 @@ Options:
 
 ## `helpbase logout`
 
-```
+```text
 Usage: helpbase logout [options]
 
 Log out of helpbase cloud
@@ -337,7 +337,7 @@ Options:
 
 ## `helpbase whoami`
 
-```
+```text
 Usage: helpbase whoami [options]
 
 Print the current login, linked tenant, and today's usage
@@ -349,7 +349,7 @@ Options:
 
 ## `helpbase config`
 
-```
+```text
 Usage: helpbase config [options] [command]
 
 Read or write CLI preferences (~/.helpbase/config.json)
@@ -367,7 +367,7 @@ Commands:
 
 ## `helpbase doctor`
 
-```
+```text
 Usage: helpbase doctor [options]
 
 Print diagnostic info about your helpbase install and project
@@ -381,7 +381,7 @@ Options:
 
 ## `helpbase feedback`
 
-```
+```text
 Usage: helpbase feedback [options]
 
 Open a prefilled GitHub issue with your environment info
@@ -394,7 +394,7 @@ Options:
 
 ## `helpbase completion`
 
-```
+```text
 Usage: helpbase completion [options] <shell>
 
 Print a shell completion script
@@ -414,7 +414,7 @@ Examples:
 
 ## `helpbase upgrade`
 
-```
+```text
 Usage: helpbase upgrade [options]
 
 Print the command to upgrade helpbase (does not execute it)
@@ -428,7 +428,7 @@ Examples:
 
 ## `helpbase context`
 
-```
+```text
 Usage: helpbase context [options] [repoPath]
 
 [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.

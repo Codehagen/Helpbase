@@ -51,8 +51,14 @@ export const HELPBASE_SELF_REPO: EvalRepo = {
       id: "context-citation-validator",
       question:
         "What happens when a generated doc's citations can't be validated against the repo?",
+      // Both paths accepted during the deprecation window: the canonical
+      // implementation is in ingest.ts, but a model analyzing the pre-v0.7
+      // repo may still cite the deprecation shim context.ts. Either
+      // matches the rubric. TODO(v0.7): drop the context.ts entry when
+      // the shim is removed.
       expectedCitations: [
         "packages/shared/src/citations.ts",
+        "packages/cli/src/commands/ingest.ts",
         "packages/cli/src/commands/context.ts",
       ],
       rubric:

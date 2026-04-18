@@ -418,7 +418,7 @@ export interface BuildAskPromptInput {
   question: string
   /**
    * Already-written MDX docs — pass the raw strings (title + body)
-   * that context just produced. The LLM answers against these.
+   * that `helpbase ingest` just produced. The LLM answers against these.
    */
   docs: Array<{ title: string; path: string; body: string }>
 }

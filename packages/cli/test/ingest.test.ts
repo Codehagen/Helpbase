@@ -277,7 +277,7 @@ describe("helpbase ingest", () => {
     }
   })
 
-  it("--reuse-existing --ask with a populated .helpbase/docs reaches the LLM call (fast path, no walk)", () => {
+  it("--reuse-existing --ask with a populated .helpbase/docs reaches auth without walking sources (hermetic)", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ing-reuse-"))
     try {
       // Seed a pre-generated doc on disk — the fast path reads these.
@@ -298,22 +298,29 @@ describe("helpbase ingest", () => {
           "",
         ].join("\n"),
       )
-      // No AI key and no source walk — the fast path goes straight to
-      // runLocalAsk, which needs a key. Observable behavior: we get past
-      // the walker (no NO_SOURCES, no REPO_PATH error) and fail at the
-      // LLM call with a gateway/key error, NOT at the pipeline gate.
+      // Observable behavior: the run passes the reuse gate + the source-walker
+      // gate (no REUSE_EMPTY, no NO_SOURCES, no REPO_PATH) and then fails at
+      // the auth boundary — NEVER reaches the network. Previously this test
+      // used a fake `vck_...` AI_GATEWAY_API_KEY and asserted "Answering:" to
+      // prove runLocalAsk fired, but that let a contributor-laptop with a
+      // real ANTHROPIC_API_KEY or OPENAI_API_KEY burn real tokens on every
+      // test run. CodeRabbit called the hazard out — the hermetic replacement
+      // checks for E_AUTH_REQUIRED instead, which is a strictly stronger
+      // signal about where execution reached.
       const result = runWithEnv(
         `ingest ${tmp} --reuse-existing --ask "how do I log in?"`,
         {
-          AI_GATEWAY_API_KEY: "vck_this_is_not_a_real_key_abcdefghijklmnop",
+          AI_GATEWAY_API_KEY: "",
+          ANTHROPIC_API_KEY: "",
+          OPENAI_API_KEY: "",
+          HELPBASE_TOKEN: "",
         },
       )
-      // The run should fail at the LLM boundary, not the reuse gate.
+      expect(result.exitCode).toBe(1)
+      expect(result.output).toContain("E_AUTH_REQUIRED")
       expect(result.output).not.toContain("E_CONTEXT_REUSE_EMPTY")
       expect(result.output).not.toContain("E_CONTEXT_REUSE_WITHOUT_ASK")
       expect(result.output).not.toContain("E_CONTEXT_NO_SOURCES")
-      // The Answering line proves we reached runLocalAsk's prompt stage.
-      expect(result.output).toContain("Answering:")
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true })
     }

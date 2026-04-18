@@ -239,6 +239,7 @@ export type Database = {
         Row: {
           category: string
           content: string
+          content_hash: string
           created_at: string
           description: string
           featured: boolean
@@ -257,6 +258,7 @@ export type Database = {
         Insert: {
           category: string
           content: string
+          content_hash?: string
           created_at?: string
           description?: string
           featured?: boolean
@@ -275,6 +277,7 @@ export type Database = {
         Update: {
           category?: string
           content?: string
+          content_hash?: string
           created_at?: string
           description?: string
           featured?: boolean
@@ -520,6 +523,7 @@ export type Database = {
           active: boolean
           auto_provisioned_at: string | null
           created_at: string
+          deploy_version: number
           deployed_at: string | null
           id: string
           mcp_calls_today: number
@@ -534,6 +538,7 @@ export type Database = {
           active?: boolean
           auto_provisioned_at?: string | null
           created_at?: string
+          deploy_version?: number
           deployed_at?: string | null
           id?: string
           mcp_calls_today?: number
@@ -548,6 +553,7 @@ export type Database = {
           active?: boolean
           auto_provisioned_at?: string | null
           created_at?: string
+          deploy_version?: number
           deployed_at?: string | null
           id?: string
           mcp_calls_today?: number
@@ -682,10 +688,14 @@ export type Database = {
           p_articles: Json
           p_categories: Json
           p_chunks: Json
+          p_expected_deploy_version?: number
           p_tenant_id: string
           p_validation_report?: Json
         }
-        Returns: string
+        Returns: {
+          deploy_id: string
+          new_deploy_version: number
+        }[]
       }
       get_global_tokens_today: { Args: never; Returns: number }
       get_user_tokens_today: { Args: { p_user_id: string }; Returns: number }

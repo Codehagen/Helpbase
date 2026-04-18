@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "exports": {
+    "./article-hash": "./src/article-hash.ts",
     "./schemas": "./src/schemas.ts",
     "./types": "./src/types.ts",
     "./slugify": "./src/slugify.ts",

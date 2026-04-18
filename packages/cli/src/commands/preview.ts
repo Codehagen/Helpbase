@@ -44,7 +44,8 @@ interface PreviewOpts {
 
 export const previewCommand = new Command("preview")
   .description(
-    "Open a browser-viewable help center from the docs `helpbase ingest` generated.",
+    "Open a browser-viewable help center from the docs `helpbase ingest` generated. " +
+    "For a remote deploy diff (what would change on your tenant), use `helpbase deploy --preview`.",
   )
   .option("-p, --port <port>", "Port to serve on", "3000")
   .option("--reset", "Wipe the cached preview renderer and re-scaffold")
@@ -62,6 +63,7 @@ First run takes ~45-60s (scaffold + install). Every run after is ~3s.
 
 Pair with:
   $ helpbase ingest .                 # generate the docs first
+  $ helpbase deploy --preview         # show remote deploy diff (different flow)
 `,
   )
   .action(async (opts: PreviewOpts) => {

@@ -1,13 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { revalidatePath } from "next/cache"
 import { deployPayloadSchema } from "@workspace/shared/schemas"
+import { hashArticle } from "@workspace/shared/article-hash"
 import { jsonError, requireOwnedTenant } from "../../_shared"
 
 /**
  * POST /api/v1/tenants/:id/deploy
  *   auth: Bearer <Better Auth session token>
- *   body: { categories: [...], articles: [...], chunks: [...], validation_report?: {...} }
- *   returns: { deploy_id, article_count, chunk_count, slug }
+ *   body: { categories, articles, chunks, validation_report?, expected_deploy_version? }
+ *   returns: { deploy_id, new_deploy_version, article_count, chunk_count, slug }
+ *   409 with { error: "stale_deploy_version", current_deploy_version }
+ *     when expected_deploy_version was provided and no longer matches.
  *
  * Server-side port of what the CLI's `deploy` command used to do by
  * calling the `deploy_tenant` RPC directly over a JWT-auth Supabase
@@ -17,6 +20,9 @@ import { jsonError, requireOwnedTenant } from "../../_shared"
  * Also flushes the tenant's ISR cache so `{slug}.helpbase.dev` serves
  * fresh content. Replaces /api/revalidate as the post-deploy hook from
  * the CLI's perspective — one round-trip instead of two.
+ *
+ * As of v2 preview (2026-04-18) the RPC returns a row (deploy_id,
+ * new_deploy_version) instead of a scalar. Destructure accordingly.
  */
 
 export const runtime = "nodejs"
@@ -58,17 +64,105 @@ export async function POST(
   // types don't satisfy because Frontmatter is `Record<string, unknown>`.
   // The `as never` is a type-system escape valve — the actual runtime
   // safety comes from the deployPayloadSchema parse above.
-  const { data: deployId, error } = await admin.rpc("deploy_tenant", {
+  // Belt-and-braces: recompute content_hash server-side from the article
+  // payload. The CLI computes it locally (that's the value the preview
+  // diffed against), and the schema requires it — but if a buggy or older
+  // client sends an empty string or stale hash, the server-side recompute
+  // stores the correct value anyway. Prevents content_hash="" from
+  // polluting tenant_articles and making every subsequent preview mark
+  // the article as UPDATED. Caught by CodeRabbit on PR #11.
+  const articlesWithHash = body.articles.map((a) => ({
+    ...a,
+    content_hash: hashArticle({
+      title: a.title,
+      description: a.description,
+      frontmatter: a.frontmatter,
+      content: a.content,
+    }),
+  }))
+
+  const rpcArgs: {
+    p_tenant_id: string
+    p_categories: never
+    p_articles: never
+    p_chunks: never
+    p_validation_report: never
+    p_expected_deploy_version?: number
+  } = {
     p_tenant_id: tenant.id,
     p_categories: body.categories as never,
-    p_articles: body.articles as never,
+    p_articles: articlesWithHash as never,
     p_chunks: body.chunks as never,
     p_validation_report: (body.validation_report ?? {}) as never,
-  })
+  }
+  // Only send the version check arg when the client explicitly asked
+  // for it. The RPC treats NULL as "skip the check", but leaving the
+  // param undefined is slightly cleaner in the wire format and matches
+  // the pre-v2 behavior for CI callers exactly.
+  if (
+    body.expected_deploy_version !== null &&
+    body.expected_deploy_version !== undefined
+  ) {
+    rpcArgs.p_expected_deploy_version = body.expected_deploy_version
+  }
+  const { data, error } = await admin.rpc("deploy_tenant", rpcArgs)
   if (error) {
+    // stale_deploy_version raises with SQLSTATE P0001. Check the code
+    // first (precise), then parse error.message for the "current N"
+    // value. Matching on a message substring alone is too fragile —
+    // any other P0001 raise inside the RPC would accidentally get
+    // translated to a 409. Caught by CodeRabbit on PR #11.
+    const isStaleVersion =
+      error.code === "P0001" &&
+      typeof error.message === "string" &&
+      error.message.includes("stale_deploy_version")
+    if (isStaleVersion) {
+      const m = /current\s+(\d+)/.exec(error.message)
+      const currentDeployVersion = m ? Number(m[1]) : null
+      return NextResponse.json(
+        {
+          error: "stale_deploy_version",
+          current_deploy_version: currentDeployVersion,
+          message:
+            "Deploy version has advanced since the preview was fetched. Re-run `helpbase deploy` to see the current state.",
+        },
+        { status: 409 },
+      )
+    }
     console.error("[tenants.deploy] supabase rpc error", { tenantId: tenant.id, error })
     return jsonError(503, "deploy_failed", "Deploy RPC failed.")
   }
+
+  // RPC returns RETURNS TABLE(deploy_id, new_deploy_version). Contract
+  // guarantees exactly one row on success. An empty result violates the
+  // contract (driver bug, function/view redefinition, grants change);
+  // fail loudly rather than returning {deploy_id: null, version: 0}
+  // which would claim success while silently corrupting the next
+  // preview cycle's deploy_version baseline. Caught by CodeRabbit on
+  // PR #11.
+  const row = Array.isArray(data) ? data[0] : null
+  if (!row || typeof row.new_deploy_version !== "number") {
+    console.error("[tenants.deploy] deploy_tenant returned unexpected shape", {
+      tenantId: tenant.id,
+      data,
+    })
+    return jsonError(503, "deploy_failed", "Deploy RPC returned no row.")
+  }
+  const deployId = row.deploy_id
+  const newDeployVersion = row.new_deploy_version
+
+  // Re-read the slug AFTER the RPC commits. `tenant.slug` captured by
+  // requireOwnedTenant was read before the RPC ran; a concurrent
+  // reservation rename between requireOwnedTenant and the RPC could have
+  // changed the slug. Pull the authoritative post-deploy value so the
+  // response and the revalidatePath both point at the right subdomain.
+  // Caught by codex /review on 2026-04-18.
+  const { data: freshTenant } = await admin
+    .from("tenants")
+    .select("slug")
+    .eq("id", tenant.id)
+    .single()
+  const finalSlug = freshTenant?.slug ?? tenant.slug
 
   // Count rows post-deploy so the CLI can print a helpful summary.
   const [{ count: articleCount }, { count: chunkCount }] = await Promise.all([
@@ -82,18 +176,20 @@ export async function POST(
       .eq("tenant_id", tenant.id),
   ])
 
-  // Fire ISR revalidation for the tenant's subdomain pages. Safe-to-ignore
-  // errors — cache will self-heal on the next 1h TTL.
+  // Fire ISR revalidation for the tenant's subdomain pages using the
+  // post-RPC slug so we don't accidentally revalidate a stale subdomain.
+  // Safe-to-ignore errors — cache will self-heal on the next 1h TTL.
   try {
-    revalidatePath(`/t/${tenant.slug}`, "layout")
+    revalidatePath(`/t/${finalSlug}`, "layout")
   } catch {
     // best-effort
   }
 
   return NextResponse.json({
     deploy_id: deployId,
+    new_deploy_version: newDeployVersion,
     article_count: articleCount ?? 0,
     chunk_count: chunkCount ?? 0,
-    slug: tenant.slug,
+    slug: finalSlug,
   })
 }

@@ -279,6 +279,14 @@ export const deployPayloadSchema = z.object({
     title: z.string().min(1),
     description: z.string().default(""),
     content: z.string(),
+    // content_hash is required, not defaulted: an empty string persists
+    // straight through to tenant_articles.content_hash and the diff
+    // engine treats "" as UPDATED-forever until the next deploy. That's
+    // a silent DX regression. The server recomputes on the deploy route
+    // as belt-and-braces, but requiring at the schema level catches
+    // malformed callers with a clear 400 before the RPC fires. Caught
+    // by CodeRabbit on PR #11.
+    content_hash: z.string().min(1, "content_hash is required (hash via hashArticle)"),
     frontmatter: z.record(z.string(), z.unknown()).default({}),
     order: z.number().int().default(0),
     tags: z.array(z.string()).optional().nullable(),
@@ -289,6 +297,12 @@ export const deployPayloadSchema = z.object({
   })),
   chunks: z.array(tenantChunkSchema),
   validation_report: deployReportSchema.optional(),
+  // Optimistic concurrency: client passes the deploy_version it observed
+  // when fetching /state. Server raises stale_deploy_version (SQLSTATE P0001)
+  // if the value has advanced since. Optional — CI and legacy callers
+  // that don't run `deploy --preview` first pass undefined and skip the
+  // check. See `deploy_tenant_rpc_v2_content_hash_and_version` migration.
+  expected_deploy_version: z.number().int().nonnegative().nullable().optional(),
 })
 
 export type DeployPayload = z.infer<typeof deployPayloadSchema>

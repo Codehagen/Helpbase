@@ -68,7 +68,10 @@ function articleKey(a: { category: string; slug: string }): string {
 
 function categoryDiffers(local: LocalCategory, remote: StateCategory): boolean {
   if (local.title !== remote.title) return true
-  if (local.description !== (remote.description ?? "")) return true
+  if (local.description !== remote.description) return true
+  // icon IS nullable in StateCategory per the /state response — normalize
+  // null to "" so a locally-declared "file-text" default doesn't register
+  // as different from a remote null.
   if (local.icon !== (remote.icon ?? "")) return true
   if (local.order !== remote.order) return true
   return false

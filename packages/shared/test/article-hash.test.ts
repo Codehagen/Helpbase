@@ -41,8 +41,10 @@ describe("hashArticle", () => {
   it("snapshot — the canonical fixture digest", () => {
     // Locks the current serialization. If this changes, EVERY deployed
     // tenant's content_hash goes stale. See file header.
+    // Snapshot changed after the JSON-encoding fix for hash collisions.
+    // See article-hash.ts header for rationale.
     expect(hashArticle(FIXTURE)).toMatchInlineSnapshot(
-      `"ab983f484f6bae5c24461b56024de8baad2fb98997b9a04cb18fa6ff3a1eae7a"`,
+      `"696ec28189c46f0bf677fca9bc1b4c391b0816bdab441bcc6ffd62abbb2dc5e6"`,
     )
   })
 
@@ -138,6 +140,13 @@ describe("hashArticle", () => {
     }
     expect(hashArticle(withNull)).not.toBe(hashArticle(FIXTURE))
     expect(hashArticle(withNull)).toBe(hashArticle(withNull))
+  })
+
+  it("regression: field-boundary collision does NOT match (CodeRabbit PR #11)", () => {
+    // Without JSON-encoding the raw delimiters, these two hash the same.
+    const a = { ...FIXTURE, title: "A", description: "B\nC" }
+    const b = { ...FIXTURE, title: "A\nB", description: "C" }
+    expect(hashArticle(a)).not.toBe(hashArticle(b))
   })
 
   it("handles undefined values in frontmatter (treated as null)", () => {

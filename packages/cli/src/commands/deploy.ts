@@ -139,18 +139,12 @@ Examples:
       //    an empty folder should not be told "Not signed in" — that's
       //    the DX audit from 2026-04-18 speaking. Skipped for
       //    --rotate-mcp-token since it doesn't touch content.
+      //    validateAndReadContent owns the existence check + error
+      //    messaging (with the `npx create-helpbase` hint).
       const contentDir = path.resolve("content")
-      let content: ReadContent | null = null
-      if (!opts.rotateMcpToken) {
-        if (!fs.existsSync(contentDir)) {
-          cancel(
-            "No content/ directory found. Run this from a helpbase project root, or create one:\n" +
-            pc.cyan("  npx create-helpbase"),
-          )
-          process.exit(1)
-        }
-        content = validateAndReadContent(contentDir)
-      }
+      const content: ReadContent | null = opts.rotateMcpToken
+        ? null
+        : validateAndReadContent(contentDir)
 
       // 2. Auth. validateAndReadContent above exits on errors, so by the
       //    time we hit this we've confirmed the local project shape is

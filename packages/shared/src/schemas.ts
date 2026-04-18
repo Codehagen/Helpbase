@@ -279,7 +279,14 @@ export const deployPayloadSchema = z.object({
     title: z.string().min(1),
     description: z.string().default(""),
     content: z.string(),
-    content_hash: z.string().default(""),
+    // content_hash is required, not defaulted: an empty string persists
+    // straight through to tenant_articles.content_hash and the diff
+    // engine treats "" as UPDATED-forever until the next deploy. That's
+    // a silent DX regression. The server recomputes on the deploy route
+    // as belt-and-braces, but requiring at the schema level catches
+    // malformed callers with a clear 400 before the RPC fires. Caught
+    // by CodeRabbit on PR #11.
+    content_hash: z.string().min(1, "content_hash is required (hash via @workspace/shared/article-hash)"),
     frontmatter: z.record(z.string(), z.unknown()).default({}),
     order: z.number().int().default(0),
     tags: z.array(z.string()).optional().nullable(),

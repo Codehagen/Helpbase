@@ -55,6 +55,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   next deploy.
 - **`tenants` gained a `deploy_version` column** (monotonic counter,
   bigint, NOT NULL DEFAULT 0) to back the optimistic concurrency path.
+- **`helpbase context` renamed to `helpbase ingest`.** `context` described
+  a domain concept, not an action — `ingest` names what the command does
+  (walk your code + markdown, synthesize cited how-tos, wire MCP). The
+  old name continues to work as a deprecation shim: same flags, same
+  behavior, one-line stderr warning, suppressed under `--json`/`--quiet`.
+  Help text + README Quick Start + scaffolder next-steps output now lead
+  with `ingest`. CI scripts pinned to `helpbase context` keep working
+  until v0.7, which is when the shim is removed. Flag surface is shared
+  via `applyIngestOptions()` so the two commands can't drift. First PR
+  of the CLI DX v2 plan.
+- **`/api/v1/tenants/mine` hides reservations.** Reservations are
+  pre-first-deploy placeholders and shouldn't pollute the tenant
+  picker for multi-tenant users. The new filter is
+  `.not("deployed_at", "is", null)`. Callers that specifically want
+  the reservation (login, whoami, open) hit
+  `GET /api/v1/tenants/reservation` instead.
+- **`tenants_public` view now exposes `deployed_at`.** The subdomain
+  middleware needs this to distinguish reserved tenants from live
+  ones without granting anon read access to the full tenants table.
+  `mcp_public_token` still never appears in the view.
 
 ### Fixed
 - **Local validation runs before auth so empty-folder errors match the real
@@ -127,28 +147,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server. Buttons stay hidden until configured, and the email
   magic-link path always remains available as a fallback. Cold-path
   TTHW drops from ~60s (email round-trip) to ~20s (one-click OAuth).
-
-### Changed
-- **`helpbase context` renamed to `helpbase ingest`.** `context` described
-  a domain concept, not an action — `ingest` names what the command does
-  (walk your code + markdown, synthesize cited how-tos, wire MCP). The
-  old name continues to work as a deprecation shim: same flags, same
-  behavior, one-line stderr warning, suppressed under `--json`/`--quiet`.
-  Help text + README Quick Start + scaffolder next-steps output now lead
-  with `ingest`. CI scripts pinned to `helpbase context` keep working
-  until v0.7, which is when the shim is removed. Flag surface is shared
-  via `applyIngestOptions()` so the two commands can't drift. First PR
-  of the CLI DX v2 plan.
-- **`/api/v1/tenants/mine` hides reservations.** Reservations are
-  pre-first-deploy placeholders and shouldn't pollute the tenant
-  picker for multi-tenant users. The new filter is
-  `.not("deployed_at", "is", null)`. Callers that specifically want
-  the reservation (login, whoami, open) hit
-  `GET /api/v1/tenants/reservation` instead.
-- **`tenants_public` view now exposes `deployed_at`.** The subdomain
-  middleware needs this to distinguish reserved tenants from live
-  ones without granting anon read access to the full tenants table.
-  `mcp_public_token` still never appears in the view.
 
 ### Schema
 - New columns on `public.tenants`: `deployed_at timestamptz` +

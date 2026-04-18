@@ -32,11 +32,18 @@ export interface ArticleHashInput {
 const SEPARATOR = "\n"
 
 export function hashArticle(input: ArticleHashInput): string {
+  // JSON.stringify every field before joining so newlines inside
+  // `title` or `description` cannot collide with the SEPARATOR and
+  // confuse two otherwise-distinct articles into the same hash.
+  // Without this, { title: "A", description: "B\nC", ... } and
+  // { title: "A\nB", description: "C", ... } would hash identically.
+  // Caught by CodeRabbit on PR #11 — fixing in the same migration
+  // window while no tenant has a real content_hash yet.
   const payload = [
-    input.title,
-    input.description,
+    JSON.stringify(input.title),
+    JSON.stringify(input.description),
     stableStringify(input.frontmatter),
-    input.content,
+    JSON.stringify(input.content),
   ].join(SEPARATOR)
   return createHash("sha256").update(payload, "utf8").digest("hex")
 }

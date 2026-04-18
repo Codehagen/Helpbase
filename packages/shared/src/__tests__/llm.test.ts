@@ -255,7 +255,7 @@ describe("callLlmObject hosted path — error mapping", () => {
       dailyLimit: 500_000,
       resetAt: "2026-04-18T00:00:00Z",
       upgradeUrl: "https://helpbase.dev/waitlist",
-      byokDocsUrl: "https://helpbase.dev/docs/byok",
+      byokDocsUrl: "https://helpbase.dev/guides/byok",
     })
     try {
       await callLlmObject({ model: "x/y", prompt: "p", schema, authToken: "ok" })
@@ -274,7 +274,7 @@ describe("callLlmObject hosted path — error mapping", () => {
       error: "global_cap_hit",
       message: "global",
       resetAt: "2026-04-18T00:00:00Z",
-      byokDocsUrl: "https://helpbase.dev/docs/byok",
+      byokDocsUrl: "https://helpbase.dev/guides/byok",
     })
     await expect(
       callLlmObject({ model: "x/y", prompt: "p", schema, authToken: "ok" }),

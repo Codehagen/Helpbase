@@ -17,7 +17,7 @@ built on shadcn/ui.
 
 <br />
 
-**[Website](https://helpbase.dev)** · **[Demo](https://helpbase.dev/docs)** · **[Registry](https://helpbase.dev/r/help-center.json)** · **[@CodeHagen](https://x.com/CodeHagen)**
+**[Website](https://helpbase.dev)** · **[Demo](https://helpbase.dev/getting-started/introduction)** · **[Registry](https://helpbase.dev/r/help-center.json)** · **[@CodeHagen](https://x.com/CodeHagen)**
 
 </div>
 
@@ -58,19 +58,21 @@ log into.
 - **Reduced-motion aware** — animations respect `prefers-reduced-motion`
 - **Production-tested** — 300+ tests across the CLI, scaffolder, MCP server, and content pipeline, plus an install-path smoke test in CI
 
-## Try it on your repo in 60 seconds
+## Quick start
 
-Point `helpbase context` at any repo. It synthesizes task-oriented how-to
-guides grounded in cited files, writes MDX to `.helpbase/docs/`, emits
-`llms.txt` + an MCP config hint, and can answer questions in-terminal
-without any MCP client setup. Same content, two surfaces: humans read
-the MDX, agents query over MCP.
+Point `helpbase context` at any repo. Under 90 seconds from zero to
+generated docs. Works on macOS, Linux, and Windows. Requires Node 20+.
 
 ```bash
-npx helpbase login                                   # magic-link, no card, free 500k tokens/day
+npx helpbase login                                   # magic-link device flow, free 500k tokens/day, no card
 npx helpbase context .                               # synthesize cited how-tos from your repo
 npx helpbase context . --ask "how do I log in?"     # answer in terminal, no MCP client required
 ```
+
+`helpbase context` walks your code + markdown, synthesizes task-oriented
+how-to guides grounded in cited files, writes MDX to `.helpbase/docs/`,
+and emits `llms.txt` + an MCP config hint. Same content, two surfaces:
+humans read the MDX, agents query over MCP.
 
 Every generated doc cites specific files + line ranges. Citations that
 don't match the repo literally are dropped before write — no hallucinated
@@ -80,10 +82,11 @@ docs. Secret-shaped content aborts the run before any file hits disk.
 Paste one of the blocks from `.helpbase/mcp.json` into Claude Desktop,
 Cursor, or Claude Code and your agent has your repo as docs.
 
-## Quick start
+## Scaffold a full Next.js help-center site
 
-The fastest way to try helpbase. Works on macOS, Linux, and Windows. Requires
-Node 20+ and pnpm or npm.
+Want a standalone docs site you can deploy, not just `.helpbase/` MDX in
+the current repo? Use the scaffolder. Takes ~2 minutes end-to-end
+(install runs in parallel with AI generation).
 
 ```bash
 npx create-helpbase my-help-center
@@ -92,8 +95,13 @@ npx create-helpbase my-help-center
 The scaffolder asks what to seed content from:
 
 - **A website** — paste a URL, it scrapes the page and generates articles.
-- **A code repository** — paste a local path or a `github.com` URL. The scaffolder walks your source, synthesizes cited how-to guides with file + line refs, and writes them to `content/`. Needs a helpbase login (free, 500k tokens/day) or `AI_GATEWAY_API_KEY`.
+- **A code repository** — paste a local path or a `github.com` URL. The scaffolder walks your source, synthesizes cited how-to guides with file + line refs, and writes them to `content/`.
 - **Skip** — ship with sample articles.
+
+If you're not logged in, the scaffolder offers one-click inline login
+(free, 500k tokens/day, no card). If you prefer BYOK, export
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY` before
+running and the scaffolder uses that directly.
 
 Dependencies install, the dev server starts, and your browser opens at
 `http://localhost:3000`. Edit the markdown in `content/` and the dev
@@ -127,10 +135,10 @@ The `--test` flag uses Gemini 3.1 Flash Lite for cheap, fast generation. Pass
 `--model anthropic/claude-sonnet-4.6` (or any Gateway-supported model) to
 override.
 
-**Power users + CI:** skip the helpbase proxy entirely with your own
-[Vercel AI Gateway](https://vercel.com/ai-gateway) key — `export
-AI_GATEWAY_API_KEY=...` before running. See
-[helpbase.dev/docs/byok](https://helpbase.dev/docs/byok).
+**Power users + CI:** skip the helpbase proxy with whichever key you
+already have — `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or
+`AI_GATEWAY_API_KEY` (any one works, first found wins). See
+[helpbase.dev/guides/byok](https://helpbase.dev/guides/byok).
 
 ### Drop into an existing Next.js app
 
@@ -284,8 +292,16 @@ automatically; pass `--json` or `--quiet` to guarantee composable output.
 | `helpbase generate` | `--url <url>` (or `--repo <path>`) + `--yes` |
 | `helpbase new` | `--type <type> --title "..."` (optional `--category`, `--slug`) |
 
-Tokens are issued from `https://helpbase.dev/account/tokens`. Export
-once in CI and the CLI auths non-interactively for every command.
+Grab a session token by running `helpbase login` locally, then reading
+it from `~/.helpbase/auth.json`:
+
+```bash
+jq -r .access_token ~/.helpbase/auth.json
+```
+
+Set the value as a `HELPBASE_TOKEN` secret in your CI and the CLI auths
+non-interactively for every command. (A web dashboard for token management
+is not yet live — cut one from the local file for now.)
 
 ## Shell completion
 

@@ -47,9 +47,10 @@ Magic-link flow. Free tier is 500,000 tokens per day — enough for roughly 10
 full generates or 250 `context --ask` calls.
 
 <Callout type="note">
-Prefer your own key? Set `AI_GATEWAY_API_KEY` and helpbase will route through
-your Vercel AI Gateway account instead. See
-[helpbase.dev/docs/byok](https://helpbase.dev/docs/byok).
+Prefer your own key? Set `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or
+`AI_GATEWAY_API_KEY` — helpbase routes direct to whichever provider you set
+(first found wins). See
+[helpbase.dev/guides/byok](https://helpbase.dev/guides/byok).
 </Callout>
 
 ## Step 3 — Make a code change worth documenting

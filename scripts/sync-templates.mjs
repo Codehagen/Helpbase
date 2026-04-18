@@ -432,7 +432,7 @@ function writeTemplatesHelpbaseMd() {
 
 const DEFAULT_HELPBASE_MD = `# helpbase
 
-This is your help center. See https://helpbase.dev/docs for the full guide.
+This is your help center. See https://helpbase.dev/getting-started/introduction for the full guide.
 `
 
 function generateTemplatesGitignore() {

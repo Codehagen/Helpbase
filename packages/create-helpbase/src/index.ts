@@ -19,8 +19,8 @@ import {
   generateArticlesFromContent,
 } from "@workspace/shared/ai-text"
 import { scaffoldProject, clearSampleContent } from "./scaffold.js"
-import { writeAiGatewayKey } from "./env-local.js"
 import { readHelpbaseAuthToken } from "./auth.js"
+import { isByokMode } from "@workspace/shared/llm"
 import {
   generateFromRepo,
   AllDocsDroppedError,
@@ -153,44 +153,23 @@ async function run(directory: string | undefined, opts: RunOptions) {
 
   // 3. Auth resolution — conditional on existing state.
   //    Skip entirely when the user already has a helpbase session on disk
-  //    or AI_GATEWAY_API_KEY set. Otherwise offer a three-way choice that
-  //    leads with `helpbase login` (free, captures email) instead of
-  //    asking for a Vercel Gateway key most users don't have.
-  //    Saves ~10-15s of dead-air friction for returning developers, and
-  //    surfaces the login path in the CLI where evaluation actually
-  //    happens, instead of hiding it behind an error message.
+  //    or any BYOK env var set (ANTHROPIC_API_KEY / OPENAI_API_KEY /
+  //    AI_GATEWAY_API_KEY via isByokMode()).
+  //    Otherwise offer a single confirm — the target persona (YC founder
+  //    with no key) always picks "log in free," so a 3-way select was
+  //    cognitive noise. BYOK users route via env var before running;
+  //    paste-a-key was removed to cut prompt count for the common path.
   let authToken = readHelpbaseAuthToken()
-  const byokAlreadyResolved = Boolean(process.env.AI_GATEWAY_API_KEY)
-  let aiGatewayKey: string | undefined
-  if (isInteractive && source.kind !== "skip" && !authToken && !byokAlreadyResolved) {
-    const authChoice = await select({
-      message: "AI generation needs auth. Pick one:",
-      options: [
-        {
-          value: "login",
-          label: "Log in (free, no card, 500k tokens/day)",
-          hint: "runs `helpbase login` — 30 seconds",
-        },
-        {
-          value: "byok",
-          label: "Paste a Vercel AI Gateway key",
-          hint: "BYOK — unlimited on your own billing",
-        },
-        {
-          value: "skip",
-          label: "Skip",
-          hint: "ship with sample content",
-        },
-      ],
-      initialValue: "login",
+  if (isInteractive && source.kind !== "skip" && !authToken && !isByokMode()) {
+    const wantsLogin = await confirm({
+      message: "Log in to helpbase free? (500k tokens/day, no card — 30s browser flow)",
+      initialValue: true,
     })
-
-    if (isCancel(authChoice)) {
+    if (isCancel(wantsLogin)) {
       cancel("Setup cancelled.")
       process.exit(0)
     }
-
-    if (authChoice === "login") {
+    if (wantsLogin) {
       const loginResult = await runHelpbaseLogin()
       if (loginResult === "failed") {
         note(
@@ -201,22 +180,9 @@ async function run(directory: string | undefined, opts: RunOptions) {
         // Re-read the token file — login just wrote it.
         authToken = readHelpbaseAuthToken()
       }
-    } else if (authChoice === "byok") {
-      const keyResponse = await text({
-        message: "Paste your Vercel AI Gateway key",
-        placeholder: "vck_...",
-      })
-      if (isCancel(keyResponse)) {
-        cancel("Setup cancelled.")
-        process.exit(0)
-      }
-      const trimmed = (keyResponse as string | undefined)?.trim()
-      if (trimmed && trimmed.length > 0 && trimmed !== "skip") {
-        aiGatewayKey = trimmed
-      }
     }
-    // authChoice === "skip" → fall through with no token, generation
-    // will error with the MissingApiKey path and sample content stays.
+    // Declined → fall through with no token, generation will error with
+    // the MissingApiKey path and the scaffolded sample content stays.
   }
 
   // 4. Scaffold the project
@@ -229,13 +195,27 @@ async function run(directory: string | undefined, opts: RunOptions) {
     internal: opts.internal,
   })
 
-  if (aiGatewayKey) {
-    writeAiGatewayKey(projectDir, aiGatewayKey)
-  }
-
   s.stop("Project scaffolded!")
 
-  // 5. AI content generation — branches by source kind.
+  // 5. Kick off `pnpm install` in the background so it runs while the LLM
+  //    call is in flight. Install is network + disk I/O, LLM synthesis is
+  //    network I/O — they don't compete. Cuts 30-60s off TTHW on the first
+  //    real run (install used to be strictly serial, after generation).
+  //    Install's stdout/stderr are captured (not piped to terminal) so they
+  //    don't clobber the spinner that generation owns.
+  const pkgManager = detectPackageManager()
+  const installPromise: Promise<{ success: true } | { success: false; reason: string }> =
+    opts.install !== false
+      ? runInstallInBackground(projectDir, pkgManager)
+      : Promise.resolve({ success: true } as const)
+
+  if (opts.install !== false) {
+    console.log(
+      `  ${pc.dim("›")} Installing dependencies with ${pc.cyan(pkgManager)} in background...`,
+    )
+  }
+
+  // 6. AI content generation — branches by source kind.
   //
   //    Invariant (Issue 1 fix from /plan-eng-review 2026-04-17): sample
   //    content stays on disk until LLM synthesis SUCCEEDS. The old flow
@@ -264,28 +244,26 @@ async function run(directory: string | undefined, opts: RunOptions) {
     })
   }
 
-  // 6. Emit mcp.json at project root if generation produced docs.
+  // 7. Emit mcp.json at project root if generation produced docs.
   //    For `skip` source we keep the sample content + skip emit (sample
   //    content has no citations worth wiring into MCP for a stranger).
   if (generationSucceeded) {
     emitMcpJson(projectDir)
   }
 
-  // 7. Install dependencies
-  const pkgManager = detectPackageManager()
+  // 8. Wait for install to finish. If the LLM path was slower, install is
+  //    already done and this resolves instantly; if install was slower, the
+  //    spinner tells the user we're still waiting on it.
   if (opts.install !== false) {
-    s.start(`Installing dependencies with ${pkgManager}... (this may take a minute)`)
-    try {
-      execSync(`${pkgManager} install`, {
-        cwd: projectDir,
-        stdio: ["pipe", "pipe", "pipe"],
-        timeout: 120000, // 2 minute timeout
-      })
+    s.start(`Finishing ${pkgManager} install...`)
+    const installResult = await installPromise
+    if (installResult.success) {
       s.stop("Dependencies installed!")
-    } catch {
+    } else {
       s.stop(pc.yellow("Failed to install dependencies."))
       note(
-        `Run ${pc.cyan(`cd ${projectName as string} && ${pkgManager} install`)} manually.`,
+        `Run ${pc.cyan(`cd ${projectName as string} && ${pkgManager} install`)} manually.\n` +
+        `  Reason: ${installResult.reason}`,
         "Manual install needed",
       )
     }
@@ -316,7 +294,7 @@ async function run(directory: string | undefined, opts: RunOptions) {
 
   outro(
     `${pc.green("Your help center is ready!")}\n` +
-    `  Docs: ${pc.dim("https://helpbase.dev/docs")}`,
+    `  Docs: ${pc.dim("https://helpbase.dev/getting-started/introduction")}`,
   )
 
   // 9. Start dev server + auto-open browser on "Ready" signal.
@@ -620,6 +598,50 @@ function detectPackageManager(): string {
 }
 
 /**
+ * Spawn `<pkgManager> install` as a background child process and resolve
+ * once it exits. Captures stdout + stderr into buffers (not piped to the
+ * terminal) so it doesn't interleave with the spinner owned by AI
+ * generation. On non-zero exit we keep the last 500 chars of stderr so
+ * the manual-retry note gives a real reason.
+ *
+ * 2-minute timeout matches the previous `execSync` behavior — slow CI
+ * networks occasionally hit it, but 3min+ is almost always a cold Docker
+ * image pulling the registry for the first time, not a normal user run.
+ */
+function runInstallInBackground(
+  projectDir: string,
+  pkgManager: string,
+): Promise<{ success: true } | { success: false; reason: string }> {
+  return new Promise((resolve) => {
+    let stderrTail = ""
+    const child = spawn(pkgManager, ["install"], {
+      cwd: projectDir,
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 120000,
+    })
+    child.stdout?.on("data", () => {
+      // drain to keep the pipe flowing; output is intentionally dropped
+    })
+    child.stderr?.on("data", (chunk: Buffer) => {
+      // Retain only the tail — package managers can be very chatty, and
+      // we only surface the reason on failure.
+      stderrTail = (stderrTail + chunk.toString()).slice(-500)
+    })
+    child.once("error", (err) => {
+      resolve({ success: false, reason: err.message })
+    })
+    child.once("exit", (code) => {
+      if (code === 0) {
+        resolve({ success: true })
+      } else {
+        const reason = stderrTail.trim() || `${pkgManager} install exited ${code}`
+        resolve({ success: false, reason })
+      }
+    })
+  })
+}
+
+/**
  * Write generated articles into `<projectDir>/content/<category>/*.mdx` and
  * scaffold the matching `_category.json` files. URL branch only — the repo
  * branch writes via generateFromRepo (shared context-writer path).
@@ -664,8 +686,8 @@ function printGenerationFallbackHint(err: unknown, url: string): void {
     note(
       `Run ${pc.cyan("helpbase login")} (free, no card) then:\n` +
       `  ${pc.cyan(`helpbase generate --url ${url}`)}\n\n` +
-      `Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} ` +
-      `(docs: ${pc.cyan("helpbase.dev/docs/byok")})`,
+      `Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} ` +
+      `(docs: ${pc.cyan("helpbase.dev/guides/byok")})`,
       "AI generation skipped",
     )
     return
@@ -689,8 +711,8 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
     note(
       `Run ${pc.cyan("helpbase login")} (free, no card) then:\n` +
       `  ${pc.cyan(`helpbase context ${repoPath}`)}\n\n` +
-      `Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} ` +
-      `(docs: ${pc.cyan("helpbase.dev/docs/byok")})`,
+      `Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} ` +
+      `(docs: ${pc.cyan("helpbase.dev/guides/byok")})`,
       "AI generation skipped",
     )
     return

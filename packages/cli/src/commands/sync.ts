@@ -160,12 +160,12 @@ Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
       if (err instanceof MissingApiKeyError) {
         throw new HelpbaseError({
           code: "E_AUTH_REQUIRED",
-          problem: "Not signed in and no AI_GATEWAY_API_KEY set",
+          problem: "Not signed in and no BYOK key set",
           cause: "helpbase sync calls an LLM to propose doc edits; it needs auth or a BYOK key.",
           fix: [
             `Run ${pc.cyan("helpbase login")} (free, no card), then re-run.`,
-            `Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")}`,
-            "Docs: https://helpbase.dev/docs/byok",
+            `Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} (first found wins).`,
+            "Docs: https://helpbase.dev/guides/byok",
           ],
         })
       }
@@ -373,5 +373,5 @@ async function runDemo(_opts: SyncOptions): Promise<void> {
   process.stdout.write(rendered + "\n")
   note("")
   ok(`Demo complete — ${proposals.length} proposal${proposals.length === 1 ? "" : "s"}, all citation-grounded.`)
-  info(`Next: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} and run ${pc.cyan("helpbase sync")} in your repo.`)
+  info(`Next: run ${pc.cyan("helpbase login")} (free) or export ${pc.cyan("ANTHROPIC_API_KEY")} / ${pc.cyan("OPENAI_API_KEY")} / ${pc.cyan("AI_GATEWAY_API_KEY")}, then ${pc.cyan("helpbase sync")} in your repo.`)
 }

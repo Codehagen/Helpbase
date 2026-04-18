@@ -80,7 +80,7 @@ describe("Error classes carry code + shape", () => {
       dailyLimit: 500_000,
       resetAt: "2026-04-18T00:00:00Z",
       upgradeUrl: "https://helpbase.dev/waitlist",
-      byokDocsUrl: "https://helpbase.dev/docs/byok",
+      byokDocsUrl: "https://helpbase.dev/guides/byok",
     })
     expect(e.code).toBe("quota_exceeded")
     expect(e.usedToday).toBe(500_000)
@@ -89,7 +89,7 @@ describe("Error classes carry code + shape", () => {
   it("GlobalCapError", () => {
     const e = new GlobalCapError({
       resetAt: "2026-04-18T00:00:00Z",
-      byokDocsUrl: "https://helpbase.dev/docs/byok",
+      byokDocsUrl: "https://helpbase.dev/guides/byok",
     })
     expect(e.code).toBe("global_cap_hit")
   })

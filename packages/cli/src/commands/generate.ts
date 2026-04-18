@@ -68,7 +68,8 @@ Examples:
   $ helpbase generate --screenshots ./flow --title "How to invite a teammate"
   $ helpbase generate --url https://myproduct.com --dry-run        # preview without spending tokens
 
-Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
+Auth: run ${"`helpbase login`"} (free, 500k tokens/day) OR export one of
+${"ANTHROPIC_API_KEY"} / ${"OPENAI_API_KEY"} / ${"AI_GATEWAY_API_KEY"} (BYOK, first found wins).
 `,
   )
   .action(async (repoPath: string | undefined, opts) => {
@@ -301,7 +302,7 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
               `\n${pc.red("✖")} Generated file has invalid frontmatter: ${plan.filePath}\n` +
                 `  Reason: ${parseErr instanceof Error ? parseErr.message : "parse error"}\n` +
                 `  Fix: This is a bug in articleToMdx — please file an issue with the file contents.\n` +
-                `  Docs: https://helpbase.dev/docs/troubleshooting#bad-frontmatter\n`,
+                `  Docs: https://helpbase.dev/errors/e-invalid-frontmatter\n`,
             )
             process.exit(1)
           }
@@ -437,7 +438,7 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
             `\n${pc.red("✖")} Generated file has invalid frontmatter: ${plan.filePath}\n` +
               `  Reason: ${parseErr instanceof Error ? parseErr.message : "parse error"}\n` +
               `  Fix: This is a bug in articleToMdx — please file an issue with the file contents.\n` +
-              `  Docs: https://helpbase.dev/docs/troubleshooting#bad-frontmatter\n`,
+              `  Docs: https://helpbase.dev/errors/e-invalid-frontmatter\n`,
           )
           process.exit(1)
         }
@@ -559,7 +560,7 @@ Set AI_GATEWAY_API_KEY first — get a key at https://vercel.com/ai-gateway.
             `\n${pc.red("✖")} Generated file has invalid frontmatter: ${plan.filePath}\n` +
               `  Reason: ${parseErr instanceof Error ? parseErr.message : "parse error"}\n` +
               `  Fix: This is a bug in articleToMdx — please file an issue with the file contents.\n` +
-              `  Docs: https://helpbase.dev/docs/troubleshooting#bad-frontmatter\n`,
+              `  Docs: https://helpbase.dev/errors/e-invalid-frontmatter\n`,
           )
           process.exit(1)
         }
@@ -612,7 +613,7 @@ function printRepoError(repoPath: string, err: unknown): void {
     `\n${pc.red("✖")} Could not read repository ${pc.cyan(repoPath)}\n` +
     `  Reason: ${reason}\n` +
     `  Fix: Pass a local path to a directory with markdown files (e.g. ${pc.cyan("--repo .")}).\n` +
-    `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
+    `  Docs: https://helpbase.dev/cli/commands\n`,
   )
 }
 
@@ -622,7 +623,7 @@ function printScrapeError(url: string, err: unknown): void {
     `\n${pc.red("✖")} Could not generate articles from ${pc.cyan(url)}\n` +
     `  Reason: ${reason}\n` +
     `  Fix: Check the URL is accessible and try again.\n` +
-    `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
+    `  Docs: https://helpbase.dev/cli/commands\n`,
   )
 }
 
@@ -645,9 +646,9 @@ function printGenerateError(err: unknown, opts?: { url?: string; repo?: string; 
     // scaffolder / scripts that bypass the command layer.
     console.error(
       `\n${pc.red("✖")} Could not generate articles\n` +
-      `  Reason: Not signed in and no AI_GATEWAY_API_KEY is set.\n` +
+      `  Reason: Not signed in and no BYOK key is set.\n` +
       `  Fix: Run ${pc.cyan("helpbase login")} (free, no card), then re-run.\n` +
-      `       Or bring your own key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} (docs: helpbase.dev/docs/byok)\n`,
+      `       Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} (docs: helpbase.dev/guides/byok)\n`,
     )
     return
   }
@@ -658,7 +659,7 @@ function printGenerateError(err: unknown, opts?: { url?: string; repo?: string; 
       `  Reason: ${err.message}\n` +
       `  Fix: Check the model ID is valid and your Gateway quota is not exhausted.\n` +
       `       Try ${pc.cyan("--test")} to use a cheap fallback model, or ${pc.cyan("--model <id>")} to override.\n` +
-      `  Docs: https://helpbase.dev/docs/troubleshooting#gateway-errors\n`,
+      `  Docs: https://helpbase.dev/errors/e-llm-gateway\n`,
     )
     return
   }
@@ -668,7 +669,7 @@ function printGenerateError(err: unknown, opts?: { url?: string; repo?: string; 
     `\n${pc.red("✖")} Could not generate articles\n` +
     `  Reason: ${reason}\n` +
     `  Fix: Check the source and try again.\n` +
-    `  Docs: https://helpbase.dev/docs/troubleshooting#generate-errors\n`,
+    `  Docs: https://helpbase.dev/cli/commands\n`,
   )
 }
 

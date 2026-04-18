@@ -42,8 +42,8 @@ async function WaitlistContent({
 
       <p className="mt-2 text-sm text-muted-foreground">
         Need more tokens right now?{" "}
-        <a href="/docs/byok" className="underline hover:text-foreground">
-          Bring your own Vercel AI Gateway key
+        <a href="/guides/byok" className="underline hover:text-foreground">
+          Bring your own key (Anthropic, OpenAI, or Gateway)
         </a>{" "}
         — unlimited, your own cost.
       </p>

@@ -158,13 +158,16 @@ const ERRORS: Record<string, ErrorDoc> = {
   },
   "e-missing-api-key": {
     code: "E_MISSING_API_KEY",
-    title: "AI_GATEWAY_API_KEY not set",
+    title: "No helpbase session or BYOK key",
     summary:
-      "helpbase generate needs an AI gateway key to call the model provider.",
-    causes: ["AI_GATEWAY_API_KEY isn't in your environment."],
+      "helpbase generate needs either a helpbase session (free tier) or a BYOK provider key to call the LLM.",
+    causes: [
+      "You're not signed in (no `~/.helpbase/auth.json`) and no BYOK env var is set.",
+    ],
     fixes: [
-      "Get a key at https://vercel.com/ai-gateway.",
-      "Export it: `export AI_GATEWAY_API_KEY=<your-key>`.",
+      "Run `helpbase login` — free, 500k tokens/day, no card.",
+      "Or export any one of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `AI_GATEWAY_API_KEY` (first found wins).",
+      "See https://helpbase.dev/guides/byok for per-provider setup.",
     ],
   },
   "e-no-mcp-token": {
@@ -291,9 +294,9 @@ const ERRORS: Record<string, ErrorDoc> = {
     fixes: [
       "Run `helpbase login` — free tier, no card, 500k tokens/day.",
       "For CI: set `HELPBASE_TOKEN` to a valid session token.",
-      "Or bring your own key: `export AI_GATEWAY_API_KEY=…` (see /docs/byok).",
+      "Or bring your own key: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY` (first found wins — see /guides/byok).",
     ],
-    seeAlso: [{ label: "BYOK docs", href: "/docs/byok" }],
+    seeAlso: [{ label: "BYOK docs", href: "/guides/byok" }],
   },
   "e-quota-exceeded": {
     code: "E_QUOTA_EXCEEDED",
@@ -307,11 +310,11 @@ const ERRORS: Record<string, ErrorDoc> = {
     fixes: [
       "Wait for the UTC-midnight reset.",
       "Join the paid-tier waitlist: https://helpbase.dev/waitlist",
-      "Bring your own Vercel AI Gateway key: `export AI_GATEWAY_API_KEY=…` (unlimited, your own bill).",
+      "Bring your own key: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY` (unlimited on your own bill, first found wins).",
     ],
     seeAlso: [
       { label: "Waitlist", href: "/waitlist" },
-      { label: "BYOK docs", href: "/docs/byok" },
+      { label: "BYOK docs", href: "/guides/byok" },
     ],
   },
   "e-global-cap": {
@@ -325,9 +328,9 @@ const ERRORS: Record<string, ErrorDoc> = {
     ],
     fixes: [
       "Wait for the UTC-midnight reset.",
-      "Bring your own Vercel AI Gateway key to bypass the hosted proxy entirely: `export AI_GATEWAY_API_KEY=…`",
+      "Bring your own key to bypass the hosted proxy entirely: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY`.",
     ],
-    seeAlso: [{ label: "BYOK docs", href: "/docs/byok" }],
+    seeAlso: [{ label: "BYOK docs", href: "/guides/byok" }],
   },
   "e-llm-network": {
     code: "E_LLM_NETWORK",
@@ -342,9 +345,9 @@ const ERRORS: Record<string, ErrorDoc> = {
     fixes: [
       "Check your connection and retry — transient blips are common.",
       "If you're behind a corporate proxy, verify helpbase.dev is reachable.",
-      "Fall back to BYOK so calls don't go through helpbase.dev: `export AI_GATEWAY_API_KEY=…`",
+      "Fall back to BYOK so calls don't go through helpbase.dev: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY`.",
     ],
-    seeAlso: [{ label: "BYOK docs", href: "/docs/byok" }],
+    seeAlso: [{ label: "BYOK docs", href: "/guides/byok" }],
   },
   "e-llm-gateway": {
     code: "E_LLM_GATEWAY",
@@ -352,7 +355,7 @@ const ERRORS: Record<string, ErrorDoc> = {
     summary:
       "The underlying model provider (e.g. Anthropic, Google) returned a non-success response. No tokens were charged against your quota.",
     causes: [
-      "The model ID is wrong or unsupported by Vercel AI Gateway.",
+      "The model ID is wrong or unsupported by the provider you're routed to (Gateway, Anthropic, or OpenAI direct).",
       "Upstream provider is degraded.",
       "The prompt triggered a provider-side safety filter.",
     ],

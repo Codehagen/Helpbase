@@ -52,6 +52,17 @@ export function authRequiredError(retryCommand?: string): HelpbaseError {
   })
 }
 
+/**
+ * Shared BYOK hint line. One source of truth so every stale "Gateway-only"
+ * error copy updates in lockstep when the set of accepted keys changes.
+ */
+function byokHint(): string {
+  return (
+    `Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} ` +
+    `(any one works, first found wins)`
+  )
+}
+
 export function quotaExceededError(
   err: QuotaExceededError,
   retryCommand?: string,
@@ -65,7 +76,7 @@ export function quotaExceededError(
     problem: `You've used today's free allocation (${used} / ${cap} tokens). Resets in ${reset}.`,
     fix: [
       `Join the waitlist for the paid tier → ${pc.cyan(err.upgradeUrl)}${rerun}`,
-      `Or use your own Vercel AI Gateway key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")}`,
+      byokHint(),
       `Docs: ${pc.cyan(err.byokDocsUrl)}`,
     ],
   })
@@ -78,7 +89,7 @@ export function globalCapError(err: GlobalCapError): HelpbaseError {
     problem: `helpbase is over its daily cap. Retry in ${reset}.`,
     fix: [
       "Wait for the daily reset.",
-      `Or use your own Vercel AI Gateway key: ${pc.cyan("export AI_GATEWAY_API_KEY=...")}`,
+      byokHint(),
       `Docs: ${pc.cyan(err.byokDocsUrl)}`,
     ],
   })
@@ -92,7 +103,7 @@ export function llmNetworkError(err: LlmNetworkError): HelpbaseError {
     fix: [
       "Check your internet connection.",
       "Retry — transient network blips are common.",
-      `Or bypass the proxy entirely: ${pc.cyan("export AI_GATEWAY_API_KEY=...")} (your own key).`,
+      `${byokHint()} — all three bypass the proxy.`,
     ],
   })
 }

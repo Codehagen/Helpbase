@@ -25,10 +25,11 @@ That drops a single file into your repo:
 Add one secret to your GitHub repo (**Settings → Secrets and variables →
 Actions → New repository secret**). You have two options:
 
-- **`AI_GATEWAY_API_KEY`** (recommended for CI) — your key from
-  [vercel.com/ai-gateway](https://vercel.com/ai-gateway). Bypasses helpbase's
-  hosted proxy entirely. Your Gateway account, your bill, no daily quota
-  limit. See [helpbase.dev/docs/byok](https://helpbase.dev/docs/byok).
+- **Any BYOK key** (recommended for CI) — `ANTHROPIC_API_KEY`,
+  `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY`. Bypasses helpbase's hosted
+  proxy entirely. Your provider account, your bill, no daily quota
+  limit. First key found wins. See
+  [helpbase.dev/guides/byok](https://helpbase.dev/guides/byok).
 - **`HELPBASE_TOKEN`** — a helpbase session access token. After running
   `helpbase login` locally, pull the value from `~/.helpbase/auth.json`:
   `jq -r .access_token ~/.helpbase/auth.json`. Uses helpbase's hosted proxy

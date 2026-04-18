@@ -648,7 +648,7 @@ function printGenerateError(err: unknown, opts?: { url?: string; repo?: string; 
       `\n${pc.red("✖")} Could not generate articles\n` +
       `  Reason: Not signed in and no BYOK key is set.\n` +
       `  Fix: Run ${pc.cyan("helpbase login")} (free, no card), then re-run.\n` +
-      `       Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} (docs: helpbase.dev/docs/byok)\n`,
+      `       Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} (docs: helpbase.dev/guides/byok)\n`,
     )
     return
   }

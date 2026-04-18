@@ -687,7 +687,7 @@ function printGenerationFallbackHint(err: unknown, url: string): void {
       `Run ${pc.cyan("helpbase login")} (free, no card) then:\n` +
       `  ${pc.cyan(`helpbase generate --url ${url}`)}\n\n` +
       `Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} ` +
-      `(docs: ${pc.cyan("helpbase.dev/docs/byok")})`,
+      `(docs: ${pc.cyan("helpbase.dev/guides/byok")})`,
       "AI generation skipped",
     )
     return
@@ -712,7 +712,7 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
       `Run ${pc.cyan("helpbase login")} (free, no card) then:\n` +
       `  ${pc.cyan(`helpbase context ${repoPath}`)}\n\n` +
       `Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} ` +
-      `(docs: ${pc.cyan("helpbase.dev/docs/byok")})`,
+      `(docs: ${pc.cyan("helpbase.dev/guides/byok")})`,
       "AI generation skipped",
     )
     return

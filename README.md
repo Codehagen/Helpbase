@@ -138,7 +138,7 @@ override.
 **Power users + CI:** skip the helpbase proxy with whichever key you
 already have — `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or
 `AI_GATEWAY_API_KEY` (any one works, first found wins). See
-[helpbase.dev/docs/byok](https://helpbase.dev/docs/byok).
+[helpbase.dev/guides/byok](https://helpbase.dev/guides/byok).
 
 ### Drop into an existing Next.js app
 

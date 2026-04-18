@@ -165,7 +165,7 @@ Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
           fix: [
             `Run ${pc.cyan("helpbase login")} (free, no card), then re-run.`,
             `Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} (first found wins).`,
-            "Docs: https://helpbase.dev/docs/byok",
+            "Docs: https://helpbase.dev/guides/byok",
           ],
         })
       }

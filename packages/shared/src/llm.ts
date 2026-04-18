@@ -407,13 +407,13 @@ async function throwOnWireError(res: Response): Promise<void> {
         dailyLimit: body.dailyLimit ?? 0,
         resetAt: body.resetAt ?? new Date().toISOString(),
         upgradeUrl: body.upgradeUrl ?? "https://helpbase.dev/waitlist",
-        byokDocsUrl: body.byokDocsUrl ?? "https://helpbase.dev/docs/byok",
+        byokDocsUrl: body.byokDocsUrl ?? "https://helpbase.dev/guides/byok",
         message: body.message,
       })
     case "global_cap_hit":
       throw new GlobalCapError({
         resetAt: body.resetAt ?? new Date().toISOString(),
-        byokDocsUrl: body.byokDocsUrl ?? "https://helpbase.dev/docs/byok",
+        byokDocsUrl: body.byokDocsUrl ?? "https://helpbase.dev/guides/byok",
         message: body.message,
       })
     case "gateway_error":

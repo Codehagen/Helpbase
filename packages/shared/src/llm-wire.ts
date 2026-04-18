@@ -144,4 +144,4 @@ export type WireErrorCode =
 export const UPGRADE_URL = "https://helpbase.dev/waitlist" as const
 
 /** URL that BYOK hints in errors point at. */
-export const BYOK_DOCS_URL = "https://helpbase.dev/docs/byok" as const
+export const BYOK_DOCS_URL = "https://helpbase.dev/guides/byok" as const

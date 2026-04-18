@@ -1,5 +1,5 @@
 /**
- * Secret deny-list — two-gate defense for helpbase context ingestion.
+ * Secret deny-list — two-gate defense for helpbase ingest (formerly context).
  *
  * Gate 1: `isSecretFile(relPath)` — called by walkers to skip files whose
  * NAMES indicate secrets (.env*, *.pem, *.key, etc.). These files are
@@ -161,6 +161,6 @@ export function formatSecretError(
   return (
     `Secret-shaped content detected in ${filePath}:\n${lines}\n` +
     `\nThe run was aborted before any .helpbase/ write. Inspect the file, ` +
-    `remove or gitignore the secret source, and re-run helpbase context.`
+    `remove or gitignore the secret source, and re-run helpbase ingest.`
   )
 }

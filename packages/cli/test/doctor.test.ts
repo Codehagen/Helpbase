@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, beforeAll, afterAll } from "vitest"
 import path from "node:path"
 import { execSync } from "node:child_process"
 import fs from "node:fs"
@@ -6,12 +6,30 @@ import os from "node:os"
 
 const CLI_PATH = path.resolve(__dirname, "../dist/index.js")
 
+// Isolated HOME so these tests don't consume the developer's real
+// `~/.helpbase/auth.json`. Without this, the "fix: helpbase login" assertion
+// flakes on any contributor laptop where `helpbase login` has been run:
+// doctor reports "Logged in as ..." instead of emitting the login fix line.
+let FAKE_HOME: string
+beforeAll(() => {
+  FAKE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-doctor-home-"))
+})
+afterAll(() => {
+  fs.rmSync(FAKE_HOME, { recursive: true, force: true })
+})
+
 function run(args: string, cwd: string): string {
   // doctor prints to stdout (text) or via JSON. Capture both streams.
   return execSync(`node ${CLI_PATH} ${args}`, {
     encoding: "utf-8",
     cwd,
-    env: { ...process.env, NO_COLOR: "1" },
+    env: {
+      ...process.env,
+      NO_COLOR: "1",
+      HOME: FAKE_HOME,
+      USERPROFILE: FAKE_HOME,
+      HELPBASE_TOKEN: "",
+    },
   })
 }
 

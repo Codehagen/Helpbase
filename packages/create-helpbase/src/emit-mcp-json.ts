@@ -7,11 +7,11 @@ import path from "node:path"
  * Claude Desktop / Cursor / Claude Code and their agent immediately
  * sees the cited help-center articles.
  *
- * Shape matches `helpbase context`'s emit so returning users who already
+ * Shape matches `helpbase ingest`'s emit so returning users who already
  * know one layout find the other familiar. The key difference: the
  * content dir here is `<projectDir>/content/` (what the Next.js app
  * renders), NOT `.helpbase/docs/` (the agent-only layout helpbase
- * context emits).
+ * ingest emits).
  *
  * The file is a hint, not a working MCP client config. The user copies
  * one of the per-client blocks into their real config file. Absolute

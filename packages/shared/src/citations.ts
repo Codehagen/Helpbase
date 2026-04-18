@@ -1,5 +1,5 @@
 /**
- * Citation validator for `helpbase context`.
+ * Citation validator for `helpbase ingest` (formerly `context`).
  *
  * Every generated how-to doc cites 1–5 specific file/line-range tuples.
  * This module verifies each citation against the repo on disk:
@@ -184,7 +184,7 @@ export interface ArticleValidationResult {
 /**
  * Validate all citations on an article. Returns the subset that passed
  * ("kept") and the failures with reasons ("dropped"). Callers decide what
- * to do with a 0-kept article (context.ts drops it entirely and writes the
+ * to do with a 0-kept article (ingest.ts drops it entirely and writes the
  * reason to `.helpbase/synthesis-report.json`).
  */
 export function validateArticleCitations(

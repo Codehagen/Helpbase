@@ -23,7 +23,7 @@ import type { GeneratedContextDoc } from "@workspace/shared/schemas"
  * Thrown when the LLM returns articles but every single one is dropped by
  * the citation validator. The caller (scaffolder) restores sample content
  * and shows an actionable error — retry on a stronger model, run
- * `helpbase context .` manually, etc.
+ * `helpbase ingest .` manually, etc.
  *
  * Separate class so the outer try/catch can distinguish "nothing to write"
  * from "LLM errored" or "missing auth" without string-matching.
@@ -76,7 +76,7 @@ export interface GenerateFromRepoResult {
  * `<projectDir>/content/<category>/<slug>.mdx` plus `_category.json`
  * scaffolds that the Next.js sidebar consumes.
  *
- * Mirrors the `helpbase context` pipeline but targets the scaffolder's
+ * Mirrors the `helpbase ingest` pipeline but targets the scaffolder's
  * human-facing layout (`content/`) instead of the agent-facing
  * `.helpbase/docs/` layout. Every pre-write invariant the CLI enforces
  * (citation validation, secret deny-list, MDX sanitization) runs here too.
@@ -159,7 +159,7 @@ export async function generateFromRepo(
   for (const s of serialized) {
     const matches = scanForSecrets(s.content)
     if (matches.length > 0) {
-      // Same policy as helpbase context: refuse to write any file if any
+      // Same policy as helpbase ingest: refuse to write any file if any
       // file would leak. Pattern name + line number only — never the secret.
       throw new Error(formatSecretError(matches, s.relPath))
     }
@@ -227,7 +227,7 @@ export async function generateFromRepo(
 }
 
 /**
- * Prefer `package.json` name (matches helpbase context behavior) so the
+ * Prefer `package.json` name (matches helpbase ingest behavior) so the
  * LLM writes articles about "my-app" not "my-docs-test". Falls back to
  * the repo directory basename if package.json is missing or malformed.
  */

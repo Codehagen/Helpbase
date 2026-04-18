@@ -286,7 +286,7 @@ async function run(directory: string | undefined, opts: RunOptions) {
   note(bootstrap, "Run it locally")
 
   note(
-    `${pc.cyan("npx helpbase context .")}                 ${pc.dim("generate docs from your repo source")}\n` +
+    `${pc.cyan("npx helpbase ingest .")}                 ${pc.dim("generate docs from your repo source")}\n` +
     `${pc.cyan("npx helpbase deploy")}                    ${pc.dim("go live at <slug>.helpbase.dev")}\n` +
     `${pc.cyan("npx helpbase new")}                       ${pc.dim("add a new article interactively")}`,
     "What next",
@@ -706,11 +706,28 @@ function printGenerationFallbackHint(err: unknown, url: string): void {
   )
 }
 
+/**
+ * Minimal POSIX shell-quote for user-facing copy/paste commands. Avoids
+ * adding an `shell-quote` dep for a single call site. Returns the string
+ * unchanged when it only contains safe characters; otherwise wraps it in
+ * single quotes and escapes embedded single quotes via the `'\''` idiom.
+ *
+ * Relevant for `printRepoGenerationFallbackHint` below: a user who runs
+ * `create-helpbase` from `/Users/foo/my docs` needs the retry hint to
+ * print `helpbase ingest '/Users/foo/my docs'` — unquoted, the copy/paste
+ * breaks on the space.
+ */
+function quoteShellArg(value: string): string {
+  if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(value)) return value
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
 function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
+  const quotedRepoPath = quoteShellArg(repoPath)
   if (err instanceof MissingApiKeyError) {
     note(
       `Run ${pc.cyan("helpbase login")} (free, no card) then:\n` +
-      `  ${pc.cyan(`helpbase context ${repoPath}`)}\n\n` +
+      `  ${pc.cyan(`helpbase ingest ${quotedRepoPath}`)}\n\n` +
       `Or bring your own key: ${pc.cyan("ANTHROPIC_API_KEY")}, ${pc.cyan("OPENAI_API_KEY")}, or ${pc.cyan("AI_GATEWAY_API_KEY")} ` +
       `(docs: ${pc.cyan("helpbase.dev/guides/byok")})`,
       "AI generation skipped",
@@ -721,7 +738,7 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
     note(
       `${err.message}\n` +
       `Point at a subdirectory with more focused content, or run:\n` +
-      `  ${pc.cyan(`helpbase context ${repoPath} --max-tokens 200000`)} after scaffold.`,
+      `  ${pc.cyan(`helpbase ingest ${quotedRepoPath} --max-tokens 200000`)} after scaffold.`,
       "Repo is too large",
     )
     return
@@ -738,7 +755,7 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
       `The model returned ${err.rawDocCount} article(s) but citation validation dropped all of them. ` +
         `This is common on cheap models that paraphrase quoted code.\n\n` +
         `Retry with:\n` +
-        `  ${pc.cyan(`helpbase context ${repoPath} --model anthropic/claude-sonnet-4.6`)}\n` +
+        `  ${pc.cyan(`helpbase ingest ${quotedRepoPath} --model anthropic/claude-sonnet-4.6`)}\n` +
         `after scaffold to regenerate with a stronger model.`,
       "All articles dropped",
     )
@@ -747,13 +764,13 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
   if (err instanceof GatewayError) {
     note(
       `Gateway error: ${err.message}\n` +
-      `Retry with ${pc.cyan(`helpbase context ${repoPath} --test`)} after scaffold to use a cheap fallback model.`,
+      `Retry with ${pc.cyan(`helpbase ingest ${quotedRepoPath} --test`)} after scaffold to use a cheap fallback model.`,
       "AI generation failed",
     )
     return
   }
   note(
-    `Run ${pc.cyan(`helpbase context ${repoPath}`)} later to retry.`,
+    `Run ${pc.cyan(`helpbase ingest ${quotedRepoPath}`)} later to retry.`,
     "Tip",
   )
 }

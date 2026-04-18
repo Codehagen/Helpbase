@@ -28,6 +28,15 @@ export interface TelemetryEvent {
   exitCode: number
   /** Flag names actually used (e.g. "--slug", "--yes"). Never values. */
   flags: string[]
+  /**
+   * If the user invoked a deprecated alias (e.g. `helpbase context` for the
+   * `ingest` command), `command` is the canonical name and `alias` is what
+   * they actually typed. Preserves metric continuity across renames while
+   * still surfacing the alias-adoption rate. Optional so non-alias calls
+   * stay the same shape. Server-side consumers that don't know this field
+   * can ignore it safely.
+   */
+  alias?: string
 }
 
 export function isTelemetryEnabled(): boolean {
@@ -65,6 +74,9 @@ export function sendEvent(event: TelemetryEvent, cliVersion: string): void {
     nodeVersion: process.version,
     platform: process.platform,
     arch: process.arch,
+    // Only present when the user invoked via a deprecated alias. Lets
+    // dashboards track rename-migration progress without double-counting.
+    ...(event.alias ? { alias: event.alias } : {}),
   }
 
   // 2 second timeout — telemetry must never slow users down.

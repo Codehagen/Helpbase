@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`helpbase context` renamed to `helpbase ingest`.** `context` described
+  a domain concept, not an action — `ingest` names what the command does
+  (walk your code + markdown, synthesize cited how-tos, wire MCP). The
+  old name continues to work as a deprecation shim: same flags, same
+  behavior, one-line stderr warning, suppressed under `--json`/`--quiet`.
+  Help text + README Quick Start + scaffolder next-steps output now lead
+  with `ingest`. CI scripts pinned to `helpbase context` keep working
+  until v0.7, which is when the shim is removed. Flag surface is shared
+  via `applyIngestOptions()` so the two commands can't drift. First PR
+  of the CLI DX v2 plan.
+
 ### Added
 - **Unit tests for the device-authorize state machine.** Extracted the
   8-phase `Phase` union from `AuthorizeDeviceClient` into a pure

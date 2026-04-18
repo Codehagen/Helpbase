@@ -1,9 +1,9 @@
 /**
- * Eval runner for `helpbase context`.
+ * Eval runner for `helpbase ingest`.
  *
  * Per repo:
- *   1. Run `helpbase context <repo>` to generate .helpbase/docs.
- *   2. For each question, run `helpbase context <repo> --ask <q>` to
+ *   1. Run `helpbase ingest <repo>` to generate .helpbase/docs.
+ *   2. For each question, run `helpbase ingest <repo> --ask <q>` to
  *      get the in-terminal answer.
  *   3. Grade each answer with grader.ts (LLM-as-judge).
  *   4. Aggregate per-repo + overall scores. Compare to EVAL_PASS_THRESHOLD.
@@ -126,9 +126,9 @@ async function runRepoEval(repo: EvalRepo): Promise<RepoResult> {
   }
 
   // Generate docs once per repo — individual --ask calls re-use them.
-  console.log(`  › helpbase context ${repoAbs} (model: ${EVAL_MODEL})`)
+  console.log(`  › helpbase ingest ${repoAbs} (model: ${EVAL_MODEL})`)
   execSync(
-    `node ${CLI_PATH} context ${repoAbs} --max-tokens ${EVAL_MAX_TOKENS} --model ${EVAL_MODEL} --yes`,
+    `node ${CLI_PATH} ingest ${repoAbs} --max-tokens ${EVAL_MAX_TOKENS} --model ${EVAL_MODEL} --yes`,
     { stdio: "inherit", env: process.env },
   )
 
@@ -174,7 +174,7 @@ function runAsk(
   // answer against the .helpbase/docs generated earlier in runRepoEval.
   // Cuts an N-question eval from N+1 full generations to 1.
   const out = execSync(
-    `node ${CLI_PATH} context ${repoAbs} --ask ${qArg} --reuse-existing --model ${EVAL_MODEL}`,
+    `node ${CLI_PATH} ingest ${repoAbs} --ask ${qArg} --reuse-existing --model ${EVAL_MODEL}`,
     { encoding: "utf8", env: process.env },
   )
   return { answer: out, durationMs: Date.now() - started }

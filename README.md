@@ -35,7 +35,7 @@ monorepo.
 - **Docs site** — a full Next.js + shadcn/ui help center in your repo
 - **MCP server** — `@helpbase/mcp` runs next to your app, not in a vendor's cloud
 - **`llms.txt` + `llms-full.txt`** — generated at your build time, served from your origin
-- **`helpbase context`** — point at any repo, get cited how-to guides + MCP + llms.txt in one command
+- **`helpbase ingest`** — point at any repo, get cited how-to guides + MCP + llms.txt in one command
 - **Doc sync** — `helpbase sync` proposes codebase-grounded doc diffs with mandatory citations, opens them as PRs in your repo via your CI
 - **Workflows** — `shadcn add helpbase-workflow` drops a plain GitHub Action that runs `helpbase sync` in your Actions minutes, with your secrets
 
@@ -60,16 +60,16 @@ log into.
 
 ## Quick start
 
-Point `helpbase context` at any repo. Under 90 seconds from zero to
+Point `helpbase ingest` at any repo. Under 90 seconds from zero to
 generated docs. Works on macOS, Linux, and Windows. Requires Node 20+.
 
 ```bash
 npx helpbase login                                   # magic-link device flow, free 500k tokens/day, no card
-npx helpbase context .                               # synthesize cited how-tos from your repo
-npx helpbase context . --ask "how do I log in?"     # answer in terminal, no MCP client required
+npx helpbase ingest .                                # synthesize cited how-tos from your repo
+npx helpbase ingest . --ask "how do I log in?"      # answer in terminal, no MCP client required
 ```
 
-`helpbase context` walks your code + markdown, synthesizes task-oriented
+`helpbase ingest` walks your code + markdown, synthesizes task-oriented
 how-to guides grounded in cited files, writes MDX to `.helpbase/docs/`,
 and emits `llms.txt` + an MCP config hint. Same content, two surfaces:
 humans read the MDX, agents query over MCP.
@@ -265,6 +265,7 @@ Edit, delete, or regenerate any of them. You own them.
 
 ```bash
 helpbase dev                    # start the Next.js dev server
+helpbase ingest [repo]          # turn a repo into cited how-tos + llms.txt + MCP (.helpbase/)
 helpbase generate --url <url>   # generate articles from a URL
 helpbase audit                  # validate frontmatter, categories, schema
 helpbase new                    # create a new article from a template (interactive or --type/--title)

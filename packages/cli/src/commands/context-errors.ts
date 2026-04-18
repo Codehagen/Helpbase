@@ -1,5 +1,5 @@
 /**
- * Error catalog for `helpbase context`.
+ * Error catalog for `helpbase ingest` (and its deprecated `helpbase context` alias).
  *
  * Every error path surfaces the same {problem, cause, fix} shape so the
  * user always knows what happened and what to do next. This is the
@@ -8,6 +8,14 @@
  *
  * Thin layer over HelpbaseError — the doc URL is derived automatically
  * from the `code` (see errors.ts `docUrl()`).
+ *
+ * NOTE: the `E_CONTEXT_*` prefix is intentional and NOT tied to the
+ * deprecated `helpbase context` command. These codes name the
+ * documentation-synthesis domain; they remain stable even after the
+ * command alias is removed in v0.7. Doc URLs live under
+ * /errors/e-context-* and agents/scripts that grep for the code strings
+ * keep working. Do not rename to E_INGEST_* without a migration plan
+ * for existing users who've linked to the doc URLs.
  */
 
 import { HelpbaseError, type ErrorCode } from "../lib/errors.js"
@@ -24,7 +32,7 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   E_CONTEXT_MISSING_KEY: {
     problem: "No LLM API key is set in your environment.",
     cause:
-      "helpbase context accepts any one of: AI_GATEWAY_API_KEY (any provider), " +
+      "helpbase ingest accepts any one of: AI_GATEWAY_API_KEY (any provider), " +
       "ANTHROPIC_API_KEY (--model anthropic/...), or OPENAI_API_KEY (--model openai/...). " +
       "Set the one you already have.",
     fix: [
@@ -36,11 +44,11 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   E_CONTEXT_NO_SOURCES: {
     problem: "No source files found in the target repo.",
     cause:
-      "helpbase context walks markdown + selected code extensions and skips " +
+      "helpbase ingest walks markdown + selected code extensions and skips " +
       "secret files, lockfile dirs, build output, and .gitignore-style paths. " +
       "Either the directory is empty or everything got filtered out.",
     fix: [
-      "Check the path you passed — `helpbase context .` uses the current directory.",
+      "Check the path you passed — `helpbase ingest .` uses the current directory.",
       "Add a README.md or source files with supported extensions (.md, .mdx, .ts, .tsx, .js, .py, .go, .rs, .rb, .java).",
     ],
   },
@@ -83,7 +91,7 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
     fix: [
       "Check .helpbase/synthesis-report.json for per-citation drop reasons.",
       "If snippets were paraphrased, retry with --model anthropic/claude-sonnet-4.6.",
-      "If cited code files were missing from the reader, use --include-ext to widen it.",
+      "If cited files were skipped, make sure the relevant code uses one of the supported extensions (.md, .mdx, .ts, .tsx, .js, .py, .go, .rs, .rb, .java) — or add a README bridging them.",
     ],
   },
   E_CONTEXT_SECRET: {
@@ -99,7 +107,7 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   },
   E_CONTEXT_REPO_PATH: {
     problem: "The repo path you passed does not exist or is not a directory.",
-    cause: "helpbase context needs a local directory to walk.",
+    cause: "helpbase ingest needs a local directory to walk.",
     fix: [
       "Check the path. Use `.` for the current directory. Absolute paths work too.",
     ],
@@ -110,14 +118,14 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
       "--reuse-existing skips the walk + LLM generation so an existing .helpbase/docs/ " +
       "can be queried with --ask. On its own it would do nothing.",
     fix: [
-      "Pair with --ask: `helpbase context . --reuse-existing --ask \"...\"`.",
+      "Pair with --ask: `helpbase ingest . --reuse-existing --ask \"...\"`.",
       "Or drop --reuse-existing to regenerate from scratch.",
     ],
   },
   E_CONTEXT_REUSE_EMPTY: {
     problem: "--reuse-existing was set but .helpbase/docs/ has no MDX files to reuse.",
     cause:
-      "The output directory is empty. You need to have run `helpbase context` at " +
+      "The output directory is empty. You need to have run `helpbase ingest` at " +
       "least once before --reuse-existing has anything to answer from.",
     fix: [
       "Run once without --reuse-existing to populate .helpbase/docs, then re-run with --reuse-existing.",
@@ -127,9 +135,9 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
   E_CONTEXT_PREVIEW_NO_DOCS: {
     problem: "`helpbase preview` needs .helpbase/docs/ to exist in the current directory.",
     cause:
-      "Preview renders the MDX `helpbase context` produces. There's nothing to render yet.",
+      "Preview renders the MDX `helpbase ingest` produces. There's nothing to render yet.",
     fix: [
-      "Run `helpbase context .` first — that generates the docs.",
+      "Run `helpbase ingest .` first — that generates the docs.",
       "Then `helpbase preview` to open them in the browser.",
     ],
   },
@@ -151,6 +159,41 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
     fix: [
       "Check your network and disk space.",
       "Retry: `helpbase preview --reset` to re-scaffold + re-install.",
+    ],
+  },
+  E_CONTEXT_INVALID_BUDGET: {
+    problem: "--max-tokens or --chars-per-token is not a valid positive number.",
+    cause:
+      "These flags must be finite positive numbers. --max-tokens accepts 0 " +
+      "(disables the gate); anything negative, NaN, or non-numeric used to " +
+      "silently fall back to defaults instead of failing loudly.",
+    fix: [
+      "Check the value you passed. Typical: --max-tokens 100000 --chars-per-token 3.5.",
+      "To disable the token gate entirely, pass --max-tokens 0.",
+    ],
+  },
+  E_CONTEXT_REFUSE_CLOBBER: {
+    problem: "--overwrite would replace custom-edited docs without --yes.",
+    cause:
+      "Some .helpbase/docs/ files have `source: custom` in their frontmatter. " +
+      "--overwrite together with --yes is the deliberate two-gate opt-in for " +
+      "clobbering them; without --yes we refuse to touch them.",
+    fix: [
+      "Re-run with --yes to confirm: `helpbase ingest . --overwrite --yes`.",
+      "Or keep the custom files by dropping --overwrite.",
+    ],
+  },
+  E_CONTEXT_SECRET_SOURCE: {
+    problem: "Secret-shaped content detected in a source file before the LLM call.",
+    cause:
+      "The source walker picked up a file whose content matched a known secret " +
+      "pattern (API key, PEM block, etc.). The pre-LLM scan aborts the run so " +
+      "the secret never leaves your machine — no LLM call, no --debug prompt dump.",
+    fix: [
+      "Open the file and line shown above.",
+      "If it's a legitimate example, swap in a placeholder (sk-xxxxx) instead of a realistic-looking value.",
+      "If it's a real secret, rotate it and add the source file to .gitignore.",
+      "Check your .env*, *.pem, and *.key files — those should never leak into walked source content.",
     ],
   },
 }

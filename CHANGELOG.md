@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [helpbase 0.6.0] — 2026-04-18
+
 ### Added
 - **`helpbase deploy --preview` shows what would change before shipping.** The CLI
   reads your local `content/`, fetches a metadata-only snapshot of the deployed

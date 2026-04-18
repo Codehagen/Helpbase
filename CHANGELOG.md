@@ -8,6 +8,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`helpbase deploy --preview` shows what would change before shipping.** The CLI
+  reads your local `content/`, fetches a metadata-only snapshot of the deployed
+  tenant, and renders a color-coded preview table (added in green, updated in
+  yellow, removed in red — articles AND categories). Flag exits 0 without
+  touching the server. Works on the first-ever deploy too: fresh reservation
+  shows "all N new locally" without creating the tenant row until you confirm.
+  Pair with `--yes` for CI previews.
+- **Smart-prompt on destructive deploys.** `helpbase deploy` now prints a
+  one-line summary ("Publishing 3 updated, 1 new") and deploys silently on
+  routine add/update flows. When the diff contains destructive changes
+  (article removals, category deletions), the CLI pauses and shows the full
+  preview table before asking y/n. Matches the helm/kubectl/vercel convention
+  of silent-on-routine, prompt-on-destructive. Non-interactive mode
+  (`HELPBASE_TOKEN` set) preserves the current CI behavior — no state fetch,
+  no prompt.
+- **Auto-retry on concurrent deploys.** If another client ships between your
+  preview fetch and your confirm, the CLI automatically refetches `/state`,
+  re-renders the diff, and reprompts inline. Capped at one retry to prevent
+  runaway contention loops. If the concurrent deploy already shipped the
+  content you were about to ship, the CLI reports "Remote now matches your
+  local content" and exits 0 (correct no-op, not a failure).
+- **`GET /api/v1/tenants/:id/state` endpoint.** Returns the full deployed
+  snapshot (articles with content hashes, categories, deploy_version) so
+  clients can diff locally without pulling full article bodies. Marked
+  `force-dynamic` to prevent Vercel ISR from serving stale snapshots that
+  would make previews lie.
+
+### Changed
+- **`deploy_tenant` RPC now returns `{deploy_id, new_deploy_version}`.** Row
+  is locked `FOR UPDATE` for the duration of the transaction. Accepts an
+  optional `p_expected_deploy_version` for optimistic concurrency; mismatch
+  raises `stale_deploy_version` (SQLSTATE P0001) and the web route translates
+  that to HTTP 409 with the current version in the body. The CLI surfaces
+  this as a typed `PreviewStaleError` so the retry path can catch it
+  specifically.
+- **Deploy route re-reads tenant slug post-RPC** so a concurrent
+  reservation rename between `requireOwnedTenant()` and the deploy RPC
+  doesn't cause the response and `revalidatePath()` to point at a stale
+  subdomain.
+- **`tenant_articles` gained a `content_hash` column** (SHA-256 of
+  title + description + sorted-key frontmatter JSON + content, exact bytes,
+  no whitespace normalization). Same algorithm runs client-side in
+  `@workspace/shared/article-hash` and server-side when the deploy RPC
+  writes the row. Pre-v2 rows default to empty string and re-hash on the
+  next deploy.
+- **`tenants` gained a `deploy_version` column** (monotonic counter,
+  bigint, NOT NULL DEFAULT 0) to back the optimistic concurrency path.
+
+### Fixed
+- **Local validation runs before auth so empty-folder errors match the real
+  problem.** Running `helpbase deploy` in a directory without `content/`
+  previously showed "Not signed in" (because auth ran before the existence
+  check). Now shows "No content/ directory found. Run npx create-helpbase"
+  first. Same ordering for bad frontmatter — Zod errors surface before
+  auth, so the user sees the actual blocker.
+
 - **`helpbase login` reserves a subdomain instantly.** After successful
   authentication, the CLI calls `POST /api/v1/tenants/auto-provision`
   which mints a product-neutral `docs-<6hex>.helpbase.dev` reservation

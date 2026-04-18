@@ -132,21 +132,47 @@ Examples:
         return
       }
 
+      // 1. Local validation BEFORE auth. Content existence + frontmatter
+      //    validity are deterministic local checks with zero server
+      //    interaction; surfacing them first keeps the error the user
+      //    sees aligned with the problem they actually have. A dev in
+      //    an empty folder should not be told "Not signed in" — that's
+      //    the DX audit from 2026-04-18 speaking. Skipped for
+      //    --rotate-mcp-token since it doesn't touch content.
+      const contentDir = path.resolve("content")
+      let content: ReadContent | null = null
+      if (!opts.rotateMcpToken) {
+        if (!fs.existsSync(contentDir)) {
+          cancel(
+            "No content/ directory found. Run this from a helpbase project root, or create one:\n" +
+            pc.cyan("  npx create-helpbase"),
+          )
+          process.exit(1)
+        }
+        content = validateAndReadContent(contentDir)
+      }
+
+      // 2. Auth. validateAndReadContent above exits on errors, so by the
+      //    time we hit this we've confirmed the local project shape is
+      //    deployable. Any auth-path error that surfaces now is the real
+      //    blocker, not a noise-on-top-of-something-else error.
       const session = await ensureAuthenticated()
 
-      // --rotate-mcp-token short-circuit: resolve tenant, rotate, exit. No
-      // content read, no state fetch, no preview. Matches prior behavior.
+      // --rotate-mcp-token short-circuit: resolve tenant, rotate, exit.
+      // Matches prior behavior — no content read, no state fetch, no
+      // preview.
       if (opts.rotateMcpToken) {
         const { tenantId, tenantSlug } = await resolveTenantForRotate(session, opts)
         await rotateAndReport(session, tenantId, tenantSlug)
         return
       }
 
-      // 1. Read + validate content BEFORE any tenant writes. A content
-      //    failure must never leave an orphan tenant row — catch caught by
-      //    /review codex on 2026-04-18 and preserved through the v2
-      //    refactor. Same 2.5-step invariant as pre-v2.
-      const content = validateAndReadContent(path.resolve("content"))
+      // content is non-null here because the only path that leaves it null
+      // above is --rotate-mcp-token, which returned early.
+      if (!content) {
+        cancel("Internal error: content missing after validation.")
+        process.exit(1)
+      }
 
       // 2. Resolve the target tenant. May auto-provision via reservation
       //    on first deploy; may prompt for a slug if none is linked and

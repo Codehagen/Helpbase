@@ -10,6 +10,12 @@ import { requireSession } from "../_shared"
  * Replaces the old CLI-side anon-Supabase query that filtered by
  * owner_id = auth.uid(). All current owner-lookups in deploy/link/open
  * route through here.
+ *
+ * Hides reservations: rows with deployed_at IS NULL are slug-reserved
+ * but never published. They'd pollute the `helpbase deploy` tenant
+ * picker and the `helpbase open` default-URL resolution. Callers that
+ * WANT the reservation (login auto-provision, whoami) hit
+ * GET /api/v1/tenants/reservation instead.
  */
 
 export const runtime = "nodejs"
@@ -25,6 +31,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     .select("id, slug, name")
     .eq("owner_id", sessionOrResp.userId)
     .eq("active", true)
+    .not("deployed_at", "is", null)
     .order("created_at", { ascending: false })
 
   if (error) {

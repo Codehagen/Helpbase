@@ -2,6 +2,7 @@ import { Command } from "commander"
 import pc from "picocolors"
 import { getCurrentSession } from "../lib/auth.js"
 import { listMyTenants } from "../lib/tenants-client.js"
+import { ensureReservation, loadReservation } from "../lib/reservation.js"
 import { fetchUsageToday, getActiveByokKey, isByokMode } from "@workspace/shared/llm"
 import { humanTokens, humanUntil } from "@workspace/shared/llm-errors"
 import { BYOK_DOCS_URL } from "@workspace/shared/llm-wire"
@@ -50,14 +51,53 @@ export const whoamiCommand = new Command("whoami")
 
     // Best-effort tenant lookup — we don't fail whoami if this errors.
     // Goes through /api/v1/tenants/mine (owner filter + active check are
-    // enforced server-side with the user's Better Auth bearer).
+    // enforced server-side with the user's Better Auth bearer). /mine
+    // hides reservations, so the reservation is fetched separately via
+    // loadReservation (cache-first, server on miss).
     let tenant: { slug: string; name: string } | null = null
+    // Track whether the tenant lookup actually succeeded vs threw. Without
+    // this flag we'd conflate "/mine returned zero rows" with "/mine hit a
+    // network error", and the mutating ensureReservation fallback below
+    // could mint a reservation for an account that already owns deployed
+    // tenants we just couldn't reach. CodeRabbit caught this on PR #10.
+    let tenantLookupSucceeded = false
     try {
       const tenants = await listMyTenants(session)
+      tenantLookupSucceeded = true
       const first = tenants[0]
       if (first) tenant = { slug: first.slug, name: first.name }
     } catch {
       // ignore — tenant lookup is informational
+    }
+
+    let reservation: Awaited<ReturnType<typeof loadReservation>> = null
+    // Only show a reservation when the user has NO deployed tenants.
+    // A power user with 5 deployed tenants doesn't care about the
+    // pre-first-deploy placeholder anymore.
+    if (!tenant) {
+      try {
+        reservation = await loadReservation(session)
+        // Lazy-provision fallback: if the user has no deployed tenants
+        // AND no cached/remote reservation, they likely Ctrl-C'd login
+        // between session persist and auto-provision, or logged in
+        // before the feature existed. ensureReservation hits the
+        // idempotent POST /auto-provision — either returns their
+        // existing row or mints a fresh one. Soft-fails on 503
+        // (ensureReservation writes a stderr warning + returns null).
+        //
+        // GATE: only run this mutating path if the tenant lookup
+        // actually succeeded and came back empty. If /mine threw, we
+        // don't know whether the user has deployed tenants and
+        // provisioning a fresh reservation could create unwanted state.
+        if (!reservation && tenantLookupSucceeded) {
+          const ensured = await ensureReservation(session)
+          if (ensured) {
+            reservation = await loadReservation(session)
+          }
+        }
+      } catch {
+        // ignore — reservation display is informational
+      }
     }
 
     // Best-effort usage lookup. Fails closed silently: if the hosted API is
@@ -80,6 +120,9 @@ export const whoamiCommand = new Command("whoami")
             userId: session.userId,
             source,
             tenant,
+            reservation: reservation
+              ? { slug: reservation.slug, liveUrl: reservation.liveUrl }
+              : null,
             byok,
             usage: usage?.quota ?? null,
           },
@@ -115,6 +158,15 @@ export const whoamiCommand = new Command("whoami")
     console.log(`    source: ${pc.dim(source)}`)
     if (tenant) {
       console.log(`    tenant: ${pc.cyan(`${tenant.slug}.helpbase.dev`)} ${pc.dim(`(${tenant.name})`)}`)
+    } else if (reservation) {
+      // liveUrl is the server's source of truth for the reservation's
+      // hostname — respects NEXT_PUBLIC_ROOT_DOMAIN in staging/dev, where
+      // `${slug}.helpbase.dev` would mislead the user. CodeRabbit caught
+      // the hard-coded root domain on PR #10.
+      const host = reservation.liveUrl.replace(/^https?:\/\//, "")
+      console.log(
+        `    reserved: ${pc.cyan(host)} ${pc.dim("(not yet deployed — run `helpbase deploy` to publish, or `helpbase rename <slug>` to change)")}`,
+      )
     } else {
       console.log(`    tenant: ${pc.dim("none — run `helpbase deploy` to create one")}`)
     }

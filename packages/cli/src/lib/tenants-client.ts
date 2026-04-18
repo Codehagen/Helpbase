@@ -191,3 +191,87 @@ export async function rotateMcpToken(
   }
   return obj.mcp_public_token
 }
+
+// ── Reservation flow (PR-B of CLI DX v2) ────────────────────────────────
+//
+// Login calls `autoProvisionTenant` to reserve a `docs-<6hex>.helpbase.dev`
+// slug so the user sees a URL immediately. `getReservation` is the read-side
+// used by `helpbase whoami` / `open` / lazy-provision fallbacks.
+// `renameReservation` backs the `helpbase rename <slug>` command — pre-deploy
+// slug change only.
+
+export interface ReservationRow {
+  id: string
+  slug: string
+  name: string
+  live_url: string
+  mcp_public_token: string
+}
+
+export interface ReservationCreated extends ReservationRow {
+  /** True when this call minted a fresh row, false when it returned an existing reservation. */
+  is_new: boolean
+}
+
+/**
+ * Call POST /api/v1/tenants/auto-provision. Idempotent server-side —
+ * repeat calls return the caller's existing reservation with `is_new: false`.
+ * Login invokes this once after successful device flow; `whoami` / `deploy`
+ * use it as a lazy-provision fallback for users who logged in before this
+ * feature existed or who Ctrl-C'd between session save and the first
+ * auto-provision call.
+ */
+export async function autoProvisionTenant(
+  session: AuthSession,
+): Promise<ReservationCreated> {
+  const res = await v1Fetch("/auto-provision", {
+    method: "POST",
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  })
+  const body = await parseBody(res)
+  if (!res.ok) throwHttp("auto-provision tenant", res, body)
+  return body as ReservationCreated
+}
+
+/**
+ * Call GET /api/v1/tenants/reservation. Returns null on 404 so callers
+ * can treat "no reservation" and "has reservation" as branching states
+ * without catching an error object. Any other non-200 throws.
+ */
+export async function getReservation(
+  session: AuthSession,
+): Promise<ReservationRow | null> {
+  const res = await v1Fetch("/reservation", {
+    headers: { authorization: `Bearer ${session.accessToken}` },
+  })
+  if (res.status === 404) return null
+  const body = await parseBody(res)
+  if (!res.ok) throwHttp("get reservation", res, body)
+  return body as ReservationRow
+}
+
+/**
+ * Call PATCH /api/v1/tenants/reservation/slug. Server enforces the
+ * pre-deploy gate (deployed_at IS NULL) and the slug validation rules.
+ * Common failure codes the CLI handler translates to errors:
+ *   - 404 `no_reservation`  → user has no reservation to rename
+ *   - 409 `slug_taken`      → someone else owns the slug
+ *   - 409 `slug_reserved`   → matches the RESERVED list
+ *   - 409 `reservation_locked` → raced with a deploy that flipped deployed_at
+ */
+export async function renameReservation(
+  session: AuthSession,
+  slug: string,
+): Promise<ReservationRow> {
+  const res = await v1Fetch("/reservation/slug", {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${session.accessToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ slug }),
+  })
+  const body = await parseBody(res)
+  if (!res.ok) throwHttp("rename reservation", res, body)
+  return body as ReservationRow
+}

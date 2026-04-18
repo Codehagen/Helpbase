@@ -518,7 +518,9 @@ export type Database = {
       tenants: {
         Row: {
           active: boolean
+          auto_provisioned_at: string | null
           created_at: string
+          deployed_at: string | null
           id: string
           mcp_calls_today: number
           mcp_public_token: string
@@ -530,7 +532,9 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          auto_provisioned_at?: string | null
           created_at?: string
+          deployed_at?: string | null
           id?: string
           mcp_calls_today?: number
           mcp_public_token?: string
@@ -542,7 +546,9 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          auto_provisioned_at?: string | null
           created_at?: string
+          deployed_at?: string | null
           id?: string
           mcp_calls_today?: number
           mcp_public_token?: string
@@ -645,6 +651,7 @@ export type Database = {
       tenants_public: {
         Row: {
           active: boolean | null
+          deployed_at: string | null
           id: string | null
           name: string | null
           slug: string | null
@@ -652,6 +659,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          deployed_at?: string | null
           id?: string | null
           name?: string | null
           slug?: string | null
@@ -659,6 +667,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          deployed_at?: string | null
           id?: string | null
           name?: string | null
           slug?: string | null

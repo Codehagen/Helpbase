@@ -20,6 +20,7 @@ import { logoutCommand } from "./commands/logout.js"
 import { whoamiCommand } from "./commands/whoami.js"
 import { linkCommand } from "./commands/link.js"
 import { openCommand } from "./commands/open.js"
+import { renameCommand } from "./commands/rename.js"
 import { feedbackCommand } from "./commands/feedback.js"
 import { configCommand } from "./commands/config.js"
 import { doctorCommand } from "./commands/doctor.js"
@@ -92,6 +93,7 @@ program.addCommand(logoutCommand)
 program.addCommand(whoamiCommand)
 program.addCommand(linkCommand)
 program.addCommand(openCommand)
+program.addCommand(renameCommand)
 program.addCommand(feedbackCommand)
 program.addCommand(configCommand)
 program.addCommand(doctorCommand)

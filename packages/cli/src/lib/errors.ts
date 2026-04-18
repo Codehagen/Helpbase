@@ -23,6 +23,7 @@ export type ErrorCode =
   | "E_AUTH_EXPIRED"
   | "E_SLUG_TAKEN"
   | "E_SLUG_RESERVED"
+  | "E_SLUG_INVALID"
   | "E_TENANT_NOT_FOUND"
   | "E_MISSING_API_KEY"
   | "E_NOT_A_PROJECT"
@@ -60,6 +61,9 @@ export type ErrorCode =
   | "E_DEVICE_DENIED"
   | "E_DEVICE_EXPIRED"
   | "E_DEVICE_NETWORK"
+  | "E_RESERVATION_MISSING"
+  | "E_RESERVATION_LOCKED"
+  | "E_RESERVATION_PROVISION_FAILED"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

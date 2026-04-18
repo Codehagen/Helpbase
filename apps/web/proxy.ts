@@ -126,10 +126,11 @@ export async function proxy(request: NextRequest) {
 
   // Read from the public-safe view (tenants_public hides mcp_public_token
   // and owner_id from anon). Base tenants table has no anon read grant
-  // post-2026-04-17 migration.
+  // post-2026-04-17 migration. `deployed_at` is the reservation flag —
+  // null means "auto-provisioned placeholder, never published."
   const { data: tenant } = await supabase
     .from("tenants_public")
-    .select("slug")
+    .select("slug, deployed_at")
     .eq("slug", subdomain)
     .maybeSingle()
 
@@ -138,6 +139,39 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = "/t/_not-found"
     return NextResponse.rewrite(url)
+  }
+
+  // Reserved tenant: auto-provisioned placeholder without published
+  // content. Routing rules:
+  //   - `/`              → branded "coming soon" landing
+  //     (/t/_reserved/<slug>)
+  //   - `/mcp` + `/mcp/*` → fall through to the tenant route so the MCP
+  //     handler's own 403 `tenant_not_deployed` response fires. If
+  //     middleware short-circuits /mcp to _not-found, MCP clients polling
+  //     a reservation URL during the first-deploy window get a 404 HTML
+  //     page instead of the structured 403 JSON they expect (their retry
+  //     logic then misclassifies "reserved, come back later" as "this
+  //     tenant doesn't exist"). Caught by /review codex on 2026-04-18.
+  //   - everything else  → rewrite to _not-found (which calls notFound()
+  //     and returns HTTP 404)
+  // Every reserved-tenant response carries X-Robots-Tag: noindex,nofollow.
+  if (tenant.deployed_at === null) {
+    if (pathname === "/mcp" || pathname.startsWith("/mcp/")) {
+      const url = request.nextUrl.clone()
+      url.pathname = `/t/${subdomain}${pathname}`
+      const res = NextResponse.rewrite(url)
+      res.headers.set("X-Robots-Tag", "noindex, nofollow")
+      return res
+    }
+    const url = request.nextUrl.clone()
+    if (pathname === "/" || pathname === "") {
+      url.pathname = `/t/_reserved/${subdomain}`
+    } else {
+      url.pathname = "/t/_not-found"
+    }
+    const res = NextResponse.rewrite(url)
+    res.headers.set("X-Robots-Tag", "noindex, nofollow")
+    return res
   }
 
   // Rewrite to tenant route: company.helpbase.dev/path → /t/company/path

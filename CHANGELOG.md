@@ -7,19 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **`helpbase context` renamed to `helpbase ingest`.** `context` described
-  a domain concept, not an action — `ingest` names what the command does
-  (walk your code + markdown, synthesize cited how-tos, wire MCP). The
-  old name continues to work as a deprecation shim: same flags, same
-  behavior, one-line stderr warning, suppressed under `--json`/`--quiet`.
-  Help text + README Quick Start + scaffolder next-steps output now lead
-  with `ingest`. CI scripts pinned to `helpbase context` keep working
-  until v0.7, which is when the shim is removed. Flag surface is shared
-  via `applyIngestOptions()` so the two commands can't drift. First PR
-  of the CLI DX v2 plan.
-
 ### Added
+- **`helpbase login` reserves a subdomain instantly.** After successful
+  authentication, the CLI calls `POST /api/v1/tenants/auto-provision`
+  which mints a product-neutral `docs-<6hex>.helpbase.dev` reservation
+  for the caller. The reserved URL prints in the login outro so users
+  see a concrete destination before they've written a single article.
+  TTHW for the first-deploy happy path drops from ~3-4 min (slug
+  prompt + confirmation) to ~90s (login + deploy, zero prompts). If
+  the auto-provision call 503s, login still succeeds — the reservation
+  is best-effort, and `helpbase whoami` / `helpbase deploy` both lazy-
+  provision as a fallback for users who were logged in before this
+  feature existed or who Ctrl-C'd between session save and the first
+  auto-provision call.
+- **New command: `helpbase rename <new-slug>`.** Pre-deploy slug rename
+  for the auto-provisioned reservation. Server gates on `deployed_at
+  IS NULL`, so post-deploy renames are cleanly rejected with
+  `E_RESERVATION_LOCKED`. Update + local cache write is atomic from
+  the user's perspective; subsequent `whoami` reflects the new slug
+  without an extra round-trip.
+- **Branded "coming soon" landing page** at reserved-tenant subdomains.
+  Reserved tenants now render a helpbase-branded placeholder at `/`
+  explaining that the help center hasn't been published yet, and
+  return 404 for every other path so article deep-links don't leak
+  the empty category grid. Every reserved-tenant response carries
+  `X-Robots-Tag: noindex, nofollow` so Google doesn't index `docs-*.
+  helpbase.dev` placeholders.
+- **`helpbase whoami` surfaces the reservation.** Users with no
+  deployed tenants but an active reservation see a `reserved:
+  <slug>.helpbase.dev` line and a hint to run `helpbase deploy` or
+  `helpbase rename`. `helpbase open` falls back to the reservation
+  URL when no deployed tenant exists.
+- **`deploy_tenant` RPC flips `deployed_at` atomically.** First publish
+  transitions a reservation to "live" inside the same transaction as
+  the content INSERT, so the reservation-vs-deployed boundary is
+  never racy. `COALESCE` preserves the ORIGINAL `deployed_at` on
+  re-deploys — per-deploy history continues to live in
+  `tenant_deploys.created_at`.
+- **Vercel Cron: `/api/cron/cleanup-reservations`.** Nightly (03:00
+  UTC) job that prunes reservations older than 30 days that never
+  deployed. Guarded by a `NOT EXISTS (SELECT 1 FROM tenant_deploys
+  WHERE tenant_id = tenants.id)` predicate so a row with ghost
+  deploy history can never be deleted even if `deployed_at` somehow
+  failed to update. Supports `?dry=true` for a no-op count. Bearer
+  auth via `CRON_SECRET` env var.
 - **Unit tests for the device-authorize state machine.** Extracted the
   8-phase `Phase` union from `AuthorizeDeviceClient` into a pure
   `phaseReducer` function so every transition can be verified without
@@ -40,6 +71,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server. Buttons stay hidden until configured, and the email
   magic-link path always remains available as a fallback. Cold-path
   TTHW drops from ~60s (email round-trip) to ~20s (one-click OAuth).
+
+### Changed
+- **`helpbase context` renamed to `helpbase ingest`.** `context` described
+  a domain concept, not an action — `ingest` names what the command does
+  (walk your code + markdown, synthesize cited how-tos, wire MCP). The
+  old name continues to work as a deprecation shim: same flags, same
+  behavior, one-line stderr warning, suppressed under `--json`/`--quiet`.
+  Help text + README Quick Start + scaffolder next-steps output now lead
+  with `ingest`. CI scripts pinned to `helpbase context` keep working
+  until v0.7, which is when the shim is removed. Flag surface is shared
+  via `applyIngestOptions()` so the two commands can't drift. First PR
+  of the CLI DX v2 plan.
+- **`/api/v1/tenants/mine` hides reservations.** Reservations are
+  pre-first-deploy placeholders and shouldn't pollute the tenant
+  picker for multi-tenant users. The new filter is
+  `.not("deployed_at", "is", null)`. Callers that specifically want
+  the reservation (login, whoami, open) hit
+  `GET /api/v1/tenants/reservation` instead.
+- **`tenants_public` view now exposes `deployed_at`.** The subdomain
+  middleware needs this to distinguish reserved tenants from live
+  ones without granting anon read access to the full tenants table.
+  `mcp_public_token` still never appears in the view.
+
+### Schema
+- New columns on `public.tenants`: `deployed_at timestamptz` +
+  `auto_provisioned_at timestamptz` (both nullable). Backfilled
+  existing rows with `deployed_at = created_at`.
+- New UNIQUE partial index `idx_tenants_owner_one_reservation`
+  on `owner_id WHERE auto_provisioned_at IS NOT NULL AND
+  deployed_at IS NULL` — race-safe idempotency for the
+  auto-provision endpoint.
+- New lookup index `idx_tenants_owner_auto_provisioned` on the same
+  partial predicate minus the `deployed_at` clause — small and
+  sargable for the reservation lookup path.
+- Migration: `slug_reservation_columns_and_first_deploy_timestamp`.
 
 ## [helpbase 0.5.0] — 2026-04-17
 

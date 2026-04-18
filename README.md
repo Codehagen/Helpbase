@@ -60,20 +60,39 @@ log into.
 
 ## Quick start
 
-Live help center in 60 seconds. Works on macOS, Linux, and Windows.
-Requires Node 20+.
+Live help center in 2 minutes. See it on `localhost` first, then ship
+it to your own subdomain. Works on macOS, Linux, and Windows. Requires
+Node 20+.
 
 ```bash
-npx helpbase login                                   # device-flow login; reserves docs-<hex>.helpbase.dev for you instantly
-npx helpbase rename acme                             # optional: pick a vanity subdomain before first deploy
-npx helpbase deploy                                  # publish content/ to your reserved subdomain
+# 1. Scaffold a full helpbase project — Next.js app + content + MCP config
+pnpm dlx create-helpbase@latest my-docs    # or: npx create-helpbase@latest my-docs
+cd my-docs
+
+# 2. See it locally — open http://localhost:3000
+pnpm dev                                   # or: npm run dev
+
+# 3. Reserve your subdomain (browser device-flow login, free 500k tokens/day)
+npx helpbase login                         # ↳ Reserved: docs-<hex>.helpbase.dev
+
+# 4. Pick a vanity slug before first deploy (optional)
+npx helpbase rename acme
+
+# 5. Preview what will ship, then deploy
+npx helpbase deploy --preview              # show the diff, no writes
+npx helpbase deploy                        # publish to your reserved URL
 ```
 
-That's it. `login` mints you a subdomain the moment the device flow
-completes, so `deploy` has nowhere to prompt — it just ships to your
-reserved URL. Change the slug any time before first deploy with
-`helpbase rename`; after first deploy the URL is locked so existing
-links don't break. Run `helpbase whoami` to see what's reserved.
+That's it. You've got a live docs site on `localhost` AND on your
+reserved `.helpbase.dev` subdomain. Edit `content/` files, re-run
+`helpbase deploy` to push updates. `helpbase deploy --preview` shows
+added / updated / removed articles before you ship — silent on routine
+updates, prompts before any removal lands. After first deploy the URL
+is locked so existing links don't break; rename only works before that
+point. Run `helpbase whoami` to see what's reserved + deployed.
+
+> **Already have a Next.js app?** Skip the scaffolder:
+> `npx shadcn add https://helpbase.dev/r/help-center.json`
 
 ### Local: point ingest at any repo
 

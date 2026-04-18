@@ -73,17 +73,22 @@ done < <(
 # Apply .linkcheckignore (one URL per line, exact match, # for comments).
 # Lets us allow-list known template bases like ERROR_DOC_BASE const, which
 # reads as a bare URL in source but only ever renders as ${base}/${code}.
+#
+# Uses `grep -F -x -v -f` (fixed strings, exact line, invert match, file-driven)
+# so URLs with regex metacharacters like `?` or `=` match literally — building
+# a regex union on the fly was broken for query-string URLs.
 if [ -f .linkcheckignore ]; then
-  FILTERED=()
-  # Build a grep pattern of ignore URLs (exact-line match).
-  IGNORE=$(grep -vE '^\s*(#|$)' .linkcheckignore | sed 's|[][\.^$*]|\\&|g')
-  for url in "${URLS[@]}"; do
-    if [ -n "$IGNORE" ] && echo "$url" | grep -qxE "$(echo "$IGNORE" | tr '\n' '|' | sed 's|\|$||')"; then
-      continue
-    fi
-    FILTERED+=("$url")
-  done
-  URLS=("${FILTERED[@]}")
+  # Strip comments + blank lines into a temp file grep can consume.
+  IGNORE_TMP=$(mktemp)
+  grep -vE '^\s*(#|$)' .linkcheckignore > "$IGNORE_TMP" || true
+  if [ -s "$IGNORE_TMP" ]; then
+    FILTERED=()
+    while IFS= read -r line; do
+      [ -n "$line" ] && FILTERED+=("$line")
+    done < <(printf '%s\n' "${URLS[@]}" | grep -F -x -v -f "$IGNORE_TMP" || true)
+    URLS=("${FILTERED[@]}")
+  fi
+  rm -f "$IGNORE_TMP"
 fi
 
 TOTAL=${#URLS[@]}

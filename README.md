@@ -60,8 +60,26 @@ log into.
 
 ## Quick start
 
-Point `helpbase ingest` at any repo. Under 90 seconds from zero to
-generated docs. Works on macOS, Linux, and Windows. Requires Node 20+.
+Live help center in 60 seconds. Works on macOS, Linux, and Windows.
+Requires Node 20+.
+
+```bash
+npx helpbase login                                   # device-flow login; reserves docs-<hex>.helpbase.dev for you instantly
+npx helpbase rename acme                             # optional: pick a vanity subdomain before first deploy
+npx helpbase deploy                                  # publish content/ to your reserved subdomain
+```
+
+That's it. `login` mints you a subdomain the moment the device flow
+completes, so `deploy` has nowhere to prompt — it just ships to your
+reserved URL. Change the slug any time before first deploy with
+`helpbase rename`; after first deploy the URL is locked so existing
+links don't break. Run `helpbase whoami` to see what's reserved.
+
+### Local: point ingest at any repo
+
+Prefer to stay local? Point `helpbase ingest` at a repo and get cited
+how-tos, MCP config, and `llms.txt` under `.helpbase/` without
+publishing anything.
 
 ```bash
 npx helpbase login                                   # magic-link device flow, free 500k tokens/day, no card
@@ -115,10 +133,12 @@ When you're ready to share it, deploy to helpbase cloud:
 npx helpbase deploy
 ```
 
-One magic-link login, pick a subdomain, and your help center is live at
-`your-slug.helpbase.dev`. A `.helpbase/project.json` gets committed so
-teammates deploy to the same tenant. CI users can skip the prompt with
-`HELPBASE_TOKEN` + `--slug`.
+No slug prompts. `helpbase login` already reserved
+`docs-<hex>.helpbase.dev` for you, and `deploy` publishes straight to
+that URL. Want something prettier? Run `helpbase rename acme` before
+first deploy to claim `acme.helpbase.dev`. A `.helpbase/project.json`
+gets committed so teammates deploy to the same tenant. CI users skip
+the flow entirely with `HELPBASE_TOKEN` + `--slug`.
 
 ### Generate articles from your site with AI
 

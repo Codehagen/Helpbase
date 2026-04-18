@@ -45,16 +45,32 @@ function help(args) {
 
 const topHelp = help("--help")
 
-// Extract commands from the top-level help output — commander lists them in
-// a "Commands:" block that runs to end of output.
+// Extract commands from the top-level help output — commander (via our
+// grouped help renderer in src/lib/help.ts) lists them in a "Commands:"
+// block, with group labels at 2-space indent and command names at
+// 4-space indent:
+//
+//   Commands:
+//
+//     Get started
+//       ingest      Turn a repo into agent-ready docs...
+//       preview     Open a browser-viewable help center...
+//     Ship
+//       deploy      Deploy your help center to helpbase cloud
+//       ...
+//
+// Matching 2-space indent would pick up "Get started"/"Ship"/etc. as if
+// they were commands, which is why docs/cli.md previously had bogus
+// `## `helpbase Get`` entries. Match 4-space indent so only real
+// subcommand names land in the list.
 const commands = []
 {
   const idx = topHelp.indexOf("Commands:")
   if (idx !== -1) {
     const block = topHelp.slice(idx)
     for (const line of block.split("\n")) {
-      // "  dev [options]       Start the development server"
-      const m = line.match(/^ {2}(\w[\w-]*)(?:\s|$)/)
+      // "    ingest      Turn a repo into agent-ready docs..."
+      const m = line.match(/^ {4}(\w[\w-]*)(?:\s|$)/)
       if (m && m[1] !== "help" && !commands.includes(m[1])) {
         commands.push(m[1])
       }

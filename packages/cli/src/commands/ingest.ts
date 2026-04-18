@@ -193,7 +193,11 @@ async function runIngest(repoPathArg: string, opts: IngestOpts): Promise<void> {
     const model = resolveModel({ test: opts.test, modelOverride: opts.model })
     const auth = await resolveAuthOrPromptLogin({
       verb: "ask",
-      retryCommand: `helpbase ingest --reuse-existing --ask ${JSON.stringify(opts.ask)}`,
+      // Include the repo path so the retry hint reproduces the full
+      // invocation — otherwise a user who ran `helpbase ingest /some/repo
+      // --reuse-existing --ask ...` would see a retry command without the
+      // path and re-run against the wrong working directory.
+      retryCommand: `helpbase ingest ${JSON.stringify(repoPathArg || ".")} --reuse-existing --ask ${JSON.stringify(opts.ask)}`,
     })
     await runLocalAsk(opts.ask, serialized, model, auth.authToken)
     return
@@ -210,11 +214,29 @@ async function runIngest(repoPathArg: string, opts: IngestOpts): Promise<void> {
     })
   }
 
+  // ─── 3.5. Pre-LLM secret scan on source content ─────────────────
+  // readContextSources already skips files whose NAMES look secret
+  // (.env*, *.pem, *.key). This gate catches secret CONTENT inside
+  // eligible files — e.g. a hardcoded API key in a .ts file. Without
+  // this, the secret would flow through buildContextPrompt → _prompt.txt
+  // (under --debug) and to the LLM before the post-MDX secret scan
+  // catches it. The post-MDX scan is the last gate; this is the first.
+  for (const s of sources) {
+    const matches = scanForSecrets(s.content)
+    if (matches.length > 0) {
+      const msg = formatSecretError(matches, s.path)
+      process.stderr.write(msg + "\n")
+      throw contextError("E_CONTEXT_SECRET_SOURCE", {
+        cause: `Pattern "${matches[0]!.patternName}" matched in ${s.path}. No LLM call was made; nothing was written.`,
+      })
+    }
+  }
+
   const outputDir = path.resolve(repoRoot, opts.output || ".helpbase")
   const docsDir = path.join(outputDir, "docs")
   const model = resolveModel({ test: opts.test, modelOverride: opts.model })
-  const maxTokens = Number.parseInt(opts.maxTokens, 10) || 100000
-  const charsPerToken = Number.parseFloat(opts.charsPerToken) || 3.5
+  const maxTokens = parseBudgetInt(opts.maxTokens, "--max-tokens", 100_000)
+  const charsPerToken = parseBudgetFloat(opts.charsPerToken, "--chars-per-token", 3.5)
 
   // ─── 5. Dry-run summary — no LLM call, no writes ────────────────
   if (opts.dryRun) {
@@ -381,11 +403,14 @@ async function runIngest(repoPathArg: string, opts: IngestOpts): Promise<void> {
   // --overwrite removes custom-file preservation.
   if (opts.overwrite && planned.preserves.length > 0) {
     // Don't silently clobber custom edits — require --yes as a second gate.
+    // Throw a structured HelpbaseError instead of stderr.write + process.exit
+    // so this path goes through the same formatting layer as every other
+    // user error (JSON/quiet honored, doc URL emitted, exit code via the
+    // top-level handler in index.ts).
     if (!opts.yes) {
-      process.stderr.write(
-        `${pc.yellow("!")} --overwrite was set but --yes was not. Refusing to clobber ${planned.preserves.length} custom file(s). Pass --yes to confirm.\n`,
-      )
-      process.exit(1)
+      throw contextError("E_CONTEXT_REFUSE_CLOBBER", {
+        cause: `${planned.preserves.length} custom file(s) in ${path.relative(repoRoot, docsDir) || "."} would be clobbered without --yes.`,
+      })
     }
     // Move preserves into writes so they get overwritten.
     // Build the serialized-by-rel index so we only overwrite custom files
@@ -628,6 +653,48 @@ function mcpClientConfigPaths(): Array<{ client: string; path: string }> {
     { client: "Cursor", path: `${home}/.cursor/mcp.json` },
     { client: "Claude Code", path: `${home}/.claude/mcp.json` },
   ]
+}
+
+/**
+ * Parse --max-tokens. Accepts 0 (disables the gate, per the flag's docs) and
+ * positive integers; rejects NaN, negative, and non-numeric. Previously
+ * `Number.parseInt(x) || default` silently swallowed garbage input — including
+ * negative values that then bypassed the `maxTokens > 0` gate check inside
+ * generateHowtosFromRepo, letting oversized runs hit the LLM gateway.
+ *
+ * @param raw              the raw flag value (Commander always passes a string
+ *                         because we declared --max-tokens <n>)
+ * @param flagName         user-facing flag label for the error message
+ * @param fallbackDefault  returned when `raw` itself is empty/undefined (unused
+ *                         in normal Commander flow — Commander fills in the
+ *                         registered default — but kept for direct callers)
+ */
+function parseBudgetInt(raw: string, flagName: string, fallbackDefault: number): number {
+  if (raw === undefined || raw === null || raw === "") return fallbackDefault
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed) || parsed < 0 || String(parsed) !== raw.trim()) {
+    throw contextError("E_CONTEXT_INVALID_BUDGET", {
+      cause: `${flagName} received ${JSON.stringify(raw)} — expected a non-negative integer (0 disables the gate).`,
+    })
+  }
+  return parsed
+}
+
+/**
+ * Parse --chars-per-token. Must be a strictly positive finite float. Unlike
+ * --max-tokens, 0 is NOT a valid value here — a zero chars-per-token would
+ * make the token estimate trivially 0 and bypass the budget gate regardless
+ * of the --max-tokens value.
+ */
+function parseBudgetFloat(raw: string, flagName: string, fallbackDefault: number): number {
+  if (raw === undefined || raw === null || raw === "") return fallbackDefault
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw contextError("E_CONTEXT_INVALID_BUDGET", {
+      cause: `${flagName} received ${JSON.stringify(raw)} — expected a positive number (e.g. 3.5).`,
+    })
+  }
+  return parsed
 }
 
 function formatChars(n: number): string {

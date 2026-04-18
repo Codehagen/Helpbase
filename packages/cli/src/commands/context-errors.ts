@@ -161,6 +161,41 @@ export const CONTEXT_ERRORS: Record<ContextErrorCode, ContextErrorBase> = {
       "Retry: `helpbase preview --reset` to re-scaffold + re-install.",
     ],
   },
+  E_CONTEXT_INVALID_BUDGET: {
+    problem: "--max-tokens or --chars-per-token is not a valid positive number.",
+    cause:
+      "These flags must be finite positive numbers. --max-tokens accepts 0 " +
+      "(disables the gate); anything negative, NaN, or non-numeric used to " +
+      "silently fall back to defaults instead of failing loudly.",
+    fix: [
+      "Check the value you passed. Typical: --max-tokens 100000 --chars-per-token 3.5.",
+      "To disable the token gate entirely, pass --max-tokens 0.",
+    ],
+  },
+  E_CONTEXT_REFUSE_CLOBBER: {
+    problem: "--overwrite would replace custom-edited docs without --yes.",
+    cause:
+      "Some .helpbase/docs/ files have `source: custom` in their frontmatter. " +
+      "--overwrite together with --yes is the deliberate two-gate opt-in for " +
+      "clobbering them; without --yes we refuse to touch them.",
+    fix: [
+      "Re-run with --yes to confirm: `helpbase ingest . --overwrite --yes`.",
+      "Or keep the custom files by dropping --overwrite.",
+    ],
+  },
+  E_CONTEXT_SECRET_SOURCE: {
+    problem: "Secret-shaped content detected in a source file before the LLM call.",
+    cause:
+      "The source walker picked up a file whose content matched a known secret " +
+      "pattern (API key, PEM block, etc.). The pre-LLM scan aborts the run so " +
+      "the secret never leaves your machine — no LLM call, no --debug prompt dump.",
+    fix: [
+      "Open the file and line shown above.",
+      "If it's a legitimate example, swap in a placeholder (sk-xxxxx) instead of a realistic-looking value.",
+      "If it's a real secret, rotate it and add the source file to .gitignore.",
+      "Check your .env*, *.pem, and *.key files — those should never leak into walked source content.",
+    ],
+  },
 }
 
 export function contextError(

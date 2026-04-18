@@ -7,346 +7,475 @@
 
 ## Commands
 
-- [`helpbase Get`](#helpbase-Get)
-- [`helpbase Ship`](#helpbase-Ship)
-- [`helpbase Author`](#helpbase-Author)
-- [`helpbase Account`](#helpbase-Account)
-- [`helpbase Diagnose`](#helpbase-Diagnose)
-- [`helpbase Other`](#helpbase-Other)
+- [`helpbase ingest`](#helpbase-ingest)
+- [`helpbase preview`](#helpbase-preview)
+- [`helpbase new`](#helpbase-new)
+- [`helpbase dev`](#helpbase-dev)
+- [`helpbase deploy`](#helpbase-deploy)
+- [`helpbase link`](#helpbase-link)
+- [`helpbase open`](#helpbase-open)
+- [`helpbase generate`](#helpbase-generate)
+- [`helpbase sync`](#helpbase-sync)
+- [`helpbase mcp`](#helpbase-mcp)
+- [`helpbase audit`](#helpbase-audit)
+- [`helpbase login`](#helpbase-login)
+- [`helpbase logout`](#helpbase-logout)
+- [`helpbase whoami`](#helpbase-whoami)
+- [`helpbase config`](#helpbase-config)
+- [`helpbase doctor`](#helpbase-doctor)
+- [`helpbase feedback`](#helpbase-feedback)
+- [`helpbase completion`](#helpbase-completion)
+- [`helpbase upgrade`](#helpbase-upgrade)
+- [`helpbase context`](#helpbase-context)
 
-## `helpbase Get`
+## `helpbase ingest`
 
 ```
-helpbase v0.5.0
-CLI for managing your Helpbase help center
+Usage: helpbase ingest [options] [repoPath]
 
-Most common:
-  helpbase ingest  ·  helpbase new  ·  helpbase dev
+Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited
+how-to guides, wires up MCP. Your docs, always up to date.
 
-Usage:
-  helpbase [global-options] <command> [command-options]
+Arguments:
+  repoPath               Path to the repo to ingest (default: ".")
 
-Global options:
-  -V, --version  output the version number
-  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
-  --quiet        Suppress decorative output (spinners, next-steps, summaries)
+Options:
+  -o, --output <dir>     Output directory for generated content (default:
+                         ".helpbase")
+  --max-tokens <n>       Token budget for the LLM input (per run) (default:
+                         "100000")
+  --chars-per-token <n>  Chars-per-token ratio used for the budget estimate (3.5
+                         = mid-range; 2.8 for code-heavy, 4.2 for prose)
+                         (default: "3.5")
+  --model <id>           Override the model ID (e.g.
+                         anthropic/claude-sonnet-4.6)
+  --test                 Use the cheap test model
+                         (google/gemini-3.1-flash-lite-preview) and print model
+                         info
+  --debug                Write the raw assembled prompt to <output>/_prompt.txt
+                         before calling the LLM
+  --dry-run              Walk the repo and print what would be sent to the LLM,
+                         without spending tokens
+  --allow-dirty          Explicitly allow generating from a dirty working tree
+                         (default behavior; kept for clarity)
+  --require-clean        Exit 1 if the working tree has uncommitted changes (CI
+                         mode)
+  --overwrite            Overwrite existing docs, including source:custom
+                         (default preserves custom files)
+  --yes                  Skip interactive confirmations (for CI/scripted use)
+  --only <category>      Only (re)generate docs in one category slug
+  --prompt <file>        Override the default prompt with a file path (content
+                         is still wrapped in untrusted-content delimiters)
+  --ask <question>       After generating, answer a question against the fresh
+                         docs in-terminal (no MCP client required)
+  --reuse-existing       With --ask: skip generation, answer against the
+                         existing .helpbase/docs/ on disk (for eval/batch runs)
+  -h, --help             display help for command
+
+Examples:
+  $ helpbase ingest .                               # ingest current repo
+  $ helpbase ingest ./path/to/repo                  # ingest a specific path
+  $ helpbase ingest . --dry-run                     # preview without spending tokens
+  $ helpbase ingest . --ask "how do I log in?"      # ingest + answer in terminal
+  $ helpbase ingest . --only auth                   # regen just one category
+  $ helpbase ingest . --require-clean               # fail if tree is dirty (CI mode)
+
+Auth: run helpbase login (free, 500k tokens/day, no card)
+  OR export one of ANTHROPIC_API_KEY / OPENAI_API_KEY / AI_GATEWAY_API_KEY
+  (BYOK — first key found wins; --model overrides)
+```
+
+## `helpbase preview`
+
+```
+Usage: helpbase preview [options]
+
+Open a browser-viewable help center from the docs `helpbase ingest` generated.
+
+Options:
+  -p, --port <port>  Port to serve on (default: "3000")
+  --reset            Wipe the cached preview renderer and re-scaffold
+  --setup-only       Scaffold and install without starting the server
+  -h, --help         display help for command
+
+Examples:
+  $ helpbase preview                  # open http://localhost:3000
+  $ helpbase preview --port 4001      # use a different port
+  $ helpbase preview --reset          # wipe the cache and re-scaffold
+  $ helpbase preview --setup-only     # warm the cache, don't start server
+
+First run takes ~45-60s (scaffold + install). Every run after is ~3s.
+
+Pair with:
+  $ helpbase ingest .                 # generate the docs first
+```
+
+## `helpbase new`
+
+```
+Usage: helpbase new [options]
+
+Create a new article from a template
+
+Options:
+  -t, --type <type>            Template type: getting-started, how-to, concept,
+                               troubleshooting
+  -d, --dir <dir>              Content directory (default: "content")
+  -c, --category <category>    Category slug (defaults to the template's
+                               default)
+  --title <title>              Article title
+  --description <description>  Short description for the article frontmatter
+  --slug <slug>                Article slug (derived from title if omitted)
+  -h, --help                   display help for command
+
+Examples:
+  $ helpbase new                                                # fully interactive
+  $ helpbase new --type how-to --title "Reset your password"
+  $ helpbase new --type getting-started --title "Get started" --category intro
+```
+
+## `helpbase dev`
+
+```
+Usage: helpbase dev [options]
+
+Start the development server
+
+Options:
+  -p, --port <port>     Port to run on (default: "3000")
+  --no-lint             Skip on-save article linting
+  --content-dir <path>  Directory to watch for MDX changes (default: "content")
+  -h, --help            display help for command
+```
+
+## `helpbase deploy`
+
+```
+Usage: helpbase deploy [options]
+
+Deploy your help center to helpbase cloud
+
+Options:
+  --slug <slug>       Subdomain slug (e.g., my-product)
+  --rotate-mcp-token  Rotate the tenant's MCP bearer token (invalidates all
+                      currently-active clients). Does not publish content.
+  --delete <slug>     Hard-delete a tenant and release its slug. Requires owner
+                      match. Cascades to articles, categories, chunks, deploys,
+                      and queries.
+  --yes               Skip the confirmation prompt for --delete (required for
+                      non-interactive).
+  -h, --help          display help for command
+
+Examples:
+  $ helpbase deploy
+  $ helpbase deploy --slug acme-docs
+  $ HELPBASE_TOKEN=xxx helpbase deploy --slug acme-docs        # CI / non-interactive
+  $ helpbase deploy --rotate-mcp-token                         # rotate MCP token only
+  $ helpbase deploy --delete acme-docs --yes                   # delete tenant + release slug
+```
+
+## `helpbase link`
+
+```
+Usage: helpbase link [options]
+
+Link this project to a helpbase cloud tenant
+
+Options:
+  --slug <slug>  Link directly to a tenant by slug (skips the picker)
+  --remove       Remove the existing .helpbase/project.json binding
   -h, --help     display help for command
+```
+
+## `helpbase open`
+
+```
+Usage: helpbase open [options]
+
+Open this project's help center in the default browser
+
+Options:
+  --print     Print the URL instead of opening it (useful for CI / scripts)
+  -h, --help  display help for command
+```
+
+## `helpbase generate`
+
+```
+Usage: helpbase generate [options] [repoPath]
+
+Generate help articles using AI
+
+Arguments:
+  repoPath             Path to a local repository (alias for --repo; ignored if
+                       --repo is set)
+
+Options:
+  --url <url>          Scrape a website URL and generate articles
+  --repo <path>        Read a local repository and generate articles
+  --screenshots <dir>  Generate visual how-to articles from a folder of
+                       screenshots
+  --title <title>      Title for the generated how-to guide (required with
+                       --screenshots when no --url)
+  -o, --output <dir>   Output directory for generated articles (default:
+                       "content")
+  --test               Use the cheap test model
+                       (google/gemini-3.1-flash-lite-preview) and print model
+                       info
+  --model <id>         Override the model ID (e.g. anthropic/claude-sonnet-4.6)
+  --debug              Write the raw scraped text to <output>/_scrape.txt before
+                       calling the LLM (useful when debugging bad article
+                       quality)
+  --dry-run            Scrape the URL and print what would be sent to the LLM,
+                       without spending tokens
+  --yes                Skip interactive confirmations (for CI/scripted use)
+  --no-overwrite       Error instead of overwriting existing image assets
+  -h, --help           display help for command
+
+Examples:
+  $ helpbase generate --url https://myproduct.com
+  $ helpbase generate --url https://myproduct.com --test           # cheap model
+  $ helpbase generate .                                            # read local repo markdown (positional)
+  $ helpbase generate --repo .                                     # same, explicit flag
+  $ helpbase generate ./path/to/repo --dry-run                     # preview without spending tokens
+  $ helpbase generate --screenshots ./flow --title "How to invite a teammate"
+  $ helpbase generate --url https://myproduct.com --dry-run        # preview without spending tokens
+
+Auth: run `helpbase login` (free, 500k tokens/day) OR export one of
+ANTHROPIC_API_KEY / OPENAI_API_KEY / AI_GATEWAY_API_KEY (BYOK, first found wins).
+```
+
+## `helpbase sync`
+
+```
+Usage: helpbase sync [options]
+
+Propose MDX edits grounded in a code diff (no writes by default)
+
+Options:
+  --since <rev>        Git rev to diff against (default: origin/main or HEAD~10)
+  --content <dir>      MDX content directory (default: "content")
+  -o, --output <file>  Write the unified diff to this file instead of stdout
+  --model <id>         Override the model ID (e.g. anthropic/claude-sonnet-4.6)
+  --test               Use the cheap test model
+                       (google/gemini-3.1-flash-lite-preview)
+  --dry-run            Show what would be proposed without calling the LLM
+  --demo               Skip the LLM and render the bundled demo fixture
+                       (first-run magic)
+  --apply              Apply accepted proposals to the MDX files in-place
+  --yes                Skip interactive confirmations (for CI)
+  -h, --help           display help for command
+
+Examples:
+  $ helpbase sync --demo                     # 30-second tour, no key required
+  $ helpbase sync --since HEAD~5             # diff last 5 commits
+  $ helpbase sync --since origin/main        # diff against tracking branch
+  $ helpbase sync --apply                    # apply proposals in-place
+
+Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
+```
+
+## `helpbase mcp`
+
+```
+Usage: helpbase mcp [options] [command]
+
+Run the Helpbase MCP server (stdio or HTTP)
+
+Options:
+  -h, --help       display help for command
 
 Commands:
+  start [options]  Start the MCP server
+  help [command]   display help for command
 
-  Get started
-    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
-    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
-    new         Create a new article from a template
-    dev         Start the development server
+Examples:
+  $ helpbase mcp start                    # stdio — Claude Desktop / Cursor / Zed
+  $ helpbase mcp start --http             # HTTP — remote agents, internal KB
+  $ helpbase mcp start --http --port 4000 # custom port
 
-  Ship
-    deploy      Deploy your help center to helpbase cloud
-    link        Link this project to a helpbase cloud tenant
-    open        Open this project's help center in the default browser
-
-  Author
-    generate    Generate help articles using AI
-    sync        Propose MDX edits grounded in a code diff (no writes by default)
-    mcp         Run the Helpbase MCP server (stdio or HTTP)
-    audit       Check content health: missing fields, broken links, schema errors
-
-  Account
-    login       Log in to helpbase cloud
-    logout      Log out of helpbase cloud
-    whoami      Print the current login, linked tenant, and today's usage
-    config      Read or write CLI preferences (~/.helpbase/config.json)
-
-  Diagnose
-    doctor      Print diagnostic info about your helpbase install and project
-    feedback    Open a prefilled GitHub issue with your environment info
-    completion  Print a shell completion script
-    upgrade     Print the command to upgrade helpbase (does not execute it)
-
-  Other
-    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
-
-Run `helpbase <command> --help` for command-specific options.
-Docs: https://helpbase.dev
+HTTP mode reads two env vars:
+  HELPBASE_MCP_TOKEN              required — bearer token for auth
+  HELPBASE_MCP_ALLOWED_ORIGINS    optional — comma-separated CORS allowlist
 ```
 
-## `helpbase Ship`
+## `helpbase audit`
 
 ```
-helpbase v0.5.0
-CLI for managing your Helpbase help center
+Usage: helpbase audit [options]
 
-Most common:
-  helpbase ingest  ·  helpbase new  ·  helpbase dev
+Check content health: missing fields, broken links, schema errors
 
-Usage:
-  helpbase [global-options] <command> [command-options]
+Options:
+  -d, --dir <dir>        Content directory to audit (default: "content")
+  -f, --format <format>  Output format: text or json (default: "text")
+  -h, --help             display help for command
+```
 
-Global options:
-  -V, --version  output the version number
-  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
-  --quiet        Suppress decorative output (spinners, next-steps, summaries)
-  -h, --help     display help for command
+## `helpbase login`
+
+```
+Usage: helpbase login [options]
+
+Log in to helpbase cloud
+
+Options:
+  -e, --email [email]  Use magic-link email fallback (CI / sandboxed envs)
+  -h, --help           display help for command
+```
+
+## `helpbase logout`
+
+```
+Usage: helpbase logout [options]
+
+Log out of helpbase cloud
+
+Options:
+  -h, --help  display help for command
+```
+
+## `helpbase whoami`
+
+```
+Usage: helpbase whoami [options]
+
+Print the current login, linked tenant, and today's usage
+
+Options:
+  -f, --format <format>  Output format: text or json (default: "text")
+  -h, --help             display help for command
+```
+
+## `helpbase config`
+
+```
+Usage: helpbase config [options] [command]
+
+Read or write CLI preferences (~/.helpbase/config.json)
+
+Options:
+  -h, --help         display help for command
 
 Commands:
-
-  Get started
-    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
-    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
-    new         Create a new article from a template
-    dev         Start the development server
-
-  Ship
-    deploy      Deploy your help center to helpbase cloud
-    link        Link this project to a helpbase cloud tenant
-    open        Open this project's help center in the default browser
-
-  Author
-    generate    Generate help articles using AI
-    sync        Propose MDX edits grounded in a code diff (no writes by default)
-    mcp         Run the Helpbase MCP server (stdio or HTTP)
-    audit       Check content health: missing fields, broken links, schema errors
-
-  Account
-    login       Log in to helpbase cloud
-    logout      Log out of helpbase cloud
-    whoami      Print the current login, linked tenant, and today's usage
-    config      Read or write CLI preferences (~/.helpbase/config.json)
-
-  Diagnose
-    doctor      Print diagnostic info about your helpbase install and project
-    feedback    Open a prefilled GitHub issue with your environment info
-    completion  Print a shell completion script
-    upgrade     Print the command to upgrade helpbase (does not execute it)
-
-  Other
-    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
-
-Run `helpbase <command> --help` for command-specific options.
-Docs: https://helpbase.dev
+  get <key>          Print the current value of a config key
+  set <key> <value>  Set a config key
+  unset <key>        Clear a config key
+  list               Print all known config keys and their current values
+  help [command]     display help for command
 ```
 
-## `helpbase Author`
+## `helpbase doctor`
 
 ```
-helpbase v0.5.0
-CLI for managing your Helpbase help center
+Usage: helpbase doctor [options]
 
-Most common:
-  helpbase ingest  ·  helpbase new  ·  helpbase dev
+Print diagnostic info about your helpbase install and project
 
-Usage:
-  helpbase [global-options] <command> [command-options]
-
-Global options:
-  -V, --version  output the version number
-  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
-  --quiet        Suppress decorative output (spinners, next-steps, summaries)
-  -h, --help     display help for command
-
-Commands:
-
-  Get started
-    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
-    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
-    new         Create a new article from a template
-    dev         Start the development server
-
-  Ship
-    deploy      Deploy your help center to helpbase cloud
-    link        Link this project to a helpbase cloud tenant
-    open        Open this project's help center in the default browser
-
-  Author
-    generate    Generate help articles using AI
-    sync        Propose MDX edits grounded in a code diff (no writes by default)
-    mcp         Run the Helpbase MCP server (stdio or HTTP)
-    audit       Check content health: missing fields, broken links, schema errors
-
-  Account
-    login       Log in to helpbase cloud
-    logout      Log out of helpbase cloud
-    whoami      Print the current login, linked tenant, and today's usage
-    config      Read or write CLI preferences (~/.helpbase/config.json)
-
-  Diagnose
-    doctor      Print diagnostic info about your helpbase install and project
-    feedback    Open a prefilled GitHub issue with your environment info
-    completion  Print a shell completion script
-    upgrade     Print the command to upgrade helpbase (does not execute it)
-
-  Other
-    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
-
-Run `helpbase <command> --help` for command-specific options.
-Docs: https://helpbase.dev
+Options:
+  -f, --format <format>  Output format: text or json (default: "text")
+  --offline              Skip network checks (useful on planes and behind corp
+                         proxies)
+  -h, --help             display help for command
 ```
 
-## `helpbase Account`
+## `helpbase feedback`
 
 ```
-helpbase v0.5.0
-CLI for managing your Helpbase help center
+Usage: helpbase feedback [options]
 
-Most common:
-  helpbase ingest  ·  helpbase new  ·  helpbase dev
+Open a prefilled GitHub issue with your environment info
 
-Usage:
-  helpbase [global-options] <command> [command-options]
-
-Global options:
-  -V, --version  output the version number
-  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
-  --quiet        Suppress decorative output (spinners, next-steps, summaries)
-  -h, --help     display help for command
-
-Commands:
-
-  Get started
-    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
-    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
-    new         Create a new article from a template
-    dev         Start the development server
-
-  Ship
-    deploy      Deploy your help center to helpbase cloud
-    link        Link this project to a helpbase cloud tenant
-    open        Open this project's help center in the default browser
-
-  Author
-    generate    Generate help articles using AI
-    sync        Propose MDX edits grounded in a code diff (no writes by default)
-    mcp         Run the Helpbase MCP server (stdio or HTTP)
-    audit       Check content health: missing fields, broken links, schema errors
-
-  Account
-    login       Log in to helpbase cloud
-    logout      Log out of helpbase cloud
-    whoami      Print the current login, linked tenant, and today's usage
-    config      Read or write CLI preferences (~/.helpbase/config.json)
-
-  Diagnose
-    doctor      Print diagnostic info about your helpbase install and project
-    feedback    Open a prefilled GitHub issue with your environment info
-    completion  Print a shell completion script
-    upgrade     Print the command to upgrade helpbase (does not execute it)
-
-  Other
-    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
-
-Run `helpbase <command> --help` for command-specific options.
-Docs: https://helpbase.dev
+Options:
+  --print              Print the URL instead of opening the browser
+  -t, --title <title>  Issue title to prefill (default: "Bug in helpbase CLI")
+  -h, --help           display help for command
 ```
 
-## `helpbase Diagnose`
+## `helpbase completion`
 
 ```
-helpbase v0.5.0
-CLI for managing your Helpbase help center
+Usage: helpbase completion [options] <shell>
 
-Most common:
-  helpbase ingest  ·  helpbase new  ·  helpbase dev
+Print a shell completion script
 
-Usage:
-  helpbase [global-options] <command> [command-options]
+Arguments:
+  shell       Target shell: bash, zsh, fish, powershell
 
-Global options:
-  -V, --version  output the version number
-  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
-  --quiet        Suppress decorative output (spinners, next-steps, summaries)
-  -h, --help     display help for command
+Options:
+  -h, --help  display help for command
 
-Commands:
-
-  Get started
-    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
-    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
-    new         Create a new article from a template
-    dev         Start the development server
-
-  Ship
-    deploy      Deploy your help center to helpbase cloud
-    link        Link this project to a helpbase cloud tenant
-    open        Open this project's help center in the default browser
-
-  Author
-    generate    Generate help articles using AI
-    sync        Propose MDX edits grounded in a code diff (no writes by default)
-    mcp         Run the Helpbase MCP server (stdio or HTTP)
-    audit       Check content health: missing fields, broken links, schema errors
-
-  Account
-    login       Log in to helpbase cloud
-    logout      Log out of helpbase cloud
-    whoami      Print the current login, linked tenant, and today's usage
-    config      Read or write CLI preferences (~/.helpbase/config.json)
-
-  Diagnose
-    doctor      Print diagnostic info about your helpbase install and project
-    feedback    Open a prefilled GitHub issue with your environment info
-    completion  Print a shell completion script
-    upgrade     Print the command to upgrade helpbase (does not execute it)
-
-  Other
-    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
-
-Run `helpbase <command> --help` for command-specific options.
-Docs: https://helpbase.dev
+Examples:
+  $ helpbase completion zsh > ~/.zsh/completions/_helpbase
+  $ eval "$(helpbase completion bash)"
+  $ helpbase completion fish > ~/.config/fish/completions/helpbase.fish
+  $ helpbase completion powershell | Out-String | Invoke-Expression
 ```
 
-## `helpbase Other`
+## `helpbase upgrade`
 
 ```
-helpbase v0.5.0
-CLI for managing your Helpbase help center
+Usage: helpbase upgrade [options]
 
-Most common:
-  helpbase ingest  ·  helpbase new  ·  helpbase dev
+Print the command to upgrade helpbase (does not execute it)
 
-Usage:
-  helpbase [global-options] <command> [command-options]
+Options:
+  -h, --help  display help for command
 
-Global options:
-  -V, --version  output the version number
-  --json         Emit machine-readable JSON on stdout (suppresses decorative output)
-  --quiet        Suppress decorative output (spinners, next-steps, summaries)
-  -h, --help     display help for command
+Examples:
+  $ helpbase upgrade        # prints the detected upgrade command
+```
 
-Commands:
+## `helpbase context`
 
-  Get started
-    ingest      Turn a repo into agent-ready docs: walks your code + markdown, synthesizes cited how-to guides, wires up MCP. Your docs, always up to date.
-    preview     Open a browser-viewable help center from the docs `helpbase ingest` generated.
-    new         Create a new article from a template
-    dev         Start the development server
+```
+Usage: helpbase context [options] [repoPath]
 
-  Ship
-    deploy      Deploy your help center to helpbase cloud
-    link        Link this project to a helpbase cloud tenant
-    open        Open this project's help center in the default browser
+[deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
 
-  Author
-    generate    Generate help articles using AI
-    sync        Propose MDX edits grounded in a code diff (no writes by default)
-    mcp         Run the Helpbase MCP server (stdio or HTTP)
-    audit       Check content health: missing fields, broken links, schema errors
+Arguments:
+  repoPath               Path to the repo to ingest (default: ".")
 
-  Account
-    login       Log in to helpbase cloud
-    logout      Log out of helpbase cloud
-    whoami      Print the current login, linked tenant, and today's usage
-    config      Read or write CLI preferences (~/.helpbase/config.json)
+Options:
+  -o, --output <dir>     Output directory for generated content (default:
+                         ".helpbase")
+  --max-tokens <n>       Token budget for the LLM input (per run) (default:
+                         "100000")
+  --chars-per-token <n>  Chars-per-token ratio used for the budget estimate (3.5
+                         = mid-range; 2.8 for code-heavy, 4.2 for prose)
+                         (default: "3.5")
+  --model <id>           Override the model ID (e.g.
+                         anthropic/claude-sonnet-4.6)
+  --test                 Use the cheap test model
+                         (google/gemini-3.1-flash-lite-preview) and print model
+                         info
+  --debug                Write the raw assembled prompt to <output>/_prompt.txt
+                         before calling the LLM
+  --dry-run              Walk the repo and print what would be sent to the LLM,
+                         without spending tokens
+  --allow-dirty          Explicitly allow generating from a dirty working tree
+                         (default behavior; kept for clarity)
+  --require-clean        Exit 1 if the working tree has uncommitted changes (CI
+                         mode)
+  --overwrite            Overwrite existing docs, including source:custom
+                         (default preserves custom files)
+  --yes                  Skip interactive confirmations (for CI/scripted use)
+  --only <category>      Only (re)generate docs in one category slug
+  --prompt <file>        Override the default prompt with a file path (content
+                         is still wrapped in untrusted-content delimiters)
+  --ask <question>       After generating, answer a question against the fresh
+                         docs in-terminal (no MCP client required)
+  --reuse-existing       With --ask: skip generation, answer against the
+                         existing .helpbase/docs/ on disk (for eval/batch runs)
+  -h, --help             display help for command
 
-  Diagnose
-    doctor      Print diagnostic info about your helpbase install and project
-    feedback    Open a prefilled GitHub issue with your environment info
-    completion  Print a shell completion script
-    upgrade     Print the command to upgrade helpbase (does not execute it)
+This command is deprecated. Use helpbase ingest instead — same flags,
+same behavior. Slated for removal in v0.7.
 
-  Other
-    context     [deprecated: use `helpbase ingest`] Turn a repo into agent-ready docs.
+Examples:
+  $ helpbase ingest .                               # ingest current repo
+  $ helpbase ingest . --ask "how do I log in?"      # ingest + answer in terminal
 
-Run `helpbase <command> --help` for command-specific options.
-Docs: https://helpbase.dev
+See: helpbase ingest --help
 ```
 

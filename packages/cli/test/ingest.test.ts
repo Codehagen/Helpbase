@@ -111,6 +111,88 @@ describe("helpbase ingest", () => {
     expect(result.output).toContain("E_CONTEXT_REPO_PATH")
   })
 
+  it("rejects negative --max-tokens instead of silently falling back", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ing-budget-"))
+    try {
+      fs.writeFileSync(path.join(tmp, "README.md"), "# Hello\n\nsample repo")
+      // Negative --max-tokens used to coerce to 100_000 via `parseInt(x) || default`,
+      // which also left the `maxTokens > 0` gate inside generateHowtosFromRepo
+      // bypassed if the caller actually passed a negative number at runtime.
+      const result = runWithEnv(`ingest ${tmp} --max-tokens -1 --dry-run`, {
+        AI_GATEWAY_API_KEY: "",
+        ANTHROPIC_API_KEY: "",
+        OPENAI_API_KEY: "",
+      })
+      expect(result.exitCode).toBe(1)
+      expect(result.output).toContain("E_CONTEXT_INVALID_BUDGET")
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects zero --chars-per-token (would trivially make the estimate 0)", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ing-chars-"))
+    try {
+      fs.writeFileSync(path.join(tmp, "README.md"), "# Hello\n\nsample repo")
+      const result = runWithEnv(`ingest ${tmp} --chars-per-token 0 --dry-run`, {
+        AI_GATEWAY_API_KEY: "",
+        ANTHROPIC_API_KEY: "",
+        OPENAI_API_KEY: "",
+      })
+      expect(result.exitCode).toBe(1)
+      expect(result.output).toContain("E_CONTEXT_INVALID_BUDGET")
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it("accepts --max-tokens 0 as a gate-disable (documented behavior)", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ing-zero-"))
+    try {
+      fs.writeFileSync(path.join(tmp, "README.md"), "# Hello\n\nsample repo")
+      // 0 disables the budget gate entirely per the flag's contract.
+      // --dry-run skips the LLM call so we can exercise parseBudgetInt
+      // without a real key.
+      const result = runWithEnv(`ingest ${tmp} --max-tokens 0 --dry-run`, {
+        AI_GATEWAY_API_KEY: "",
+        ANTHROPIC_API_KEY: "",
+        OPENAI_API_KEY: "",
+      })
+      expect(result.exitCode).toBe(0)
+      expect(result.output).toContain("Dry run")
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it("aborts before LLM call on secret-shaped content in source files", () => {
+    // Pre-LLM secret scan: a real key in a .ts file must abort the run
+    // before buildContextPrompt or any LLM call — otherwise the secret
+    // would leak into _prompt.txt under --debug or to the LLM gateway.
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ing-secret-"))
+    try {
+      fs.writeFileSync(path.join(tmp, "README.md"), "# Hello\n\nsample repo")
+      // Use a credential-assignment pattern that matches SECRET_CONTENT_PATTERNS
+      // without being a real key (the pattern only needs 10+ non-ws chars).
+      fs.writeFileSync(
+        path.join(tmp, "config.ts"),
+        'export const ANTHROPIC_API_KEY = "sk-ant-fake1234567890abcdef"\n',
+      )
+      const result = runWithEnv(`ingest ${tmp} --dry-run`, {
+        AI_GATEWAY_API_KEY: "",
+        ANTHROPIC_API_KEY: "",
+        OPENAI_API_KEY: "",
+      })
+      expect(result.exitCode).toBe(1)
+      expect(result.output).toContain("E_CONTEXT_SECRET_SOURCE")
+      // Exact line number + pattern name, never the secret bytes.
+      expect(result.output).toContain("sk-api-key")
+      expect(result.output).not.toContain("sk-ant-fake1234567890abcdef")
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
   it("--dry-run on a real repo prints a plan without an LLM call", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "helpbase-ing-dry-"))
     try {

@@ -286,7 +286,7 @@ export const deployPayloadSchema = z.object({
     // as belt-and-braces, but requiring at the schema level catches
     // malformed callers with a clear 400 before the RPC fires. Caught
     // by CodeRabbit on PR #11.
-    content_hash: z.string().min(1, "content_hash is required (hash via @workspace/shared/article-hash)"),
+    content_hash: z.string().min(1, "content_hash is required (hash via hashArticle)"),
     frontmatter: z.record(z.string(), z.unknown()).default({}),
     order: z.number().int().default(0),
     tags: z.array(z.string()).optional().nullable(),

@@ -126,10 +126,11 @@ export async function proxy(request: NextRequest) {
 
   // Read from the public-safe view (tenants_public hides mcp_public_token
   // and owner_id from anon). Base tenants table has no anon read grant
-  // post-2026-04-17 migration.
+  // post-2026-04-17 migration. `deployed_at` is the reservation flag —
+  // null means "auto-provisioned placeholder, never published."
   const { data: tenant } = await supabase
     .from("tenants_public")
-    .select("slug")
+    .select("slug, deployed_at")
     .eq("slug", subdomain)
     .maybeSingle()
 
@@ -138,6 +139,22 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = "/t/_not-found"
     return NextResponse.rewrite(url)
+  }
+
+  // Reserved tenant: auto-provisioned placeholder without published
+  // content. Route root (`/`) to a branded "coming soon" page; every
+  // other path 404s (so article deep-links like /foo/bar don't render
+  // an empty "category not found" shell). Never indexed.
+  if (tenant.deployed_at === null) {
+    const url = request.nextUrl.clone()
+    if (pathname === "/" || pathname === "") {
+      url.pathname = `/t/_reserved/${subdomain}`
+    } else {
+      url.pathname = "/t/_not-found"
+    }
+    const res = NextResponse.rewrite(url)
+    res.headers.set("X-Robots-Tag", "noindex, nofollow")
+    return res
   }
 
   // Rewrite to tenant route: company.helpbase.dev/path → /t/company/path

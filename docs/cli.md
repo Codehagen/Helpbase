@@ -14,6 +14,7 @@
 - [`helpbase deploy`](#helpbase-deploy)
 - [`helpbase link`](#helpbase-link)
 - [`helpbase open`](#helpbase-open)
+- [`helpbase rename`](#helpbase-rename)
 - [`helpbase generate`](#helpbase-generate)
 - [`helpbase sync`](#helpbase-sync)
 - [`helpbase mcp`](#helpbase-mcp)
@@ -197,6 +198,31 @@ Open this project's help center in the default browser
 Options:
   --print     Print the URL instead of opening it (useful for CI / scripts)
   -h, --help  display help for command
+```
+
+## `helpbase rename`
+
+```text
+Usage: helpbase rename [options] <new-slug>
+
+Rename your auto-provisioned reservation before first deploy (changes your
+`.helpbase.dev` subdomain).
+
+Arguments:
+  new-slug    The new subdomain (lowercase letters, numbers, hyphens; 3-40
+              chars)
+
+Options:
+  -h, --help  display help for command
+
+Examples:
+  $ helpbase rename acme                    # reserve acme.helpbase.dev
+  $ helpbase rename acme-docs
+
+Rename rules:
+  - Only works BEFORE your first deploy. After deploy, the slug is fixed.
+  - New slug follows the same validation as helpbase deploy --slug.
+  - If the new slug is taken, you'll get a slug_taken error — try another.
 ```
 
 ## `helpbase generate`

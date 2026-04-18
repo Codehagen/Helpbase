@@ -29,7 +29,7 @@ interface GroupDef {
 
 const GROUPS: GroupDef[] = [
   { label: "Get started", commands: ["ingest", "preview", "new", "dev"] },
-  { label: "Ship", commands: ["deploy", "link", "open"] },
+  { label: "Ship", commands: ["deploy", "link", "open", "rename"] },
   { label: "Author", commands: ["generate", "sync", "mcp", "audit"] },
   { label: "Account", commands: ["login", "logout", "whoami", "config"] },
   { label: "Diagnose", commands: ["doctor", "feedback", "completion", "upgrade"] },

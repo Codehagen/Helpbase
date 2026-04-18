@@ -25,6 +25,8 @@ import {
   removeProjectConfig,
   writeProjectConfig,
 } from "../lib/project-config.js"
+import { loadReservation } from "../lib/reservation.js"
+import { clearCachedReservation } from "../lib/reservation-cache.js"
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
 // Kept in sync with RESERVED_SLUGS in link.ts and the subdomain-middleware allowlist.
@@ -92,6 +94,10 @@ Examples:
     //    is enforced server-side.
     const linked = readProjectConfig()
     let existingTenant: { id: string; slug: string } | null = null
+    // Flag so the post-deploy cleanup knows to invalidate the reservation
+    // cache — once deploy_tenant flips deployed_at, the cached reservation
+    // is stale and next whoami would still read the old row as "reserved".
+    let usedReservation = false
 
     if (linked) {
       // apiGetTenant now throws on 403 (caller isn't the owner). Treat
@@ -110,7 +116,23 @@ Examples:
       }
     } else {
       const tenants = await listMyTenants(session)
-      if (tenants.length === 0) {
+      // Reservation-first path: if the user has no deployed tenants and
+      // didn't pass an explicit --slug, use the auto-provisioned reservation
+      // (minted at login). Skips the interactive slug prompt entirely for
+      // the common first-deploy happy path — matches the DX review's
+      // "TTHW drops from 3-4 min to 90s" target. --slug override still
+      // creates a new tenant (user intentionally chose a custom slug).
+      if (tenants.length === 0 && !opts.slug) {
+        const reservation = await loadReservation(session).catch(() => null)
+        if (reservation) {
+          existingTenant = { id: reservation.tenantId, slug: reservation.slug }
+          usedReservation = true
+        }
+      }
+      if (existingTenant) {
+        // Already resolved via reservation — skip the picker/disambiguator
+        // logic below.
+      } else if (tenants.length === 0) {
         existingTenant = null
       } else if (tenants.length === 1) {
         const only = tenants[0]!
@@ -159,9 +181,14 @@ Examples:
     if (existingTenant) {
       tenantId = existingTenant.id
       tenantSlug = existingTenant.slug
+      const tag = linked
+        ? "(linked)"
+        : usedReservation
+          ? "(reserved at login)"
+          : ""
       note(
-        linked
-          ? `Deploying to ${pc.cyan(`${tenantSlug}.helpbase.dev`)} ${pc.dim("(linked)")}`
+        tag
+          ? `Deploying to ${pc.cyan(`${tenantSlug}.helpbase.dev`)} ${pc.dim(tag)}`
           : `Deploying to ${pc.cyan(`${tenantSlug}.helpbase.dev`)}`,
         "Tenant",
       )
@@ -444,7 +471,12 @@ Examples:
     const tenantAfter = await apiGetTenant(session, tenantId).catch(() => null)
     const mcpToken = tenantAfter?.mcp_public_token ?? ""
 
-    // 9. Done.
+    // 9. Done. If we consumed a reservation to get here, the server just
+    //    flipped deployed_at in deploy_tenant — invalidate the cache so
+    //    `helpbase whoami` stops showing the tenant as "reserved".
+    if (usedReservation) {
+      clearCachedReservation()
+    }
     const liveUrl = `https://${tenantSlug}.helpbase.dev`
     const mcpUrl = `https://${tenantSlug}.helpbase.dev/mcp`
     outro(`${pc.green("✓")} Deployed! Your help center is live.`)

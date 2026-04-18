@@ -47,6 +47,7 @@ type TenantForMcp = {
   slug: string
   mcp_public_token: string
   active: boolean
+  deployed_at: string | null
 }
 
 async function loadTenant(
@@ -55,7 +56,7 @@ async function loadTenant(
 ): Promise<TenantForMcp | null> {
   const { data } = await client
     .from("tenants")
-    .select("id, slug, mcp_public_token, active")
+    .select("id, slug, mcp_public_token, active, deployed_at")
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle()
@@ -235,6 +236,21 @@ async function handle(request: NextRequest, tenantSlug: string): Promise<Respons
   const tenant = await loadTenant(serviceClient, tenantSlug)
   if (!tenant) {
     return NextResponse.json({ error: "tenant not found" }, { status: 404 })
+  }
+
+  // Reserved tenants (auto_provisioned_at set, deployed_at still null) have
+  // no content to serve. Return 403 with a structured error so MCP clients
+  // polling a reservation URL during a user's first-deploy window get a
+  // clean signal instead of empty search results that look like bugs.
+  if (tenant.deployed_at === null) {
+    return NextResponse.json(
+      {
+        error: "tenant_not_deployed",
+        message:
+          "This tenant is reserved but hasn't published content yet. The owner needs to run `helpbase deploy`.",
+      },
+      { status: 403 },
+    )
   }
 
   // Auth: bearer token must match the per-tenant public token.

@@ -2,6 +2,7 @@ import { Command } from "commander"
 import pc from "picocolors"
 import { getCurrentSession } from "../lib/auth.js"
 import { listMyTenants } from "../lib/tenants-client.js"
+import { loadReservation } from "../lib/reservation.js"
 import { fetchUsageToday, getActiveByokKey, isByokMode } from "@workspace/shared/llm"
 import { humanTokens, humanUntil } from "@workspace/shared/llm-errors"
 import { BYOK_DOCS_URL } from "@workspace/shared/llm-wire"
@@ -50,7 +51,9 @@ export const whoamiCommand = new Command("whoami")
 
     // Best-effort tenant lookup — we don't fail whoami if this errors.
     // Goes through /api/v1/tenants/mine (owner filter + active check are
-    // enforced server-side with the user's Better Auth bearer).
+    // enforced server-side with the user's Better Auth bearer). /mine
+    // hides reservations, so the reservation is fetched separately via
+    // loadReservation (cache-first, server on miss).
     let tenant: { slug: string; name: string } | null = null
     try {
       const tenants = await listMyTenants(session)
@@ -58,6 +61,18 @@ export const whoamiCommand = new Command("whoami")
       if (first) tenant = { slug: first.slug, name: first.name }
     } catch {
       // ignore — tenant lookup is informational
+    }
+
+    let reservation: Awaited<ReturnType<typeof loadReservation>> = null
+    // Only show a reservation when the user has NO deployed tenants.
+    // A power user with 5 deployed tenants doesn't care about the
+    // pre-first-deploy placeholder anymore.
+    if (!tenant) {
+      try {
+        reservation = await loadReservation(session)
+      } catch {
+        // ignore — reservation display is informational
+      }
     }
 
     // Best-effort usage lookup. Fails closed silently: if the hosted API is
@@ -80,6 +95,9 @@ export const whoamiCommand = new Command("whoami")
             userId: session.userId,
             source,
             tenant,
+            reservation: reservation
+              ? { slug: reservation.slug, liveUrl: reservation.liveUrl }
+              : null,
             byok,
             usage: usage?.quota ?? null,
           },
@@ -115,6 +133,10 @@ export const whoamiCommand = new Command("whoami")
     console.log(`    source: ${pc.dim(source)}`)
     if (tenant) {
       console.log(`    tenant: ${pc.cyan(`${tenant.slug}.helpbase.dev`)} ${pc.dim(`(${tenant.name})`)}`)
+    } else if (reservation) {
+      console.log(
+        `    reserved: ${pc.cyan(`${reservation.slug}.helpbase.dev`)} ${pc.dim("(not yet deployed — run `helpbase deploy` to publish, or `helpbase rename <slug>` to change)")}`,
+      )
     } else {
       console.log(`    tenant: ${pc.dim("none — run `helpbase deploy` to create one")}`)
     }

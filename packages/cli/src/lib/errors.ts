@@ -60,6 +60,9 @@ export type ErrorCode =
   | "E_DEVICE_DENIED"
   | "E_DEVICE_EXPIRED"
   | "E_DEVICE_NETWORK"
+  | "E_RESERVATION_MISSING"
+  | "E_RESERVATION_LOCKED"
+  | "E_RESERVATION_PROVISION_FAILED"
 
 export interface HelpbaseErrorInit {
   code: ErrorCode

@@ -4,6 +4,7 @@ import pc from "picocolors"
 import { readProjectConfig } from "../lib/project-config.js"
 import { getCurrentSession } from "../lib/auth.js"
 import { listMyTenants } from "../lib/tenants-client.js"
+import { loadReservation } from "../lib/reservation.js"
 
 export const openCommand = new Command("open")
   .description("Open this project's help center in the default browser")
@@ -52,7 +53,16 @@ async function resolveSlug(): Promise<string | null> {
   if (!session) return null
   try {
     const tenants = await listMyTenants(session)
-    return tenants[0]?.slug ?? null
+    if (tenants[0]) return tenants[0].slug
+  } catch {
+    // fall through to reservation check
+  }
+  // Last fallback: the auto-provisioned reservation. Opens the branded
+  // "coming soon" page at the reserved URL, which is useful for a freshly
+  // logged-in user running `helpbase open` before they've deployed.
+  try {
+    const reservation = await loadReservation(session)
+    return reservation?.slug ?? null
   } catch {
     return null
   }

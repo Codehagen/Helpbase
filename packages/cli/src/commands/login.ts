@@ -8,12 +8,14 @@ import {
   isNonInteractive,
   sendLoginCode,
   verifyLoginFromMagicLink,
+  type AuthSession,
 } from "../lib/auth.js"
 import { HelpbaseError, formatError } from "../lib/errors.js"
 import {
   hasAskedForConsent,
   setTelemetryConsent,
 } from "../lib/telemetry.js"
+import { ensureReservation } from "../lib/reservation.js"
 
 export const loginCommand = new Command("login")
   .description("Log in to helpbase cloud")
@@ -84,9 +86,13 @@ async function runDeviceFlow(): Promise<void> {
       },
     })
     s.stop(`Logged in as ${pc.cyan(session.email)}`)
+    // Auto-provision a docs-<6hex> reservation so the user sees a URL
+    // right after login — the "magical moment" /plan-devex-review
+    // mandated. Best-effort: a 503 prints a soft warning via
+    // ensureReservation and returns null; login still succeeds.
+    const reservation = await ensureReservation(session)
     await maybeAskTelemetryConsent()
-    outro(`Logged in as ${pc.cyan(session.email)}`)
-    nextSteps({ commands: ["helpbase whoami", "helpbase new"] })
+    printLoginOutro(session, reservation)
   } catch (err) {
     s.stop("Login failed.")
     if (err instanceof HelpbaseError) {
@@ -148,9 +154,11 @@ async function runMagicLinkFlow(preset?: string): Promise<void> {
 
   try {
     const session = await verifyLoginFromMagicLink((input as string).trim())
+    // Same auto-provision path as the device flow — the magic-link fallback
+    // should produce an identical "welcome + reserved URL" experience.
+    const reservation = await ensureReservation(session)
     await maybeAskTelemetryConsent()
-    outro(`Logged in as ${pc.cyan(session.email)}`)
-    nextSteps({ commands: ["helpbase whoami", "helpbase new"] })
+    printLoginOutro(session, reservation)
   } catch (err) {
     if (err instanceof HelpbaseError) {
       cancel(formatError(err).trimEnd())
@@ -159,6 +167,44 @@ async function runMagicLinkFlow(preset?: string): Promise<void> {
     }
     process.exit(1)
   }
+}
+
+/**
+ * Terminal footer for a successful login. Shows the reserved URL when
+ * one was minted so the user sees a concrete destination before the
+ * telemetry prompt finishes fading from their scrollback, and falls
+ * back gracefully when auto-provisioning soft-failed (ensureReservation
+ * already logged the reason to stderr in that case).
+ */
+function printLoginOutro(
+  session: AuthSession,
+  reservation: Awaited<ReturnType<typeof ensureReservation>>,
+): void {
+  if (reservation) {
+    const label = reservation.isNew ? "Reserved" : "Your help center"
+    note(
+      `${pc.dim(label + ":")} ${pc.cyan(reservation.liveUrl)}\n` +
+        `${pc.dim(
+          reservation.isNew
+            ? "Deploy content to publish, or rename before first deploy."
+            : "Deploy content to publish.",
+        )}`,
+      "helpbase",
+    )
+    outro(`Logged in as ${pc.cyan(session.email)}`)
+    nextSteps({
+      commands: [
+        "helpbase deploy",
+        "helpbase rename <new-slug>",
+        "helpbase whoami",
+      ],
+    })
+    return
+  }
+  // No reservation (auto-provision soft-failed): fall back to the
+  // pre-reservation-era next-steps block.
+  outro(`Logged in as ${pc.cyan(session.email)}`)
+  nextSteps({ commands: ["helpbase whoami", "helpbase new"] })
 }
 
 /**

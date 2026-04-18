@@ -316,12 +316,22 @@ async function run(directory: string | undefined, opts: RunOptions) {
   //    n path (or Y-failure): fall through to the existing local-first
   //    outro so nothing regresses for users who want to edit before
   //    shipping.
+  // CI detection: `isInteractive` comes from `process.stdin.isTTY`, which CI
+  // jobs can legitimately allocate. For the ship-it-now decision we want the
+  // stricter "is this a real human" check so `--deploy --source skip` in CI
+  // hits the non-interactive refusal path and does not drop into the N-default
+  // confirm. `process.env.CI` is the de-facto convention (GitHub Actions,
+  // CircleCI, GitLab, Travis all set it). Kept separate from `isInteractive`
+  // so the earlier prompts (project name, source pick, login) preserve
+  // today's "TTY means prompt" semantics.
+  const humanInteractive = isInteractive && !process.env.CI
+
   let wantsDeploy: boolean
   try {
     wantsDeploy = await resolveShipItNow({
       flagDeploy: opts.deploy,
       sourceKind: source.kind,
-      isInteractive,
+      isInteractive: humanInteractive,
       generationSucceeded,
     })
   } catch (err) {
@@ -333,8 +343,15 @@ async function run(directory: string | undefined, opts: RunOptions) {
   }
 
   if (wantsDeploy) {
-    let token = readHelpbaseAuthToken()
-    if (!token) {
+    // `readHelpbaseAuthToken()` only reads ~/.helpbase/auth.json; it misses
+    // the `HELPBASE_TOKEN` env var (the advertised CI path). `helpbase deploy`
+    // itself handles the env var fine, but if we require a file-token here we
+    // either spawn login (blocks forever in CI without a TTY) or bail early
+    // before deploy ever runs. Treat the env var as a valid truthy gate; let
+    // the subprocess validate it at the real auth boundary.
+    let token =
+      readHelpbaseAuthToken() || process.env.HELPBASE_TOKEN?.trim() || undefined
+    if (!token && humanInteractive) {
       const r = await runHelpbaseLogin()
       if (r === "ok") token = readHelpbaseAuthToken()
     }

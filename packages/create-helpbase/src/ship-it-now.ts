@@ -22,19 +22,21 @@ export class ShipItNowRefusedError extends Error {
  *
  * Precedence:
  *   1. `--no-deploy` → no deploy. Explicit user opt-out wins over anything.
- *   2. `--deploy` + `sourceKind === "skip"`:
+ *   2. `--deploy` + sample content on disk (either `sourceKind === "skip"`
+ *      OR `generationSucceeded === false`, since both leave the scaffolder's
+ *      lorem ipsum on disk):
  *      - non-interactive → throw ShipItNowRefusedError. Publishing sample
  *        content to a public subdomain from CI is almost always a
- *        mistake; the user has to drop one of the two flags explicitly.
+ *        mistake; the user has to drop --deploy or resolve the reason
+ *        sample content is on disk.
  *      - interactive → extra confirm (initialValue: false) so the user
  *        re-acknowledges "yes, really publish lorem ipsum."
- *   3. `--deploy` (any other source) → deploy.
+ *   3. `--deploy` (real content synthesized) → deploy.
  *   4. `sourceKind === "skip"` (no flag) → no deploy. Sample content
  *      should not auto-ship.
  *   5. Non-interactive (no flag, no TTY) → no deploy. Silent default
  *      keeps CI + piped usage on today's behavior.
- *   6. AI generation failed → no deploy. Sample content remains, same
- *      reasoning as rule 4.
+ *   6. AI generation failed (no flag) → no deploy. Same as rule 4.
  *   7. Otherwise → prompt.
  *
  * Lives in its own module so importing it from tests does not trigger
@@ -52,17 +54,25 @@ export async function resolveShipItNow(opts: {
   const prompt = opts.promptFn ?? confirm
 
   if (opts.flagDeploy === true) {
-    if (opts.sourceKind === "skip") {
+    const sampleOnDisk = opts.sourceKind === "skip" || !opts.generationSucceeded
+    if (sampleOnDisk) {
       if (!opts.isInteractive) {
-        throw new ShipItNowRefusedError(
-          "Refusing to publish sample content with --deploy. " +
-            "Either drop --source skip (use --source <url|repo> to generate real articles), " +
-            "or drop --deploy.",
-        )
+        const reason =
+          opts.sourceKind === "skip"
+            ? "Refusing to publish sample content with --deploy. " +
+              "Either drop --source skip (use --source <url|repo> to generate real articles), " +
+              "or drop --deploy."
+            : "Refusing to publish with --deploy: AI generation did not succeed, " +
+              "so sample content is still on disk. Resolve the generation error (check API keys / network) " +
+              "and re-run, or drop --deploy."
+        throw new ShipItNowRefusedError(reason)
       }
+      const message =
+        opts.sourceKind === "skip"
+          ? "Publish SAMPLE content to your public subdomain? Run with --source <url|repo> to generate real articles first"
+          : "AI generation didn't succeed and sample content is on disk. Publish SAMPLE content anyway?"
       const ok = await prompt({
-        message:
-          "Publish SAMPLE content to your public subdomain? Run with --source <url|repo> to generate real articles first",
+        message,
         initialValue: false,
       })
       if (isCancel(ok)) return false

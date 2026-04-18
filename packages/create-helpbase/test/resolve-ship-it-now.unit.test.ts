@@ -14,7 +14,7 @@ describe("resolveShipItNow — flag precedence", () => {
       flagDeploy: true,
       sourceKind: "url",
       isInteractive: false,
-      generationSucceeded: false,
+      generationSucceeded: true,
       promptFn: prompt,
     })
     expect(got).toBe(true)
@@ -106,6 +106,53 @@ describe("resolveShipItNow — --deploy + --source skip footgun", () => {
     })
     expect(got).toBe(false)
     expect(prompt).toHaveBeenCalledOnce()
+  })
+})
+
+describe("resolveShipItNow — --deploy + generation-failed footgun", () => {
+  it("throws ShipItNowRefusedError in non-interactive mode", async () => {
+    const prompt = fakeConfirm(true)
+    await expect(
+      resolveShipItNow({
+        flagDeploy: true,
+        sourceKind: "url",
+        isInteractive: false,
+        generationSucceeded: false,
+        promptFn: prompt,
+      }),
+    ).rejects.toBeInstanceOf(ShipItNowRefusedError)
+    expect(prompt).not.toHaveBeenCalled()
+  })
+
+  it("error message mentions generation failure + --deploy", async () => {
+    try {
+      await resolveShipItNow({
+        flagDeploy: true,
+        sourceKind: "repo",
+        isInteractive: false,
+        generationSucceeded: false,
+      })
+      expect.fail("expected throw")
+    } catch (err) {
+      expect(err).toBeInstanceOf(ShipItNowRefusedError)
+      expect((err as Error).message).toMatch(/generation/i)
+      expect((err as Error).message).toContain("--deploy")
+    }
+  })
+
+  it("interactive mode re-prompts with N-default", async () => {
+    const prompt = fakeConfirm(false)
+    const got = await resolveShipItNow({
+      flagDeploy: true,
+      sourceKind: "url",
+      isInteractive: true,
+      generationSucceeded: false,
+      promptFn: prompt,
+    })
+    expect(got).toBe(false)
+    expect(prompt).toHaveBeenCalledOnce()
+    const call = prompt.mock.calls[0][0] as { initialValue: boolean }
+    expect(call.initialValue).toBe(false)
   })
 })
 

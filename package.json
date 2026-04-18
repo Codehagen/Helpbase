@@ -18,6 +18,7 @@
     "smoke:deploy": "bash scripts/smoke-deploy.sh",
     "eval:hosted-parity": "node packages/cli/eval/run-hosted-parity.mjs",
     "check:supabase-types": "node scripts/check-supabase-types.mjs",
+    "check:links": "bash scripts/check-links.sh",
     "sync:templates": "node scripts/sync-templates.mjs"
   },
   "devDependencies": {

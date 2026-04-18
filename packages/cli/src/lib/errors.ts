@@ -23,6 +23,7 @@ export type ErrorCode =
   | "E_AUTH_EXPIRED"
   | "E_SLUG_TAKEN"
   | "E_SLUG_RESERVED"
+  | "E_SLUG_INVALID"
   | "E_TENANT_NOT_FOUND"
   | "E_MISSING_API_KEY"
   | "E_NOT_A_PROJECT"

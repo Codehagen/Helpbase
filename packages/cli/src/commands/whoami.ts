@@ -55,8 +55,15 @@ export const whoamiCommand = new Command("whoami")
     // hides reservations, so the reservation is fetched separately via
     // loadReservation (cache-first, server on miss).
     let tenant: { slug: string; name: string } | null = null
+    // Track whether the tenant lookup actually succeeded vs threw. Without
+    // this flag we'd conflate "/mine returned zero rows" with "/mine hit a
+    // network error", and the mutating ensureReservation fallback below
+    // could mint a reservation for an account that already owns deployed
+    // tenants we just couldn't reach. CodeRabbit caught this on PR #10.
+    let tenantLookupSucceeded = false
     try {
       const tenants = await listMyTenants(session)
+      tenantLookupSucceeded = true
       const first = tenants[0]
       if (first) tenant = { slug: first.slug, name: first.name }
     } catch {
@@ -77,7 +84,12 @@ export const whoamiCommand = new Command("whoami")
         // idempotent POST /auto-provision — either returns their
         // existing row or mints a fresh one. Soft-fails on 503
         // (ensureReservation writes a stderr warning + returns null).
-        if (!reservation) {
+        //
+        // GATE: only run this mutating path if the tenant lookup
+        // actually succeeded and came back empty. If /mine threw, we
+        // don't know whether the user has deployed tenants and
+        // provisioning a fresh reservation could create unwanted state.
+        if (!reservation && tenantLookupSucceeded) {
           const ensured = await ensureReservation(session)
           if (ensured) {
             reservation = await loadReservation(session)
@@ -147,8 +159,13 @@ export const whoamiCommand = new Command("whoami")
     if (tenant) {
       console.log(`    tenant: ${pc.cyan(`${tenant.slug}.helpbase.dev`)} ${pc.dim(`(${tenant.name})`)}`)
     } else if (reservation) {
+      // liveUrl is the server's source of truth for the reservation's
+      // hostname — respects NEXT_PUBLIC_ROOT_DOMAIN in staging/dev, where
+      // `${slug}.helpbase.dev` would mislead the user. CodeRabbit caught
+      // the hard-coded root domain on PR #10.
+      const host = reservation.liveUrl.replace(/^https?:\/\//, "")
       console.log(
-        `    reserved: ${pc.cyan(`${reservation.slug}.helpbase.dev`)} ${pc.dim("(not yet deployed — run `helpbase deploy` to publish, or `helpbase rename <slug>` to change)")}`,
+        `    reserved: ${pc.cyan(host)} ${pc.dim("(not yet deployed — run `helpbase deploy` to publish, or `helpbase rename <slug>` to change)")}`,
       )
     } else {
       console.log(`    tenant: ${pc.dim("none — run `helpbase deploy` to create one")}`)

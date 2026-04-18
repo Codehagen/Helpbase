@@ -134,7 +134,19 @@ Examples:
           try {
             const raw = JSON.parse(fs.readFileSync(metaPath, "utf-8"))
             const parsed = categoryMetaSchema.safeParse(raw)
-            if (parsed.success) meta = parsed.data
+            if (parsed.success) {
+              meta = parsed.data
+            } else {
+              // Previously we silently fell back to defaults when the
+              // schema didn't match, which let malformed _category.json
+              // ship as "categorySlug / no description / file-text icon"
+              // without any signal to the user. Surface the issue so it
+              // gets fixed before the deploy atomic write. CodeRabbit
+              // caught this on PR #10.
+              errors.push(
+                `${categorySlug}/_category.json: ${parsed.error.issues.map((i) => i.message).join(", ")}`,
+              )
+            }
           } catch {
             errors.push(`${categorySlug}/_category.json: Invalid JSON`)
           }
@@ -160,6 +172,18 @@ Examples:
           }
 
           const articleSlug = file.replace(/\.mdx?$/, "")
+
+          // Reject articles whose body is empty (or only whitespace). A
+          // frontmatter-only MDX file deploys as a ghost article with a
+          // title but no content — visible in search, clickable, then
+          // renders a blank page. Catch it at deploy time instead.
+          // CodeRabbit caught this on PR #10.
+          if (content.trim().length === 0) {
+            errors.push(
+              `${categorySlug}/${file}: article body is empty (add content below the frontmatter)`,
+            )
+            continue
+          }
 
           articles.push({
             slug: articleSlug,
@@ -242,11 +266,20 @@ Examples:
       // reservations existed. Soft-fails on 503 → falls through to the
       // interactive slug prompt.
       if (tenants.length === 0 && !opts.slug) {
-        let reservation = await loadReservation(session).catch(() => null)
+        // Write path: force-refresh from the server so a stale cache
+        // (e.g. reservation was renamed in another shell, or deleted by
+        // the cleanup cron) doesn't send us to a tenantId that no longer
+        // exists. The read-only whoami/open stay cache-first for speed;
+        // deploy pays the one round-trip. CodeRabbit flagged this on PR #10.
+        let reservation = await loadReservation(session, { forceRefresh: true }).catch(
+          () => null,
+        )
         if (!reservation) {
           const ensured = await ensureReservation(session)
           if (ensured) {
-            reservation = await loadReservation(session).catch(() => null)
+            reservation = await loadReservation(session, { forceRefresh: true }).catch(
+              () => null,
+            )
           }
         }
         if (reservation) {

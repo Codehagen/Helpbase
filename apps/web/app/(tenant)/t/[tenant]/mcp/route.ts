@@ -238,10 +238,24 @@ async function handle(request: NextRequest, tenantSlug: string): Promise<Respons
     return NextResponse.json({ error: "tenant not found" }, { status: 404 })
   }
 
+  // Auth: bearer token must match the per-tenant public token. Runs
+  // BEFORE the deployed_at check so unauthenticated callers can't use
+  // the response shape to distinguish a reserved tenant from any other
+  // slug (the 403 `tenant_not_deployed` body vs 401 would otherwise
+  // confirm "yes this slug exists AND is reserved" to a scanner).
+  // CodeRabbit flagged this on PR #10 2026-04-18.
+  const provided = extractBearer(request.headers.get("authorization") ?? undefined)
+  if (!provided) {
+    return NextResponse.json({ error: "missing bearer token" }, { status: 401 })
+  }
+  if (!tokensEqual(provided, tenant.mcp_public_token)) {
+    return NextResponse.json({ error: "invalid token" }, { status: 401 })
+  }
+
   // Reserved tenants (auto_provisioned_at set, deployed_at still null) have
-  // no content to serve. Return 403 with a structured error so MCP clients
-  // polling a reservation URL during a user's first-deploy window get a
-  // clean signal instead of empty search results that look like bugs.
+  // no content to serve. Return 403 with a structured error so authenticated
+  // MCP clients polling a reservation URL during a user's first-deploy window
+  // get a clean signal instead of empty search results that look like bugs.
   if (tenant.deployed_at === null) {
     return NextResponse.json(
       {
@@ -251,15 +265,6 @@ async function handle(request: NextRequest, tenantSlug: string): Promise<Respons
       },
       { status: 403 },
     )
-  }
-
-  // Auth: bearer token must match the per-tenant public token.
-  const provided = extractBearer(request.headers.get("authorization") ?? undefined)
-  if (!provided) {
-    return NextResponse.json({ error: "missing bearer token" }, { status: 401 })
-  }
-  if (!tokensEqual(provided, tenant.mcp_public_token)) {
-    return NextResponse.json({ error: "invalid token" }, { status: 401 })
   }
 
   // Rate limits: per-IP burst (Vercel KV) + per-tenant daily cap (Supabase).

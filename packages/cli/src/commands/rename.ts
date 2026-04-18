@@ -58,7 +58,13 @@ Rename rules:
       process.exit(1)
     }
 
-    const current = await loadReservation(session)
+    // Force a server round-trip instead of trusting the cache. Rename is
+    // a write path — if another shell already renamed or deployed this
+    // reservation, the cache's slug is stale and the same-slug
+    // short-circuit below would lie to the user ("nothing to rename")
+    // when in fact the server knows a different slug. CodeRabbit caught
+    // this on PR #10.
+    const current = await loadReservation(session, { forceRefresh: true })
     if (!current) {
       throw new HelpbaseError({
         code: "E_RESERVATION_MISSING",
@@ -131,7 +137,7 @@ Rename rules:
       // instead of structured fix copy.
       if (/slug_invalid/.test(msg)) {
         throw new HelpbaseError({
-          code: "E_SLUG_RESERVED",
+          code: "E_SLUG_INVALID",
           problem: `The slug "${newSlug}" is not a valid subdomain.`,
           cause:
             "Slugs must be lowercase letters, numbers, and hyphens only — 3 to 40 characters, starting and ending with an alphanumeric character.",

@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getServiceRoleClient } from "@/lib/supabase-admin"
+import {
+  RESERVATION_TTL_DAYS,
+  filterDeletable,
+  reservationCutoff,
+} from "@/lib/reservation-cleanup"
 
 /**
  * GET/POST /api/cron/cleanup-reservations
@@ -25,13 +30,18 @@ import { getServiceRoleClient } from "@/lib/supabase-admin"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const RESERVATION_TTL_DAYS = 30
 // Hard cap on candidates per run. Protects the Node runtime from OOM on
 // a runaway backlog and protects PostgREST from URL-length blowouts on
 // the follow-up IN (id, ...) filters. If the real backlog grows past
 // this, the cron catches up day-by-day (30-day TTL means anything truly
 // abandoned sits longer than one run).
 const MAX_CANDIDATES_PER_RUN = 500
+
+// TTL constant + cutoff/filter helpers moved to lib/reservation-cleanup.ts
+// so unit tests can exercise the exact same functions the route runs.
+// Re-export so downstream consumers (docs, tests) keep the old import
+// path working.
+export { RESERVATION_TTL_DAYS }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   return handle(req)
@@ -67,7 +77,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   //   - auto_provisioned_at < NOW() - 30d — old enough to be considered stale
   // `.limit(MAX_CANDIDATES_PER_RUN)` caps memory + URL-length risk on the
   // follow-up .in() filters. Day-over-day runs drain the backlog.
-  const cutoff = new Date(Date.now() - RESERVATION_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  const cutoff = reservationCutoff(new Date())
 
   const { data: candidates, error: selectError } = await admin
     .from("tenants")
@@ -100,16 +110,19 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "shadow_check_failed" }, { status: 503 })
   }
 
-  const shadowSet = new Set((deployedShadows ?? []).map((r) => r.tenant_id))
-  const shadows = candidates!.filter((c) => shadowSet.has(c.id))
-  if (shadows.length > 0) {
+  const shadowList = deployedShadows ?? []
+  const toDelete = filterDeletable(candidates!, shadowList)
+  const shadows = candidates!.length - toDelete.length
+  if (shadows > 0) {
+    const shadowIds = new Set(shadowList.map((r) => r.tenant_id))
+    const shadowSlugs = candidates!
+      .filter((c) => shadowIds.has(c.id))
+      .map((c) => c.slug)
     console.warn(
       "[cron.cleanup-reservations] skipping tenants with deploy history despite deployed_at IS NULL",
-      { count: shadows.length, slugs: shadows.map((s) => s.slug) },
+      { count: shadows, slugs: shadowSlugs },
     )
   }
-
-  const toDelete = candidates!.filter((c) => !shadowSet.has(c.id))
 
   if (dryRun) {
     return NextResponse.json({

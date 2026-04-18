@@ -30,6 +30,12 @@ export default async function ReservedTenantPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+  // Keep in sync with proxy.ts. The apex stays configurable so staging
+  // (e.g. helpbase-dev.vercel.app) and self-hosted setups don't render
+  // a page advertising the wrong hostname. CodeRabbit flagged the hard
+  // coded "helpbase.dev" string on PR #10.
+  const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "helpbase.dev").trim()
+  const displayHost = `${slug}.${rootDomain}`
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-xl flex-col items-center justify-center px-6 py-16">
@@ -41,7 +47,7 @@ export default async function ReservedTenantPage({
           This help center isn&apos;t live yet
         </h1>
         <p className="mt-4 text-base text-muted-foreground">
-          <span className="font-mono text-foreground">{slug}.helpbase.dev</span>{" "}
+          <span className="font-mono text-foreground">{displayHost}</span>{" "}
           has been reserved. The owner needs to publish content before visitors
           see anything here.
         </p>

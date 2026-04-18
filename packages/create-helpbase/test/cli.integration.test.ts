@@ -40,11 +40,20 @@ describe("create-helpbase CLI integration", () => {
     expect(output).toContain("--url")
     expect(output).toContain("--no-install")
     expect(output).toContain("--no-open")
+    expect(output).toContain("--deploy")
+    expect(output).toContain("--no-deploy")
   })
 
-  it("prints version", () => {
-    const output = execSync(`node ${CLI} --version`, { encoding: "utf-8" })
-    expect(output.trim()).toBe("0.0.1")
+  it("prints version from package.json (not a hardcoded string)", () => {
+    const output = execSync(`node ${CLI} --version`, { encoding: "utf-8" }).trim()
+    // Semver-ish check: at minimum MAJOR.MINOR.PATCH with digits. Guards
+    // against the pre-0.4.0 bug where the CLI's `.version()` literal
+    // drifted from package.json every release.
+    expect(output).toMatch(/^\d+\.\d+\.\d+/)
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf-8"),
+    ) as { version: string }
+    expect(output).toBe(pkg.version)
   })
 
   it("help text mentions directory argument", () => {

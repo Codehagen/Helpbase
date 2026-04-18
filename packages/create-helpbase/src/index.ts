@@ -6,6 +6,7 @@ import pc from "picocolors"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 import { execSync, spawn } from "node:child_process"
 import {
   planArticleWrites,
@@ -28,6 +29,27 @@ import {
   SchemaGenerationError,
 } from "./generate-from-repo.js"
 import { emitMcpJson } from "./emit-mcp-json.js"
+import { resolveShipItNow, ShipItNowRefusedError } from "./ship-it-now.js"
+
+/**
+ * Read version from package.json at startup. The literal string used to be
+ * hardcoded and drifted every release (CLI said 0.0.1 while npm shipped
+ * 0.4.0). Reading from disk keeps them in sync — package.json is always
+ * present in the published tarball regardless of the `files` allowlist.
+ */
+function readPackageVersion(): string {
+  try {
+    const pkgPath = fileURLToPath(new URL("../package.json", import.meta.url))
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { version?: string }
+    if (typeof pkg.version === "string" && pkg.version.length > 0) {
+      return pkg.version
+    }
+  } catch {
+    // Fall through to the sentinel below. The version string is cosmetic;
+    // a failure here should not crash the CLI on startup.
+  }
+  return "0.0.0-unknown"
+}
 
 interface RunOptions {
   url?: string
@@ -37,6 +59,7 @@ interface RunOptions {
   test?: boolean
   model?: string
   internal?: boolean
+  deploy?: boolean
 }
 
 const PROJECT_NAME_REGEX = /^[a-z0-9-]+$/
@@ -53,7 +76,7 @@ function validateProjectName(name: string): string | undefined {
 const program = new Command()
   .name("create-helpbase")
   .description("Create a beautiful, AI-powered help center in seconds")
-  .version("0.0.1")
+  .version(readPackageVersion())
   .argument("[directory]", "Directory to create the project in")
   .option("--url <url>", "Generate articles from a website URL")
   .option(
@@ -70,6 +93,14 @@ const program = new Command()
   .option(
     "--internal",
     "Scaffold an internal-KB layout (handbook + runbooks + ADRs, auth-ready MCP via HELPBASE_MCP_TOKEN)",
+  )
+  .option(
+    "--deploy",
+    "Ship to helpbase cloud immediately after scaffold (skip the prompt, assume yes)",
+  )
+  .option(
+    "--no-deploy",
+    "Skip the ship-it-now prompt (scaffold only, keep today's behavior)",
   )
   .action(run)
 
@@ -269,7 +300,71 @@ async function run(directory: string | undefined, opts: RunOptions) {
     }
   }
 
-  // 8. Done!
+  // 8.5. Ship-it-now prompt (Shape A, 2026-04-18).
+  //    If we're interactive, had real content generated, and the user
+  //    didn't pass --no-deploy, offer to publish to helpbase cloud in
+  //    one step. Collapses cold TTHW from ~3min → ~90s by removing the
+  //    manual `cd` + `login` + `deploy` chain.
+  //
+  //    Y path: ensure auth (spawn login if no token), then spawn
+  //    `helpbase deploy` in the new project dir with inherited stdio.
+  //    On success, `helpbase deploy` already prints the live URL + MCP
+  //    config block, so we skip the "Run it locally" + "What next" +
+  //    dev-server-auto-open tail — the user's magical moment is the
+  //    live URL, not localhost.
+  //
+  //    n path (or Y-failure): fall through to the existing local-first
+  //    outro so nothing regresses for users who want to edit before
+  //    shipping.
+  let wantsDeploy: boolean
+  try {
+    wantsDeploy = await resolveShipItNow({
+      flagDeploy: opts.deploy,
+      sourceKind: source.kind,
+      isInteractive,
+      generationSucceeded,
+    })
+  } catch (err) {
+    if (err instanceof ShipItNowRefusedError) {
+      cancel(err.message)
+      process.exit(1)
+    }
+    throw err
+  }
+
+  if (wantsDeploy) {
+    let token = readHelpbaseAuthToken()
+    if (!token) {
+      const r = await runHelpbaseLogin()
+      if (r === "ok") token = readHelpbaseAuthToken()
+    }
+    if (!token) {
+      note(
+        `Couldn't log you in. Run ${pc.cyan(`cd ${projectName as string} && npx helpbase deploy`)} when you're ready.`,
+        "Ship-it-now skipped",
+      )
+    } else {
+      const deployResult = await runHelpbaseDeploy(projectDir)
+      if (deployResult.kind === "ok") {
+        outro(`${pc.green("Your help center is live!")}`)
+        if (source.kind === "repo" && source.tempClone) {
+          try {
+            fs.rmSync(source.tempClone, { recursive: true, force: true })
+          } catch {
+            // best-effort
+          }
+        }
+        return
+      }
+      note(
+        `${pc.dim(deployResult.errorTail)}\n\n` +
+          `Retry with ${pc.cyan(`cd ${projectName as string} && npx helpbase deploy`)}.`,
+        "Deploy failed",
+      )
+    }
+  }
+
+  // 9. Done!
   const cdCmd = projectDir === process.cwd()
     ? ""
     : `cd ${projectName as string}`
@@ -773,6 +868,71 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
     `Run ${pc.cyan(`helpbase ingest ${quotedRepoPath}`)} later to retry.`,
     "Tip",
   )
+}
+
+/**
+ * Result shape for runHelpbaseDeploy. On failure we surface the last
+ * non-empty output line so the "Deploy failed" note can name the cause
+ * without asking the user to scroll up through several screens of clack
+ * box-drawing. The deploy subprocess stdout/stderr is tee'd — user sees
+ * the live output AND we keep a rolling tail for the failure path.
+ */
+type DeployOutcome = { kind: "ok" } | { kind: "failed"; errorTail: string }
+
+/**
+ * Spawn `helpbase deploy` in the scaffolded project dir. Stdin is
+ * inherited so clack prompts inside deploy still render. Stdout/stderr
+ * are piped + tee'd so the user sees output live AND we capture the
+ * trailing 500 bytes of each stream. On non-zero exit we return the
+ * last non-empty line of stderr (falling back to stdout) as errorTail
+ * so the failure note can be self-contained.
+ *
+ * Uses the same package-manager detection + `dlx`/`npx` fallback as
+ * runHelpbaseLogin so first-time users without a global helpbase install
+ * still get the binary resolved for them.
+ */
+async function runHelpbaseDeploy(projectDir: string): Promise<DeployOutcome> {
+  const pkgManager = detectPackageManager()
+  const [cmd, ...args] =
+    pkgManager === "pnpm"
+      ? ["pnpm", "dlx", "helpbase@latest", "deploy"]
+      : pkgManager === "yarn"
+        ? ["yarn", "dlx", "helpbase@latest", "deploy"]
+        : pkgManager === "bun"
+          ? ["bunx", "helpbase@latest", "deploy"]
+          : ["npx", "-y", "helpbase@latest", "deploy"]
+
+  return new Promise<DeployOutcome>((resolve) => {
+    let stdoutTail = ""
+    let stderrTail = ""
+    const child = spawn(cmd, args, {
+      stdio: ["inherit", "pipe", "pipe"],
+      cwd: projectDir,
+      env: process.env,
+    })
+    child.stdout?.on("data", (chunk: Buffer) => {
+      process.stdout.write(chunk)
+      stdoutTail = (stdoutTail + chunk.toString()).slice(-500)
+    })
+    child.stderr?.on("data", (chunk: Buffer) => {
+      process.stderr.write(chunk)
+      stderrTail = (stderrTail + chunk.toString()).slice(-500)
+    })
+    const lastMeaningfulLine = (): string => {
+      const tail = (stderrTail.trim() || stdoutTail.trim())
+        // Strip ANSI color codes so the quoted line reads cleanly in our note.
+        .replace(/\x1b\[[0-9;]*m/g, "")
+      const lines = tail.split("\n").map((l) => l.trim()).filter(Boolean)
+      return lines[lines.length - 1] ?? "no error output captured"
+    }
+    child.on("exit", (code) => {
+      if (code === 0) resolve({ kind: "ok" })
+      else resolve({ kind: "failed", errorTail: lastMeaningfulLine() })
+    })
+    child.on("error", (err) =>
+      resolve({ kind: "failed", errorTail: err.message }),
+    )
+  })
 }
 
 /**

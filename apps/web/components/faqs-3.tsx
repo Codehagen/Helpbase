@@ -70,9 +70,9 @@ export default function FAQs() {
             id="faq"
             aria-labelledby="faq-heading"
             className="bg-background scroll-mt-24 py-16 md:py-24">
-            <div className="mx-auto max-w-5xl px-1 md:px-6">
+            <div className="mx-auto max-w-5xl px-6">
                 <div className="grid max-md:gap-8 md:grid-cols-5 md:divide-x md:border">
-                    <div className="max-w-lg max-md:px-6 md:col-span-2 md:p-10 lg:p-12">
+                    <div className="max-w-lg md:col-span-2 md:p-10 lg:p-12">
                         <h2
                             id="faq-heading"
                             className="text-foreground text-3xl font-semibold md:text-4xl">
@@ -121,7 +121,7 @@ export default function FAQs() {
                     </div>
                 </div>
 
-                <p className="text-muted-foreground mt-12 px-6 md:hidden">
+                <p className="text-muted-foreground mt-12 md:hidden">
                     Still stuck? Open an issue on{' '}
                     <Link
                         href="https://github.com/Codehagen/helpbase/issues"

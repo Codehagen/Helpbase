@@ -6,9 +6,9 @@
 
 Helpbase ships MCP, `llms.txt`, and (soon) codebase-grounded doc sync as
 primitives that run in your repo, not services in someone else's cloud.
-Scaffold in two minutes with `npx create-helpbase`, or drop it into an
-existing Next.js app with `shadcn add`. Open source, self-hostable,
-built on shadcn/ui.
+Create your help center in two minutes with `npx create-helpbase`, or
+drop it into an existing Next.js app with `shadcn add`. Open source,
+self-hostable, built on shadcn/ui.
 
 [![npm version](https://img.shields.io/npm/v/helpbase.svg?color=111)](https://www.npmjs.com/package/helpbase)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-111)](./LICENSE)
@@ -46,7 +46,7 @@ log into.
 
 ## Features
 
-- **One command to ship** — `npx create-helpbase` scaffolds a working help center in under two minutes
+- **One command to ship** — `npx create-helpbase` creates a working help center in under two minutes
 - **Drop into existing apps** — `npx shadcn add https://helpbase.dev/r/help-center.json` adds the full block to any Next.js + shadcn/ui project
 - **AI article generation** — point the CLI at a URL, a local repo, or a folder of screenshots and get real MDX articles back, grounded in the source
 - **MDX content pipeline** — gray-matter frontmatter, remark-gfm, rehype-slug, syntax highlighting, zero config
@@ -56,12 +56,12 @@ log into.
 - **Type-safe content** — Zod schemas validate frontmatter at build time, catch missing fields before deploy
 - **Content audit CLI** — `helpbase audit` catches missing titles, broken schemas, and empty categories in CI
 - **Reduced-motion aware** — animations respect `prefers-reduced-motion`
-- **Production-tested** — 300+ tests across the CLI, scaffolder, MCP server, and content pipeline, plus an install-path smoke test in CI
+- **Production-tested** — 300+ tests across the CLI, `create-helpbase`, MCP server, and content pipeline, plus an install-path smoke test in CI
 
 ## Quick start
 
-Live help center in 90 seconds. Scaffold, answer Y, you're on the
-public internet. Works on macOS, Linux, and Windows. Requires Node 20+.
+Live help center in 90 seconds. Create the project, answer Y, you're on
+the public internet. Works on macOS, Linux, and Windows. Requires Node 20+.
 
 ```bash
 pnpm dlx create-helpbase@latest my-docs    # or: npx create-helpbase@latest my-docs
@@ -72,7 +72,7 @@ pnpm dlx create-helpbase@latest my-docs    # or: npx create-helpbase@latest my-d
 That's it. Answering Y at the end runs `helpbase login` (browser
 device-flow, free 500k tokens/day, no card) and `helpbase deploy`
 back-to-back and prints the public URL + MCP config block. Answer `n`
-to keep the classic flow: the scaffolder starts `pnpm dev` locally and
+to keep the classic flow: `create-helpbase` starts `pnpm dev` locally and
 you run `helpbase login` + `helpbase deploy` yourself when ready. CI /
 pipelines pass `--no-deploy` (or `--deploy` with `HELPBASE_TOKEN`) to
 skip the prompt.
@@ -85,7 +85,7 @@ removal lands. `helpbase rename acme` claims a vanity slug
 the URL is locked so existing links don't break. Run `helpbase whoami`
 to see what's reserved + deployed.
 
-> **Already have a Next.js app?** Skip the scaffolder:
+> **Already have a Next.js app?** Skip `create-helpbase`:
 > `npx shadcn add https://helpbase.dev/r/help-center.json`
 
 ### Local: point ingest at any repo
@@ -113,26 +113,26 @@ docs. Secret-shaped content aborts the run before any file hits disk.
 Paste one of the blocks from `.helpbase/mcp.json` into Claude Desktop,
 Cursor, or Claude Code and your agent has your repo as docs.
 
-## Scaffold a full Next.js help-center site
+## Create a full Next.js help-center site
 
 Want a standalone docs site you can deploy, not just `.helpbase/` MDX in
-the current repo? Use the scaffolder. Takes ~2 minutes end-to-end
+the current repo? Use `create-helpbase`. Takes ~2 minutes end-to-end
 (install runs in parallel with AI generation).
 
 ```bash
 npx create-helpbase my-help-center
 ```
 
-The scaffolder asks what to seed content from:
+`create-helpbase` asks what to seed content from:
 
 - **A website** — paste a URL, it scrapes the page and generates articles.
-- **A code repository** — paste a local path or a `github.com` URL. The scaffolder walks your source, synthesizes cited how-to guides with file + line refs, and writes them to `content/`.
+- **A code repository** — paste a local path or a `github.com` URL. `create-helpbase` walks your source, synthesizes cited how-to guides with file + line refs, and writes them to `content/`.
 - **Skip** — ship with sample articles.
 
-If you're not logged in, the scaffolder offers one-click inline login
+If you're not logged in, `create-helpbase` offers one-click inline login
 (free, 500k tokens/day, no card). If you prefer BYOK, export
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY` before
-running and the scaffolder uses that directly.
+running and `create-helpbase` uses that directly.
 
 Dependencies install, the dev server starts, and your browser opens at
 `http://localhost:3000`. Edit the markdown in `content/` and the dev
@@ -274,7 +274,7 @@ no runtime transforms, nothing to audit or mistrust.
 helpbase uses the [Vercel AI SDK](https://ai-sdk.dev) + [AI Gateway](https://vercel.com/ai-gateway)
 for generation. One env var, one string-typed model ID, no provider SDKs.
 
-Generate articles any time after scaffolding:
+Generate articles any time after creating the project:
 
 ```bash
 helpbase generate --url https://yourproduct.com              # default model

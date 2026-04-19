@@ -6,39 +6,59 @@ const faqItems = [
         group: 'General',
         items: [
             {
-                id: 'item-1',
-                question: 'How long does shipping take?',
-                answer: 'Standard shipping takes 3-5 business days, depending on your location. Express shipping options are available at checkout for 1-2 business day delivery.',
+                id: 'gen-1',
+                question: 'Is helpbase open source?',
+                answer: 'Yes, MIT-licensed on GitHub. The CLI scaffolds a real Next.js app into your repo, and every file is yours to edit, commit, fork, and deploy anywhere.',
             },
             {
-                id: 'item-2',
-                question: 'What payment methods do you accept?',
-                answer: 'We accept all major credit cards (Visa, Mastercard, American Express), PayPal, Apple Pay, and Google Pay. For enterprise customers, we also offer invoicing options.',
+                id: 'gen-2',
+                question: 'How is this different from a hosted docs SaaS?',
+                answer: 'Ownership and AI-native defaults. Your docs are code in your git history, not rows in someone else\'s database. MCP and llms.txt come for free, not as a Pro-tier add-on.',
             },
             {
-                id: 'item-3',
-                question: 'Can I change or cancel my order?',
-                answer: 'You can modify or cancel your order within 1 hour of placing it. After this window, please contact our customer support team who will assist you with any changes.',
+                id: 'gen-3',
+                question: 'What framework does it use?',
+                answer: 'Next.js 14 App Router + shadcn/ui + MDX. A standard stack, no magic runtime. If you already ship with Next.js, you already know this stack.',
             },
         ],
     },
     {
-        group: 'Shipping',
+        group: 'Hosted tier',
         items: [
             {
-                id: 'item-1',
-                question: 'Do you ship internationally?',
-                answer: 'Standard shipping takes 3-5 business days, depending on your location. Express shipping options are available at checkout for 1-2 business day delivery.',
+                id: 'host-1',
+                question: 'Can I migrate off the hosted tier?',
+                answer: 'Yes. The hosted tier runs the exact same MDX + config you scaffolded with create-helpbase. Clone your repo, deploy the Next.js app anywhere, done. No lock-in by design.',
             },
             {
-                id: 'item-2',
-                question: 'What is your return policy?',
-                answer: 'We offer a 30-day return policy for most items. Products must be in original condition with tags attached. Some specialty items may have different return terms, which will be noted on the product page.',
+                id: 'host-2',
+                question: 'What is on the free hosted tier vs Pro?',
+                answer: 'Hosted free gets you one site at {slug}.helpbase.dev with a hosted MCP endpoint we run, edge caching, and SSL. Pro adds custom domain, team members and roles, analytics, higher MCP rate limits, and priority support.',
             },
             {
-                id: 'item-3',
-                question: 'Do you ship internationally?',
-                answer: 'Standard shipping takes 3-5 business days, depending on your location. Express shipping options are available at checkout for 1-2 business day delivery.',
+                id: 'host-3',
+                question: 'Where is data stored on the hosted tier?',
+                answer: 'Supabase (Postgres + edge functions), plus Vercel edge runtime for serving content and the MCP endpoint. Your MDX source is always in your own git repo, the hosted tier just serves a build of it.',
+            },
+        ],
+    },
+    {
+        group: 'MCP & AI',
+        items: [
+            {
+                id: 'mcp-1',
+                question: 'Does the MCP server work with Claude Code and Cursor?',
+                answer: 'Yes, over standard Model Context Protocol. The scaffolder prints the URL, you point your editor at it, autocomplete and chat ground on your real docs from that moment on.',
+            },
+            {
+                id: 'mcp-2',
+                question: 'What does "AI-native" actually mean here?',
+                answer: 'Every site ships an llms.txt and an MCP server by default, and the MCP exposes typed tool calls for list / read / search. No scraping, no lock-in, no Pro-tier upsell.',
+            },
+            {
+                id: 'mcp-3',
+                question: 'Do I need an AI key to use it?',
+                answer: 'No. The CLI scaffolder does not call external AI APIs. Optional features like helpbase sync (which proposes doc diffs from code changes) use your own provider keys.',
             },
         ],
     },
@@ -46,38 +66,50 @@ const faqItems = [
 
 export default function FAQs() {
     return (
-        <section className="bg-background py-16 md:py-24">
+        <section
+            id="faq"
+            aria-labelledby="faq-heading"
+            className="bg-background scroll-mt-24 py-16 md:py-24">
             <div className="mx-auto max-w-5xl px-1 md:px-6">
                 <div className="grid max-md:gap-8 md:grid-cols-5 md:divide-x md:border">
                     <div className="max-w-lg max-md:px-6 md:col-span-2 md:p-10 lg:p-12">
-                        <h2 className="text-foreground text-4xl font-semibold">FAQs</h2>
-                        <p className="text-muted-foreground mt-4 text-balance text-lg">Your questions answered</p>
+                        <h2
+                            id="faq-heading"
+                            className="text-foreground text-4xl font-semibold">
+                            FAQs
+                        </h2>
+                        <p className="text-muted-foreground mt-4 text-balance text-lg">The questions Vegard asked.</p>
                         <p className="text-muted-foreground mt-6 max-md:hidden">
-                            Can't find what you're looking for? Contact our{' '}
+                            Still stuck? Open an issue on{' '}
                             <Link
-                                href="#"
+                                href="https://github.com/Codehagen/helpbase/issues"
+                                target="_blank"
+                                rel="noreferrer"
                                 className="text-primary font-medium hover:underline">
-                                customer support team
+                                GitHub
                             </Link>
+                            .
                         </p>
                     </div>
 
                     <div className="space-y-12 md:col-span-3 md:px-4 md:pb-4 md:pt-10 lg:pt-12">
-                        {faqItems.map((item) => (
+                        {faqItems.map((group) => (
                             <div
                                 className="space-y-4"
-                                key={item.group}>
-                                <h3 className="text-foreground pl-6 text-lg font-semibold">{item.group}</h3>
+                                key={group.group}>
+                                <h3 className="text-foreground pl-6 text-lg font-semibold">{group.group}</h3>
                                 <Accordion
                                     type="single"
                                     collapsible
                                     className="-space-y-1">
-                                    {item.items.map((item) => (
+                                    {group.items.map((item) => (
                                         <AccordionItem
                                             key={item.id}
                                             value={item.id}
                                             className="data-[state=open]:bg-card data-[state=open]:ring-border data-[state=open]:shadow-black/6.5 group peer rounded-xl border-none px-6 py-1 data-[state=open]:border-none data-[state=open]:shadow-sm data-[state=open]:ring-1">
-                                            <AccordionTrigger className="not-group-last:border-b cursor-pointer rounded-none text-base transition-none hover:no-underline data-[state=open]:border-transparent hover:[&>svg]:translate-y-1 hover:data-[state=open]:[&>svg]:translate-y-0">{item.question}</AccordionTrigger>
+                                            <AccordionTrigger className="not-group-last:border-b cursor-pointer rounded-none text-base transition-none hover:no-underline data-[state=open]:border-transparent hover:[&>svg]:translate-y-1 hover:data-[state=open]:[&>svg]:translate-y-0">
+                                                {item.question}
+                                            </AccordionTrigger>
                                             <AccordionContent>
                                                 <p className="text-muted-foreground text-base">{item.answer}</p>
                                             </AccordionContent>
@@ -90,12 +122,15 @@ export default function FAQs() {
                 </div>
 
                 <p className="text-muted-foreground mt-12 px-6 md:hidden">
-                    Can't find what you're looking for? Contact our{' '}
+                    Still stuck? Open an issue on{' '}
                     <Link
-                        href="#"
+                        href="https://github.com/Codehagen/helpbase/issues"
+                        target="_blank"
+                        rel="noreferrer"
                         className="text-primary font-medium hover:underline">
-                        customer support team
+                        GitHub
                     </Link>
+                    .
                 </p>
             </div>
         </section>

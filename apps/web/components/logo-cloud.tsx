@@ -84,3 +84,5 @@ export default function LogoCloud() {
         </section>
     )
 }
+
+export { LogoCloud }

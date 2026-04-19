@@ -3,87 +3,64 @@ import { Button } from '@/components/ui/button'
 import { Check } from 'lucide-react'
 import Link from 'next/link'
 import { CardTitle, CardDescription } from '@/components/ui/card'
-import { useState } from 'react'
-import NumberFlow from '@number-flow/react'
+import { track } from '@/lib/analytics'
+
+type TierKey = 'self-host' | 'hosted-free' | 'hosted-pro'
 
 export default function Pricing() {
-    const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annually'>('annually')
-    const annualReduction = 0.75
-
-    const prices = {
-        pro: {
-            monthly: 19,
-            annually: 19 * annualReduction,
-        },
-        startup: {
-            monthly: 49,
-            annually: 49 * annualReduction,
-        },
-    }
-
     return (
-        <section className="bg-background relative py-16 md:py-32">
+        <section
+            id="pricing"
+            aria-labelledby="pricing-heading"
+            className="bg-background relative scroll-mt-24 py-16 md:py-32">
             <div className="mx-auto max-w-5xl px-6">
                 <div className="mx-auto max-w-2xl text-center">
-                    <h2 className="text-balance text-3xl font-bold md:text-4xl lg:text-5xl lg:tracking-tight">Pricing that scale with your business</h2>
-                    <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-balance text-lg">Choose the perfect plan for your needs and start optimizing your workflow today</p>
-
-                    <div className="my-12">
-                        <div
-                            data-period={billingPeriod}
-                            className="bg-foreground/5 *:text-foreground/75 relative mx-auto grid w-fit grid-cols-2 rounded-full p-1 *:block *:h-8 *:w-24 *:rounded-full *:text-sm *:hover:opacity-75">
-                            <div
-                                aria-hidden
-                                className="bg-card in-data-[period=monthly]:translate-x-0 ring-foreground/5 pointer-events-none absolute inset-1 w-1/2 translate-x-full rounded-full border border-transparent shadow ring-1 transition-transform duration-500 ease-in-out"
-                            />
-                            <button
-                                onClick={() => setBillingPeriod('monthly')}
-                                {...(billingPeriod === 'monthly' && { 'data-active': true })}
-                                className="data-active:text-foreground data-active:font-medium relative">
-                                Monthly
-                            </button>
-                            <button
-                                onClick={() => setBillingPeriod('annually')}
-                                {...(billingPeriod === 'annually' && { 'data-active': true })}
-                                className="data-active:text-foreground data-active:font-medium relative">
-                                Annually
-                            </button>
-                        </div>
-                        <div className="mt-3 text-center text-xs">
-                            <span className="text-primary font-medium">Save 25%</span> On Annual Billing
-                        </div>
-                    </div>
+                    <h2
+                        id="pricing-heading"
+                        className="text-balance text-3xl font-bold md:text-4xl lg:text-5xl lg:tracking-tight">
+                        Free as open source. Paid when you want us to host it.
+                    </h2>
+                    <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-balance text-lg">
+                        Self-host is the wedge. Hosted is the convenience. Pick the one that matches how you want to spend your time.
+                    </p>
                 </div>
-                <div className="@container">
+                <div className="@container mt-12">
                     <div className="@4xl:max-w-full mx-auto max-w-sm rounded-xl border">
                         <div className="@4xl:grid-cols-3 grid *:p-8">
                             <div className="@max-4xl:p-9 row-span-4 grid grid-rows-subgrid gap-8">
                                 <div className="self-end">
-                                    <CardTitle className="text-lg font-medium">Free</CardTitle>
-                                    <div className="text-muted-foreground mt-1 text-balance text-sm">For developers trying out Tailark for the first time</div>
+                                    <CardTitle className="text-lg font-medium">Self-host</CardTitle>
+                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">Own the code forever. Ship it yourself.</CardDescription>
                                 </div>
-
                                 <div>
-                                    <NumberFlow
-                                        value={0}
-                                        prefix="$"
-                                        className="text-3xl font-semibold"
-                                    />
-                                    <div className="text-muted-foreground text-sm">Per month</div>
+                                    <div className="text-3xl font-semibold">Free</div>
+                                    <div className="text-muted-foreground text-sm">MIT license, no strings</div>
                                 </div>
                                 <Button
                                     asChild
                                     variant="outline"
-                                    className="w-full">
-                                    <Link href="#">Get Started</Link>
+                                    className="w-full"
+                                    onClick={() => track('pricing_tier_clicked', { tier: 'self-host' satisfies TierKey })}>
+                                    <Link
+                                        href="https://github.com/Codehagen/helpbase"
+                                        target="_blank"
+                                        rel="noreferrer">
+                                        Get started on GitHub
+                                    </Link>
                                 </Button>
-
                                 <ul
                                     role="list"
                                     className="space-y-3 text-sm">
-                                    {['Basic Analytics Dashboard', '5GB Cloud Storage', 'Email and Chat Support'].map((item, index) => (
+                                    {[
+                                        'pnpm dlx create-helpbase scaffold',
+                                        'MDX + shadcn/ui in your repo',
+                                        'MCP server runs on your infra',
+                                        'llms.txt auto-generated',
+                                        'Deploy to Vercel / Fly / self-host',
+                                        'MIT license, your code forever',
+                                    ].map((item) => (
                                         <li
-                                            key={index}
+                                            key={item}
                                             className="flex items-center gap-2">
                                             <Check
                                                 className="text-muted-foreground size-3"
@@ -96,30 +73,34 @@ export default function Pricing() {
                             </div>
                             <div className="ring-border bg-card rounded-(--radius) @4xl:my-2 @max-4xl:mx-1 shadow-black/6.5 row-span-4 grid grid-rows-subgrid gap-8 shadow-xl ring-1 backdrop-blur">
                                 <div className="self-end">
-                                    <CardTitle className="text-lg font-medium">Pro</CardTitle>
-                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">Ideal for developers who need more features and support</CardDescription>
+                                    <CardTitle className="text-lg font-medium">Hosted free</CardTitle>
+                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">Skip the infra. One command to live.</CardDescription>
                                 </div>
-
                                 <div>
-                                    <NumberFlow
-                                        value={prices.pro[billingPeriod]}
-                                        format={{ style: 'currency', currency: 'USD', maximumFractionDigits: 0 }}
-                                        className="text-3xl font-semibold"
-                                    />
-                                    <div className="text-muted-foreground text-sm">Per month</div>
+                                    <div className="text-3xl font-semibold">
+                                        $0<span className="text-muted-foreground text-base font-normal">/mo</span>
+                                    </div>
+                                    <div className="text-muted-foreground text-sm">Up to 1 site, fair-use limits</div>
                                 </div>
                                 <Button
                                     asChild
-                                    className="w-full">
-                                    <Link href="#">Get Started</Link>
+                                    className="w-full"
+                                    onClick={() => track('pricing_tier_clicked', { tier: 'hosted-free' satisfies TierKey })}>
+                                    <Link href="/login">Deploy now</Link>
                                 </Button>
-
                                 <ul
                                     role="list"
                                     className="space-y-3 text-sm">
-                                    {['Everything in Free Plan plus:', '5GB Cloud Storage', 'Email and Chat Support', 'Access to Community Forum', 'Single User Access', 'Access to Basic Templates', 'Mobile App Access', '1 Custom Report Per Month', 'Monthly Product Updates', 'Standard Security Features'].map((item, index) => (
+                                    {[
+                                        'Everything in Self-host, plus:',
+                                        'helpbase deploy to {slug}.helpbase.dev',
+                                        'Hosted MCP endpoint we run',
+                                        'Edge-cached llms.txt + content',
+                                        'Zero-config SSL + CDN',
+                                        'Migrate to self-host any time',
+                                    ].map((item) => (
                                         <li
-                                            key={index}
+                                            key={item}
                                             className="group flex items-center gap-2 first:font-medium">
                                             <Check
                                                 className="text-muted-foreground size-3 group-first:hidden"
@@ -132,31 +113,33 @@ export default function Pricing() {
                             </div>
                             <div className="@max-4xl:p-9 row-span-4 grid grid-rows-subgrid gap-8">
                                 <div className="self-end">
-                                    <CardTitle className="text-lg font-medium">Startup</CardTitle>
-                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">For startups that need more advanced features and support.</CardDescription>
+                                    <CardTitle className="text-lg font-medium">Pro</CardTitle>
+                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">For teams shipping real docs together.</CardDescription>
                                 </div>
-
                                 <div>
-                                    <NumberFlow
-                                        value={prices.startup[billingPeriod]}
-                                        format={{ style: 'currency', currency: 'USD', maximumFractionDigits: 0 }}
-                                        className="text-3xl font-semibold"
-                                    />
-                                    <div className="text-muted-foreground text-sm">Per month</div>
+                                    <div className="text-3xl font-semibold">Coming soon</div>
+                                    <div className="text-muted-foreground text-sm">Pricing with the first 10 teams</div>
                                 </div>
                                 <Button
                                     asChild
                                     variant="outline"
-                                    className="w-full">
-                                    <Link href="#">Get Started</Link>
+                                    className="w-full"
+                                    onClick={() => track('pricing_tier_clicked', { tier: 'hosted-pro' satisfies TierKey })}>
+                                    <Link href="/login">Join the Pro waitlist</Link>
                                 </Button>
-
                                 <ul
                                     role="list"
                                     className="space-y-3 text-sm">
-                                    {['Everything in Pro Plan plus:', '5GB Cloud Storage', 'Email and Chat Support', 'Multi-User Access', '1 Custom Report Per Month', 'Monthly Product Updates', 'Standard Security Features', 'Access to Advanced Templates', 'Access to Community Forum', 'Mobile App Access'].map((item, index) => (
+                                    {[
+                                        'Everything in Hosted free, plus:',
+                                        'Custom domain (docs.yourco.com)',
+                                        'Team members and roles',
+                                        'Analytics and AI usage dashboards',
+                                        'Higher hosted MCP rate limits',
+                                        'Priority support + SLA',
+                                    ].map((item) => (
                                         <li
-                                            key={index}
+                                            key={item}
                                             className="group flex items-center gap-2 first:font-medium">
                                             <Check
                                                 className="text-muted-foreground size-3 group-first:hidden"

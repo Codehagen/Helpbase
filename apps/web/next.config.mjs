@@ -13,6 +13,10 @@ const nextConfig = {
     // tight — only images.unsplash.com, nothing wildcard.
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
+      // Tailark block illustrations reference these public assets.
+      // Keep the allowlist explicit; do not switch to wildcards.
+      { protocol: "https", hostname: "avatars.githubusercontent.com" },
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   // 301 stale `/landing` URLs back to `/` on apex/non-tenant hosts only.

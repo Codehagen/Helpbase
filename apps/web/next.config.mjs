@@ -8,6 +8,13 @@ const nextConfig = {
     root: path.resolve(import.meta.dirname, "../.."),
   },
   transpilePackages: ["@workspace/ui"],
+  images: {
+    // Marketing landing uses a remote backdrop image. Keep the allowlist
+    // tight — only images.unsplash.com, nothing wildcard.
+    remotePatterns: [
+      { protocol: "https", hostname: "images.unsplash.com" },
+    ],
+  },
 }
 
 export default nextConfig

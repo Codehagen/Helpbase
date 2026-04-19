@@ -175,11 +175,18 @@ async function runMagicLinkFlow(preset?: string): Promise<void> {
  * telemetry prompt finishes fading from their scrollback, and falls
  * back gracefully when auto-provisioning soft-failed (ensureReservation
  * already logged the reason to stderr in that case).
+ *
+ * When `HELPBASE_INLINE=1` is set, the parent process (typically
+ * create-helpbase spawning us during scaffold) owns the trailing
+ * "What next" panel + outro. Suppress ours so the user doesn't see
+ * two competing next-steps boxes within seconds. The reservation
+ * `note(...)` still prints — that's the magical moment, parent or not.
  */
 function printLoginOutro(
   session: AuthSession,
   reservation: Awaited<ReturnType<typeof ensureReservation>>,
 ): void {
+  const inline = process.env.HELPBASE_INLINE === "1"
   if (reservation) {
     const label = reservation.isNew ? "Reserved" : "Your help center"
     note(
@@ -191,6 +198,7 @@ function printLoginOutro(
         )}`,
       "helpbase",
     )
+    if (inline) return
     outro(`Logged in as ${pc.cyan(session.email)}`)
     nextSteps({
       commands: [
@@ -202,7 +210,8 @@ function printLoginOutro(
     return
   }
   // No reservation (auto-provision soft-failed): fall back to the
-  // pre-reservation-era next-steps block.
+  // pre-reservation-era next-steps block. Still suppressed when inline.
+  if (inline) return
   outro(`Logged in as ${pc.cyan(session.email)}`)
   nextSteps({ commands: ["helpbase whoami", "helpbase new"] })
 }

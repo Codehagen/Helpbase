@@ -19,20 +19,35 @@ import path from "node:path"
  */
 export function emitMcpJson(projectDir: string): string {
   const contentDir = path.join(projectDir, "content")
-  const mcpServerBlock = {
+  const helpbaseBlock = {
     command: "npx",
     args: ["@helpbase/mcp@latest"],
     env: {
       HELPBASE_CONTENT_DIR: contentDir,
     },
   }
+  // Shadcn ships its own MCP server. Wiring it alongside helpbase means a
+  // user pasting either block gets BOTH servers registered: helpbase for
+  // citations into their docs, shadcn for "add a card component" natural-
+  // language UI extension. Same registry the scaffold itself was built
+  // from, so the experience compounds (the help center renders shadcn-
+  // shaped components; the agent that edits it can install more).
+  // See https://ui.shadcn.com/docs/mcp for client-side prompts.
+  const shadcnBlock = {
+    command: "npx",
+    args: ["shadcn@latest", "mcp"],
+  }
+  const mcpServers = {
+    helpbase: helpbaseBlock,
+    shadcn: shadcnBlock,
+  }
   const hint = {
     _comment:
-      "This file is a HINT — copy one of the blocks below into your MCP client's config. Do NOT commit: HELPBASE_CONTENT_DIR is an absolute machine-local path.",
+      "This file is a HINT — copy one of the blocks below into your MCP client's config. Do NOT commit: HELPBASE_CONTENT_DIR is an absolute machine-local path. Two servers ship by default: `helpbase` (cite your docs) and `shadcn` (install components from natural language).",
     helpbaseMcpVersion: "1",
-    claude_desktop: { mcpServers: { helpbase: mcpServerBlock } },
-    cursor: { mcpServers: { helpbase: mcpServerBlock } },
-    claude_code: { mcpServers: { helpbase: mcpServerBlock } },
+    claude_desktop: { mcpServers },
+    cursor: { mcpServers },
+    claude_code: { mcpServers },
   }
   const mcpJsonPath = path.join(projectDir, "mcp.json")
   fs.writeFileSync(mcpJsonPath, JSON.stringify(hint, null, 2) + "\n", "utf8")

@@ -8,17 +8,17 @@ const faqItems = [
             {
                 id: 'gen-1',
                 question: 'Is helpbase open source?',
-                answer: 'Yes, MIT-licensed on GitHub. The CLI scaffolds a real Next.js app into your repo, and every file is yours to edit, commit, fork, and deploy anywhere.',
+                answer: 'Yes, MIT-licensed on GitHub. The CLI writes a real Next.js app straight into your repo. Every file is yours to edit, commit, fork, and deploy anywhere.',
             },
             {
                 id: 'gen-2',
                 question: 'How is this different from a hosted docs SaaS?',
-                answer: 'Ownership and AI-native defaults. Your docs are code in your git history, not rows in someone else\'s database. MCP and llms.txt come for free, not as a Pro-tier add-on.',
+                answer: 'You own every file. Your docs are code in your git history, not rows in someone else\'s database. MCP and llms.txt are free and built in, not a Pro-tier add-on.',
             },
             {
                 id: 'gen-3',
                 question: 'What framework does it use?',
-                answer: 'Next.js 14 App Router + shadcn/ui + MDX. A standard stack, no magic runtime. If you already ship with Next.js, you already know this stack.',
+                answer: 'Next.js 14 App Router + shadcn/ui + MDX. A standard stack, nothing proprietary. If you already build with Next.js, you already know it.',
             },
         ],
     },
@@ -28,7 +28,7 @@ const faqItems = [
             {
                 id: 'host-1',
                 question: 'Can I migrate off the hosted tier?',
-                answer: 'Yes. The hosted tier runs the exact same MDX + config you scaffolded with create-helpbase. Clone your repo, deploy the Next.js app anywhere, done. No lock-in by design.',
+                answer: 'Yes. The hosted tier runs the exact same MDX + config that create-helpbase put in your repo. Clone your repo, deploy the Next.js app anywhere, done. We built it so you can leave.',
             },
             {
                 id: 'host-2',
@@ -48,17 +48,17 @@ const faqItems = [
             {
                 id: 'mcp-1',
                 question: 'Does the MCP server work with Claude Code and Cursor?',
-                answer: 'Yes, over standard Model Context Protocol. The scaffolder prints the URL, you point your editor at it, autocomplete and chat ground on your real docs from that moment on.',
+                answer: 'Yes, over standard Model Context Protocol. The CLI prints the URL. Point your editor at it. Autocomplete and chat answer from your real docs from that moment on.',
             },
             {
                 id: 'mcp-2',
-                question: 'What does "AI-native" actually mean here?',
-                answer: 'Every site ships an llms.txt and an MCP server by default, and the MCP exposes typed tool calls for list / read / search. No scraping, no lock-in, no Pro-tier upsell.',
+                question: 'What do you mean by AI built in?',
+                answer: 'Every site includes an llms.txt and an MCP server by default. The MCP exposes typed tool calls for list, read, and search. No scraping, no lock-in, no Pro-tier upsell.',
             },
             {
                 id: 'mcp-3',
                 question: 'Do I need an AI key to use it?',
-                answer: 'No. The CLI scaffolder does not call external AI APIs. Optional features like helpbase sync (which proposes doc diffs from code changes) use your own provider keys.',
+                answer: 'No. The install CLI does not call external AI APIs. Optional features like helpbase sync (which proposes doc edits from code changes) use your own provider keys.',
             },
         ],
     },
@@ -78,7 +78,7 @@ export default function FAQs() {
                             className="text-foreground text-3xl font-semibold md:text-4xl">
                             FAQs
                         </h2>
-                        <p className="text-muted-foreground mt-4 text-balance text-lg">The questions founders ask before scaffolding.</p>
+                        <p className="text-muted-foreground mt-4 text-balance text-lg">The questions founders ask before running the install.</p>
                         <p className="text-muted-foreground mt-6 max-md:hidden">
                             Still stuck? Open an issue on{' '}
                             <Link

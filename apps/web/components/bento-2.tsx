@@ -14,10 +14,10 @@ export default function AiNativeBento() {
                     <h2
                         id="ai-native-heading"
                         className="text-foreground text-3xl font-semibold md:text-4xl">
-                        AI-native by default. Not an upsell.
+                        Claude and Cursor can read your docs. Day one.
                     </h2>
                     <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-balance text-lg">
-                        Every helpbase site ships an MCP server and an llms.txt out of the box, so Claude, Cursor, and ChatGPT can ground on your docs without you paying for it later.
+                        Every helpbase site includes an MCP server and an llms.txt. Claude, Cursor, and ChatGPT can answer from your real docs the moment you deploy. You don&apos;t pay us for this later.
                     </p>
                 </div>
                 <div className="not-dark:*:bg-card/50 @xl:grid-cols-2 @3xl:grid-cols-6 grid gap-3">
@@ -32,7 +32,7 @@ export default function AiNativeBento() {
                         <div>
                             <h3 className="text-foreground text-lg font-semibold">MCP server, built in</h3>
                             <p className="text-muted-foreground mt-3">
-                                Model Context Protocol endpoint ships with every helpbase site. Point Claude Code or Cursor at the URL and they query your real docs instead of hallucinating.
+                                Every helpbase site runs a Model Context Protocol endpoint. Point Claude Code or Cursor at the URL and they answer from your real docs instead of guessing.
                             </p>
                         </div>
                     </Card>
@@ -42,9 +42,9 @@ export default function AiNativeBento() {
                             <LlmsTxtPreview />
                         </div>
                         <div>
-                            <h3 className="text-foreground text-lg font-semibold">llms.txt out of the box</h3>
+                            <h3 className="text-foreground text-lg font-semibold">llms.txt, always fresh</h3>
                             <p className="text-muted-foreground mt-3">
-                                Agent-discoverability manifest generated on every build, served at /llms.txt. The spec agents already look for, without you remembering to add it.
+                                A fresh /llms.txt on every build. It&apos;s the manifest AI agents already look for. You don&apos;t have to remember to write it.
                             </p>
                         </div>
                     </Card>
@@ -65,9 +65,9 @@ export default function AiNativeBento() {
                             <VisualizationIllustration />
                         </div>
                         <div>
-                            <h3 className="text-foreground text-lg font-semibold">Code-grounded doc sync</h3>
+                            <h3 className="text-foreground text-lg font-semibold">Docs that stay in sync with code</h3>
                             <p className="text-muted-foreground mt-3">
-                                helpbase sync reads your source code and proposes MDX diffs grounded in the actual functions and types. You review, you merge. AI assists, it does not author.
+                                helpbase sync reads your source and proposes MDX edits based on the actual functions and types. You review, you merge. AI assists, it does not author.
                             </p>
                         </div>
                     </Card>
@@ -78,7 +78,7 @@ export default function AiNativeBento() {
                         <div>
                             <h3 className="text-foreground text-lg font-semibold">Hosted tier, if you want it</h3>
                             <p className="text-muted-foreground mt-3">
-                                helpbase deploy pushes the same app to {'{'}slug{'}'}.helpbase.dev with zero infra. Hosted MCP at scale, custom domain, team roles, analytics when you upgrade.
+                                helpbase deploy pushes the same app to {'{'}slug{'}'}.helpbase.dev. No servers to manage. Hosted MCP at scale, custom domain, team roles, analytics when you upgrade.
                             </p>
                         </div>
                     </Card>

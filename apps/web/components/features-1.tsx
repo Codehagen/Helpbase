@@ -11,10 +11,10 @@ export default function FeaturesOwnIt() {
                     <h2
                         id="features-own-heading"
                         className="text-foreground text-3xl font-semibold md:text-4xl">
-                        The files are in your repo from minute one.
+                        Every file is yours, from the first commit.
                     </h2>
                     <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-balance text-lg">
-                        Helpbase does not store your content. The CLI scaffolds a Next.js app into your git history, and every edit is a commit you own.
+                        Helpbase doesn&apos;t store your content anywhere. The CLI writes a Next.js app straight into your git history. Every edit is a commit. Every file is yours.
                     </p>
                 </div>
                 <div className="ring-border @4xl:grid-cols-2 @max-4xl:divide-y @4xl:divide-x bg-card/50 relative grid overflow-hidden rounded-2xl border border-transparent shadow-md shadow-black/5 ring-1">

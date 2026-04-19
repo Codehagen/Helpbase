@@ -56,8 +56,8 @@ const features: Feature[] = [
         plans: { rollYourOwn: false, hostedSaas: true, helpbase: 'Hosted tier' },
     },
     {
-        name: 'AI coding tools can ground on it',
-        description: 'Your editor autocompletes from your real docs instead of hallucinating.',
+        name: 'AI tools can read the docs',
+        description: 'Your editor autocompletes from your real docs instead of guessing.',
         plans: { rollYourOwn: 'DIY', hostedSaas: 'Limited', helpbase: true },
     },
 ]
@@ -116,8 +116,7 @@ export default function Comparator() {
                                 Two options today. Both are compromises.
                             </h2>
                             <p className="text-muted-foreground mt-4 text-balance lg:mt-6">
-                                Roll your own in Next.js and burn a weekend. Pay a hosted SaaS and rent your docs.
-                                Helpbase is the third option: free as open source, paid when you want us to host it.
+                                Build your own in Next.js and burn a weekend. Pay a hosted docs SaaS and get locked in. Helpbase is the third option: free as open source, paid only when you want us to host it.
                             </p>
                         </div>
                     </div>

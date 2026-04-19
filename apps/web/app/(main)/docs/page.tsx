@@ -73,10 +73,10 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--muted),transparent)]" />
         <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-24 text-center">
           <h1 className="animate-fade-in mx-auto max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
-            The AI-native knowledge layer, as code you own.
+            The docs your AI tools can read.
           </h1>
           <p className="animate-fade-in-delay-1 mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-            Helpbase ships MCP, <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-base">llms.txt</code>, and codebase-grounded doc sync as primitives that run in your repo. Open source, self-hostable, built on shadcn/ui + Next.js.
+            Helpbase includes an MCP server, an <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-base">llms.txt</code>, and a doc-sync tool that reads your source code. Open source, self-hostable, built on shadcn/ui + Next.js.
           </p>
 
           {/* Search bar in hero */}

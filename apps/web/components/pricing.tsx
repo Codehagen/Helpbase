@@ -21,7 +21,7 @@ export default function Pricing() {
                         Free as open source. Paid when you want us to host it.
                     </h2>
                     <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-balance text-lg">
-                        Self-host is the wedge. Hosted is the convenience. Pick the one that matches how you want to spend your time.
+                        Self-host is free forever. Hosted saves you a server. Pick the one that matches how you want to spend your time.
                     </p>
                 </div>
                 <div className="@container mt-12">
@@ -30,7 +30,7 @@ export default function Pricing() {
                             <div className="@max-4xl:p-9 row-span-4 grid grid-rows-subgrid gap-8">
                                 <div className="self-end">
                                     <CardTitle className="text-lg font-medium">Self-host</CardTitle>
-                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">Own the code forever. Ship it yourself.</CardDescription>
+                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">Own every file. Run it on your own server.</CardDescription>
                                 </div>
                                 <div>
                                     <div className="text-3xl font-semibold">Free</div>
@@ -52,7 +52,7 @@ export default function Pricing() {
                                     role="list"
                                     className="space-y-3 text-sm">
                                     {[
-                                        'pnpm dlx create-helpbase scaffold',
+                                        'pnpm dlx create-helpbase',
                                         'MDX + shadcn/ui in your repo',
                                         'MCP server runs on your infra',
                                         'llms.txt auto-generated',
@@ -74,7 +74,7 @@ export default function Pricing() {
                             <div className="ring-border bg-card rounded-(--radius) @4xl:my-2 @max-4xl:mx-1 shadow-black/6.5 row-span-4 grid grid-rows-subgrid gap-8 shadow-xl ring-1 backdrop-blur">
                                 <div className="self-end">
                                     <CardTitle className="text-lg font-medium">Hosted free</CardTitle>
-                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">Skip the infra. One command to live.</CardDescription>
+                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">Skip the server setup. One command to live.</CardDescription>
                                 </div>
                                 <div>
                                     <div className="text-3xl font-semibold">
@@ -114,7 +114,7 @@ export default function Pricing() {
                             <div className="@max-4xl:p-9 row-span-4 grid grid-rows-subgrid gap-8">
                                 <div className="self-end">
                                     <CardTitle className="text-lg font-medium">Pro</CardTitle>
-                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">For teams shipping real docs together.</CardDescription>
+                                    <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">For teams writing real docs together.</CardDescription>
                                 </div>
                                 <div>
                                     <div className="text-3xl font-semibold">

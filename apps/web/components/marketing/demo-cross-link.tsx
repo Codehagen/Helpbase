@@ -20,13 +20,13 @@ export function DemoCrossLink() {
                 See a real helpbase site. Running right now.
               </h2>
               <p className="text-muted-foreground mt-4 max-w-lg text-balance">
-                demo.helpbase.dev is a live helpbase deployment with real MDX
+                demo.helpbase.dev is a live helpbase site with real MDX
                 content, a working MCP server, and an llms.txt you can curl.
                 Point Claude Code or Cursor at{" "}
                 <code className="bg-muted rounded px-1 py-0.5 text-sm">
                   demo.helpbase.dev/api/mcp
                 </code>{" "}
-                and watch it ground on the docs.
+                and watch it answer from the docs.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button

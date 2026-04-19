@@ -59,14 +59,15 @@ export function Hero() {
             <h1
               id="hero-heading"
               className="text-foreground text-balance text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-6xl">
-              Docs are infrastructure now.
+              A help center for your product.
               <br className="hidden md:block" />{" "}
-              <span className="text-muted-foreground">Helpbase ships the code.</span>
+              <span className="text-muted-foreground">In your repo. In 30 seconds.</span>
             </h1>
 
             <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-2xl text-balance text-lg">
-              An MCP server, an{" "}
-              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>, and a full Next.js help center, scaffolded into your repo in 30 seconds. Your product&apos;s interface to AI agents, as code you own. Self-host forever, or deploy to us with one command.
+              One command creates a Next.js docs site in your repo, with an MCP server Claude and Cursor can read and an{" "}
+              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>{" "}
+              file included. Host it yourself, or deploy with us in one more command.
             </p>
 
             {/* Dual CTA: install command + demo */}
@@ -138,7 +139,7 @@ function HeroTerminal() {
         {`$ ${INSTALL_COMMAND}`}
       </TypingAnimation>
       <AnimatedSpan className="text-foreground">
-        ◇ Help center scaffolded into ./help-center
+        ◇ Help center created at ./help-center
       </AnimatedSpan>
       <AnimatedSpan className="text-muted-foreground">
         ◇ MDX content, shadcn/ui, MCP server, llms.txt

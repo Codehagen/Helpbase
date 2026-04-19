@@ -5,18 +5,18 @@ import { ChartIllustration } from "@/components/ui/illustrations/chart-illustrat
 
 const steps = [
     {
-        title: "Scaffold",
-        body: "Run pnpm dlx create-helpbase in your repo. Next.js + shadcn/ui + MDX + MCP server + llms.txt land as code you own, no magic runtime.",
+        title: "Install",
+        body: "Run pnpm dlx create-helpbase in your repo. You get a Next.js app with shadcn/ui, MDX content, an MCP server, and an llms.txt. Every file is yours.",
         visual: <CodeIllustration />,
     },
     {
         title: "Preview",
-        body: "pnpm dev runs it locally. helpbase deploy --preview pushes a draft to a shareable URL without touching your production tenant.",
+        body: "pnpm dev runs it locally. helpbase deploy --preview pushes a draft to a shareable URL without touching your production site.",
         visual: <DocumentIllustation />,
     },
     {
         title: "Deploy",
-        body: "Ship to helpbase.dev with one command, or deploy the same files to your own Vercel, Fly, or self-hosted Node server. Same content, same MCP endpoint, your choice of runtime.",
+        body: "Push to helpbase.dev with one command, or deploy the same files to Vercel, Fly, or your own server. Same content, same MCP endpoint, your choice of host.",
         visual: <ChartIllustration />,
     },
 ]
@@ -37,10 +37,10 @@ export default function HowItWorks() {
                             <h2
                                 id="how-it-works-heading"
                                 className="text-foreground mb-6 text-3xl font-semibold md:text-4xl">
-                                From zero to a live help center in three commands.
+                                From zero to live in three commands.
                             </h2>
                             <p className="text-muted-foreground text-lg">
-                                No vendor runtime, no lock-in step. Your docs are MDX files in your git history from the first minute.
+                                No hosted CMS. No lock-in. Your docs are plain MDX files in your git history from day one.
                             </p>
                         </div>
 

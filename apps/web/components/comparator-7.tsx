@@ -106,7 +106,7 @@ export default function Comparator() {
         <section
             aria-labelledby="comparator-heading"
             className="bg-background py-16 md:py-24">
-            <div className="mx-auto max-w-6xl md:px-6">
+            <div className="mx-auto max-w-5xl px-6">
                 <div className="grid gap-12 lg:grid-cols-[1fr_2fr]">
                     <div className="max-w-lg max-md:px-6">
                         <div className="text-balance lg:max-w-xs">

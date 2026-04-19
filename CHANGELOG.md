@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [create-helpbase 0.5.0] — 2026-04-19
+
+### Changed
+- **Login prompt now fires at step 1, before content-source selection.** The
+  previous design gated login on `source.kind !== "skip"`, so users who
+  picked Skip walked through the whole scaffolder without ever being asked
+  to claim a subdomain — a 100% funnel leak on that path. Login now runs
+  right after project-name validation on every cold scaffold. Users who
+  already have a session or `HELPBASE_TOKEN` skip the prompt silently.
+- **Reframed the prompt copy as a perk, not a gate.** Was: "Log in to
+  helpbase free? (500k tokens/day, no card — 30s browser flow)". Now:
+  "Claim your free docs URL? (docs-<hex>.helpbase.dev + 500k AI tokens/day,
+  no card)". Leading with the concrete subdomain URL converts better than
+  the abstract "sign in" ask.
+- **BYOK users also see the login prompt.** Previously skipped entirely
+  when `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `AI_GATEWAY_API_KEY` was
+  set. The subdomain reservation is orthogonal to AI credentials; BYOK
+  users still benefit from a reserved deploy target.
+- **"What next" block adapts to auth state.** Declined-login users now
+  see `npx helpbase login` as the first line of the end-of-scaffold
+  next-steps block; logged-in users don't see the redundant hint.
+
 ## [create-helpbase 0.4.0] — 2026-04-18
 
 ### Added

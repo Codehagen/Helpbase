@@ -59,9 +59,9 @@ export function Hero() {
             <h1
               id="hero-heading"
               className="text-foreground text-balance text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-6xl">
-              The help center agents can read.
+              Half your docs readers are AI agents now.
               <br className="hidden md:block" />{" "}
-              <span className="text-muted-foreground">Lives in your repo, not ours.</span>
+              <span className="text-muted-foreground">Helpbase is the help center built for them.</span>
             </h1>
 
             <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-2xl text-balance text-lg">

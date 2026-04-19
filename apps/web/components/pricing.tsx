@@ -117,8 +117,10 @@ export default function Pricing() {
                                     <CardDescription className="text-muted-foreground mt-1 text-balance text-sm">For teams shipping real docs together.</CardDescription>
                                 </div>
                                 <div>
-                                    <div className="text-3xl font-semibold">Coming soon</div>
-                                    <div className="text-muted-foreground text-sm">Pricing with the first 10 teams</div>
+                                    <div className="text-3xl font-semibold">
+                                        $29<span className="text-muted-foreground text-base font-normal">/mo per site</span>
+                                    </div>
+                                    <div className="text-muted-foreground text-sm">Early access, locked in for the first year</div>
                                 </div>
                                 <Button
                                     asChild

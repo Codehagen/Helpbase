@@ -1,6 +1,4 @@
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 
 const links = [
@@ -114,29 +112,30 @@ export default function FooterSection() {
                     </div>
 
                     <div className="md:col-span-2">
-                        <form className="ml-auto w-full space-y-4 md:max-w-xs">
-                            <Label
-                                className="block text-sm font-medium"
-                                htmlFor="email">
-                                Updates, every release
-                            </Label>
+                        <div className="ml-auto w-full space-y-4 md:max-w-xs">
+                            <div className="block text-sm font-medium">Updates, every release</div>
                             <div className="flex gap-2">
-                                <Input
-                                    className="bg-background ring-foreground/10 h-8 border-transparent shadow ring-1"
-                                    placeholder="you@domain.com"
-                                    type="email"
-                                    id="email"
-                                    required
-                                    name="email"
-                                />
                                 <Button
-                                    type="submit"
+                                    asChild
+                                    variant="outline"
                                     size="sm">
-                                    <span>Subscribe</span>
+                                    <Link
+                                        href="https://github.com/Codehagen/helpbase/releases"
+                                        target="_blank"
+                                        rel="noreferrer">
+                                        Follow on GitHub Releases
+                                        <span
+                                            aria-hidden
+                                            className="text-muted-foreground ml-1">
+                                            ↗
+                                        </span>
+                                    </Link>
                                 </Button>
                             </div>
-                            <p className="text-muted-foreground text-xs">Release notes and shipped features. One email every few weeks, unsubscribe any time.</p>
-                        </form>
+                            <p className="text-muted-foreground text-xs">
+                                Release notes and shipped features, straight from the repo. No newsletter inbox to opt out of.
+                            </p>
+                        </div>
                     </div>
                 </div>
 

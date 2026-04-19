@@ -78,7 +78,7 @@ export default function FAQs() {
                             className="text-foreground text-4xl font-semibold">
                             FAQs
                         </h2>
-                        <p className="text-muted-foreground mt-4 text-balance text-lg">The questions Vegard asked.</p>
+                        <p className="text-muted-foreground mt-4 text-balance text-lg">The questions founders ask before scaffolding.</p>
                         <p className="text-muted-foreground mt-6 max-md:hidden">
                             Still stuck? Open an issue on{' '}
                             <Link

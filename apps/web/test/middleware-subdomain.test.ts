@@ -9,13 +9,13 @@ import { extractSubdomainFromHost, RESERVED_SLUGS } from "../proxy"
 
 describe("extractSubdomainFromHost", () => {
   it("extracts subdomain from production tenant URLs", () => {
-    expect(extractSubdomainFromHost("vegard.helpbase.dev")).toBe("vegard")
+    expect(extractSubdomainFromHost("acme.helpbase.dev")).toBe("acme")
     expect(extractSubdomainFromHost("acme-docs.helpbase.dev")).toBe("acme-docs")
-    expect(extractSubdomainFromHost("vegard.helpbase.dev:443")).toBe("vegard")
+    expect(extractSubdomainFromHost("acme.helpbase.dev:443")).toBe("acme")
   })
 
   it("extracts subdomain from local-dev *.localhost", () => {
-    expect(extractSubdomainFromHost("vegard.localhost:3000")).toBe("vegard")
+    expect(extractSubdomainFromHost("acme.localhost:3000")).toBe("acme")
     expect(extractSubdomainFromHost("acme-docs.localhost")).toBe("acme-docs")
   })
 
@@ -32,7 +32,7 @@ describe("extractSubdomainFromHost", () => {
   })
 
   it("extracts subdomain from Vercel preview tenant URLs (tenant---branch.vercel.app)", () => {
-    expect(extractSubdomainFromHost("vegard---main.vercel.app")).toBe("vegard")
+    expect(extractSubdomainFromHost("acme---main.vercel.app")).toBe("acme")
     expect(extractSubdomainFromHost("acme---feature-branch.vercel.app")).toBe("acme")
   })
 
@@ -59,7 +59,7 @@ describe("extractSubdomainFromHost", () => {
   })
 
   it("lowercases the subdomain", () => {
-    expect(extractSubdomainFromHost("Vegard.helpbase.dev")).toBe("vegard")
+    expect(extractSubdomainFromHost("Acme.helpbase.dev")).toBe("acme")
     expect(extractSubdomainFromHost("ACME.helpbase.dev")).toBe("acme")
   })
 })
@@ -90,7 +90,7 @@ describe("RESERVED_SLUGS", () => {
   })
 
   it("does NOT include normal tenant-shaped slugs", () => {
-    expect(RESERVED_SLUGS.has("vegard")).toBe(false)
+    expect(RESERVED_SLUGS.has("acme")).toBe(false)
     expect(RESERVED_SLUGS.has("acme-docs")).toBe(false)
     expect(RESERVED_SLUGS.has("my-product")).toBe(false)
   })

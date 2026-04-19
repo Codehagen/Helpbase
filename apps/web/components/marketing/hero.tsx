@@ -59,13 +59,14 @@ export function Hero() {
             <h1
               id="hero-heading"
               className="text-foreground text-balance font-serif text-4xl leading-[1.1] tracking-[-0.5px] md:text-5xl">
-              An AI-ready help center your repo actually owns.
+              Docs are infrastructure now.
+              <br className="hidden md:block" />{" "}
+              <span className="text-muted-foreground">Helpbase ships the code.</span>
             </h1>
 
             <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-2xl text-balance text-lg">
-              Skip the weekend Next.js rebuild. Skip the {"$"}1K/mo hosted bill.
-              One command drops a full help center, an MCP server, and an
-              llms.txt into your app. You own every file.
+              An MCP server, an{" "}
+              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>, and a full Next.js help center, scaffolded into your repo in 30 seconds. Your product&apos;s interface to AI agents, as code you own. Self-host forever, or deploy to us with one command.
             </p>
 
             {/* Dual CTA: install command + demo */}
@@ -152,7 +153,7 @@ function HeroTerminal() {
         cd help-center && pnpm dev
       </AnimatedSpan>
       <TypingAnimation className="text-primary">
-        → Live preview: docs-vegard.helpbase.dev
+        → Live preview: docs-a1b2c3.helpbase.dev
       </TypingAnimation>
     </Terminal>
   )

@@ -59,15 +59,14 @@ export function Hero() {
             <h1
               id="hero-heading"
               className="text-foreground text-balance text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-6xl">
-              A help center for your product.
+              The help center agents can read.
               <br className="hidden md:block" />{" "}
-              <span className="text-muted-foreground">In your repo. In 30 seconds.</span>
+              <span className="text-muted-foreground">Lives in your repo, not ours.</span>
             </h1>
 
             <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-2xl text-balance text-lg">
-              One command creates a Next.js docs site in your repo, with an MCP server Claude and Cursor can read and an{" "}
-              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>{" "}
-              file included. Host it yourself, or deploy with us in one more command.
+              Every helpbase site includes an MCP server and an{" "}
+              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>, so Claude and Cursor answer from your real docs. One command drops a full Next.js site into your git history. Host it yourself, or deploy with us.
             </p>
 
             {/* Dual CTA: install command + demo */}

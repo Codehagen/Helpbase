@@ -112,7 +112,7 @@ export default function Comparator() {
                         <div className="text-balance lg:max-w-xs">
                             <h2
                                 id="comparator-heading"
-                                className="text-foreground text-3xl font-semibold md:text-4xl lg:text-5xl">
+                                className="text-foreground text-3xl font-semibold md:text-4xl">
                                 Two options today. Both are compromises.
                             </h2>
                             <p className="text-muted-foreground mt-4 text-balance lg:mt-6">

@@ -58,7 +58,7 @@ export function Hero() {
           <div className="mx-auto max-w-3xl text-center">
             <h1
               id="hero-heading"
-              className="text-foreground text-balance font-serif text-4xl leading-[1.1] tracking-[-0.5px] md:text-5xl">
+              className="text-foreground text-balance text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-6xl">
               Docs are infrastructure now.
               <br className="hidden md:block" />{" "}
               <span className="text-muted-foreground">Helpbase ships the code.</span>

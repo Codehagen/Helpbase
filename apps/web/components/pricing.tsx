@@ -17,7 +17,7 @@ export default function Pricing() {
                 <div className="mx-auto max-w-2xl text-center">
                     <h2
                         id="pricing-heading"
-                        className="text-balance text-3xl font-bold md:text-4xl lg:text-5xl lg:tracking-tight">
+                        className="text-balance text-3xl font-semibold md:text-4xl">
                         Free as open source. Paid when you want us to host it.
                     </h2>
                     <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-balance text-lg">

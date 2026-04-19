@@ -30,7 +30,7 @@ export default function AiNativeBento() {
                             />
                         </div>
                         <div>
-                            <h3 className="text-foreground font-semibold">MCP server, built in</h3>
+                            <h3 className="text-foreground text-lg font-semibold">MCP server, built in</h3>
                             <p className="text-muted-foreground mt-3">
                                 Model Context Protocol endpoint ships with every helpbase site. Point Claude Code or Cursor at the URL and they query your real docs instead of hallucinating.
                             </p>
@@ -42,7 +42,7 @@ export default function AiNativeBento() {
                             <LlmsTxtPreview />
                         </div>
                         <div>
-                            <h3 className="text-foreground font-semibold">llms.txt out of the box</h3>
+                            <h3 className="text-foreground text-lg font-semibold">llms.txt out of the box</h3>
                             <p className="text-muted-foreground mt-3">
                                 Agent-discoverability manifest generated on every build, served at /llms.txt. The spec agents already look for, without you remembering to add it.
                             </p>
@@ -54,7 +54,7 @@ export default function AiNativeBento() {
                             <ReplyIllustration className="relative mt-0 w-full" />
                         </div>
                         <div>
-                            <h3 className="text-foreground font-semibold">Structured agent output</h3>
+                            <h3 className="text-foreground text-lg font-semibold">Structured agent output</h3>
                             <p className="text-muted-foreground mt-3">
                                 The MCP server exposes your content as typed tool calls: list articles, read a specific slug, search. No scraping, no guesswork.
                             </p>
@@ -65,7 +65,7 @@ export default function AiNativeBento() {
                             <VisualizationIllustration />
                         </div>
                         <div>
-                            <h3 className="text-foreground font-semibold">Code-grounded doc sync</h3>
+                            <h3 className="text-foreground text-lg font-semibold">Code-grounded doc sync</h3>
                             <p className="text-muted-foreground mt-3">
                                 helpbase sync reads your source code and proposes MDX diffs grounded in the actual functions and types. You review, you merge. AI assists, it does not author.
                             </p>
@@ -76,7 +76,7 @@ export default function AiNativeBento() {
                             <MapIllustration />
                         </div>
                         <div>
-                            <h3 className="text-foreground font-semibold">Hosted tier, if you want it</h3>
+                            <h3 className="text-foreground text-lg font-semibold">Hosted tier, if you want it</h3>
                             <p className="text-muted-foreground mt-3">
                                 helpbase deploy pushes the same app to {'{'}slug{'}'}.helpbase.dev with zero infra. Hosted MCP at scale, custom domain, team roles, analytics when you upgrade.
                             </p>

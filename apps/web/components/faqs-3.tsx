@@ -75,7 +75,7 @@ export default function FAQs() {
                     <div className="max-w-lg max-md:px-6 md:col-span-2 md:p-10 lg:p-12">
                         <h2
                             id="faq-heading"
-                            className="text-foreground text-4xl font-semibold">
+                            className="text-foreground text-3xl font-semibold md:text-4xl">
                             FAQs
                         </h2>
                         <p className="text-muted-foreground mt-4 text-balance text-lg">The questions founders ask before scaffolding.</p>

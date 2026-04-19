@@ -54,6 +54,7 @@ describe("track()", () => {
     const headers = init.headers as Record<string, string>
     expect(headers["content-type"]).toBe("application/json")
     expect(headers.apikey).toBe(KEY)
+    expect(headers.authorization).toBe(`Bearer ${KEY}`)
     const body = JSON.parse(init.body as string)
     expect(body).toEqual({
       event: "hero_install_copied",

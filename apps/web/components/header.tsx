@@ -64,7 +64,7 @@ export function Header() {
                                                         target: '_blank',
                                                         rel: 'noreferrer',
                                                     })}
-                                                    className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">
+                                                    className="text-muted-foreground hover:text-foreground inline-flex items-center py-2 text-sm font-medium transition-colors">
                                                     {link.name}
                                                 </Link>
                                             </li>

@@ -36,7 +36,7 @@ export default function HowItWorks() {
                         <div className="@4xl:p-12 @xl:p-8 w-full p-6">
                             <h2
                                 id="how-it-works-heading"
-                                className="text-foreground mb-6 text-3xl font-semibold">
+                                className="text-foreground mb-6 text-3xl font-semibold md:text-4xl">
                                 From zero to a live help center in three commands.
                             </h2>
                             <p className="text-muted-foreground text-lg">

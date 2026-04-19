@@ -39,6 +39,7 @@ export function track(
       headers: {
         "content-type": "application/json",
         apikey: SUPABASE_ANON_KEY,
+        authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
       body,
       keepalive: true,

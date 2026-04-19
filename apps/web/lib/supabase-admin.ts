@@ -28,4 +28,4 @@ export function getServiceRoleClient(): SupabaseClient<Database> {
 }
 
 // verifyBearerToken removed 2026-04-17 — replaced by Better Auth's
-// auth.api.getSession({ headers }) in every call site. See DEVICE_FLOW_PLAN.md.
+// auth.api.getSession({ headers }) in every call site.

@@ -1,5 +1,5 @@
 import { FlowIllustration } from "@/components/illustrations/flow"
-import { DocumentMdIllustration } from "@/components/illustrations/document-md"
+import { MdxSourcePreview } from "@/components/illustrations/mdx-source-preview"
 
 export default function FeaturesOwnIt() {
     return (
@@ -25,8 +25,8 @@ export default function FeaturesOwnIt() {
                                 Every article is a plain .mdx file in help-center/content. Import React components, version control every change, diff in PR review.
                             </p>
                         </div>
-                        <div className="self-end pb-4">
-                            <DocumentMdIllustration />
+                        <div className="self-end px-8 pb-8">
+                            <MdxSourcePreview />
                         </div>
                     </div>
                     <div className="row-span-2 grid grid-rows-subgrid gap-8">

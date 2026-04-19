@@ -1,6 +1,6 @@
 import { cn } from '@workspace/ui/lib/utils'
 import { CodeIllustration } from "@/components/ui/illustrations/code-illustration"
-import { DocumentIllustation } from "@/components/ui/illustrations/document-illustration"
+import { PreviewUrlCard } from "@/components/illustrations/preview-url-card"
 import { WorkflowIllustration } from "@/components/illustrations/workflow"
 
 const steps = [
@@ -12,7 +12,7 @@ const steps = [
     {
         title: "Preview",
         body: "pnpm dev runs it locally. helpbase deploy --preview pushes a draft to a shareable URL without touching your production site.",
-        visual: <DocumentIllustation />,
+        visual: <PreviewUrlCard />,
     },
     {
         title: "Deploy",

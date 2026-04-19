@@ -1,4 +1,4 @@
-import { ChartIllustration } from "@/components/ui/illustrations/chart-illustration"
+import { FlowIllustration } from "@/components/illustrations/flow"
 import { DocumentIllustation } from "@/components/ui/illustrations/document-illustration"
 
 export default function FeaturesOwnIt() {
@@ -37,7 +37,7 @@ export default function FeaturesOwnIt() {
                             </p>
                         </div>
                         <div className="self-end px-8 pb-8">
-                            <ChartIllustration />
+                            <FlowIllustration />
                         </div>
                     </div>
                 </div>

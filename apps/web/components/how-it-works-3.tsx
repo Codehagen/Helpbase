@@ -1,7 +1,7 @@
 import { cn } from '@workspace/ui/lib/utils'
 import { CodeIllustration } from "@/components/ui/illustrations/code-illustration"
 import { DocumentIllustation } from "@/components/ui/illustrations/document-illustration"
-import { ChartIllustration } from "@/components/ui/illustrations/chart-illustration"
+import { WorkflowIllustration } from "@/components/illustrations/workflow"
 
 const steps = [
     {
@@ -17,7 +17,7 @@ const steps = [
     {
         title: "Deploy",
         body: "Push to helpbase.dev with one command, or deploy the same files to Vercel, Fly, or your own server. Same content, same MCP endpoint, your choice of host.",
-        visual: <ChartIllustration />,
+        visual: <WorkflowIllustration />,
     },
 ]
 

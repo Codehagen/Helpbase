@@ -141,6 +141,9 @@ const HOSTED_TIER_EXCLUDES = [
   "components/ui/navigation-menu.tsx",
   "components/ui/illustrations/",
   "components/ui/svgs/",
+  // Tailark Pro illustrations installed via shadcn registry land here.
+  // Used exclusively by the marketing Tailark blocks above.
+  "components/illustrations/",
   "hooks/use-media.ts",
 ]
 

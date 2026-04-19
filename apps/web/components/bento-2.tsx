@@ -1,5 +1,5 @@
 import { ReplyIllustration } from "@/components/ui/illustrations/reply-illustration"
-import { NotificationIllustration } from "@/components/ui/illustrations/notification-illustration"
+import { ModelsIllustration } from "@/components/illustrations/models"
 import { Card } from '@/components/ui/card'
 import { MapIllustration } from "@/components/ui/illustrations/map-illustration"
 import { VisualizationIllustration } from "@/components/ui/illustrations/visualization-illustration"
@@ -22,12 +22,9 @@ export default function AiNativeBento() {
                 </div>
                 <div className="not-dark:*:bg-card/50 @xl:grid-cols-2 @3xl:grid-cols-6 grid gap-3">
                     <Card className="@3xl:col-span-2 grid grid-rows-[1fr_auto] gap-y-12 overflow-hidden rounded-2xl p-8">
-                        <div className="relative -m-8 p-8">
+                        <div className="relative -m-8 flex items-center justify-center p-8">
                             <Stripes />
-                            <NotificationIllustration
-                                variant="mixed"
-                                className="*:!rounded-2xl"
-                            />
+                            <ModelsIllustration />
                         </div>
                         <div>
                             <h3 className="text-foreground text-lg font-semibold">MCP server, built in</h3>

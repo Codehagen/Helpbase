@@ -57,10 +57,12 @@ export default function HeroSection() {
                             <div className="mask-t-from-25% absolute inset-0">
                                 <Image
                                     src="https://images.unsplash.com/photo-1695151992691-a9e19f73948f?q=80&w=2206&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                                    alt="hero background"
+                                    alt=""
+                                    aria-hidden
                                     className="size-full object-cover object-top dark:opacity-25"
                                     width={1920}
                                     height={1080}
+                                    priority
                                 />
                             </div>
                             <div className="relative mx-auto max-w-6xl overflow-hidden py-6 md:py-16">

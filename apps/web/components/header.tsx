@@ -1,6 +1,5 @@
 'use client'
 import Link from 'next/link'
-import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import React from 'react'
 import { useScroll, useMotionValueEvent } from 'motion/react'
@@ -116,9 +115,9 @@ export function Header() {
                         <div className="flex justify-between gap-8 max-lg:h-14 max-lg:w-full max-lg:border-b">
                             <Link
                                 href="/"
-                                aria-label="home"
-                                className="flex items-center space-x-2">
-                                <Logo uniColor />
+                                aria-label="helpbase home"
+                                className="flex items-center text-lg font-semibold tracking-tight text-foreground">
+                                helpbase
                             </Link>
 
                             {isLarge && (

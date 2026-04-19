@@ -25,17 +25,14 @@ const aiLogos: React.ReactNode[] = [
     <OpenAIFull
         key="openai"
         height={24}
-        width="auto"
     />,
     <Bolt
         key="bolt"
         height={20}
-        width="auto"
     />,
     <GeminiFull
         key="gemini"
         height={24}
-        width="auto"
         className="-translate-y-0.5"
     />,
 ]
@@ -44,17 +41,14 @@ const hostingLogos: React.ReactNode[] = [
     <Supabase
         key="supabase"
         height={24}
-        width="auto"
     />,
     <Cloudflare
         key="cloudflare"
         height={24}
-        width="auto"
     />,
     <VercelFull
         key="vercel"
         height={20}
-        width="auto"
     />,
 ]
 
@@ -62,17 +56,14 @@ const paymentsLogos: React.ReactNode[] = [
     <Stripe
         key="stripe"
         height={24}
-        width="auto"
     />,
     <PayPal
         key="paypal"
         height={24}
-        width="auto"
     />,
     <LeapWallet
         key="leapwallet"
         height={24}
-        width="auto"
     />,
 ]
 
@@ -80,17 +71,14 @@ const streamingLogos: React.ReactNode[] = [
     <Primevideo
         key="primevideo"
         height={28}
-        width="auto"
     />,
     <Hulu
         key="hulu"
         height={22}
-        width="auto"
     />,
     <Spotify
         key="spotify"
         height={24}
-        width="auto"
     />,
 ]
 
@@ -98,17 +86,14 @@ const otherLogos: React.ReactNode[] = [
     <Cisco
         key="cisco"
         height={32}
-        width="auto"
     />,
     <Beacon
         key="beacon"
         height={20}
-        width="auto"
     />,
     <Polars
         key="polars"
         height={24}
-        width="auto"
     />,
 ]
 
@@ -116,17 +101,14 @@ const toolsLogos: React.ReactNode[] = [
     <Linear
         key="linear"
         height={24}
-        width="auto"
     />,
     <Slack
         key="slack"
         height={24}
-        width="auto"
     />,
     <Twilio
         key="twilio"
         height={24}
-        width="auto"
     />,
 ]
 

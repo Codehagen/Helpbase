@@ -15,6 +15,19 @@ const nextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
+  // 301 stale `/landing` URLs back to `/`. The marketing page lived at
+  // `/landing` for one preview cycle before being promoted to root; any
+  // external refs to that URL (Vercel preview links, DMs, social) keep
+  // working after the move.
+  async redirects() {
+    return [
+      {
+        source: "/landing",
+        destination: "/",
+        permanent: true,
+      },
+    ]
+  },
 }
 
 export default nextConfig

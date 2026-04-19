@@ -101,7 +101,91 @@ const HOSTED_TIER_EXCLUDES = [
   "lib/query-keys.ts",
   "lib/query-keys.test.ts",
   "lib/query-options.ts",
+  // Marketing surface — helpbase.dev-only. Lives at the apex (/) for our
+  // own marketing landing. Scaffolded user projects don't have a marketing
+  // page, and the shadcn registry is additive (consumers bring their own
+  // landing). The hero block + its dependencies (rotating logo cloud,
+  // billing-mockup illustration, navigation menu, accordion, fake-brand
+  // SVGs, useMedia hook) are all marketing-block-specific.
+  "app/(marketing)/",
+  "components/header.tsx",
+  "components/hero-section.tsx",
+  "components/logo-cloud.tsx",
+  "components/ui/accordion.tsx",
+  "components/ui/button.tsx",
+  "components/ui/navigation-menu.tsx",
+  "components/ui/illustrations/",
+  "components/ui/svgs/",
+  "hooks/use-media.ts",
 ]
+
+// Path remaps applied during sync. Source paths in apps/web are remapped to
+// destination paths in templates/registry. Used when apps/web's path
+// structure diverges from what scaffolded projects expect (e.g. apps/web
+// has marketing at / and docs at /docs; scaffolds have docs at /).
+const PATH_REMAPS = {
+  // apps/web's docs landing lives at /docs (apex is marketing). Scaffolded
+  // projects don't ship a marketing page, so they want the docs landing at
+  // the apex. Sync the page file back to (main)/page.tsx for the scaffold.
+  "app/(main)/docs/page.tsx": "app/(main)/page.tsx",
+  // apps/web has BOTH header.tsx (marketing) and header-docs.tsx (docs).
+  // Scaffolds and registry consumers only have one Header, so sync the
+  // docs header as the canonical components/header.tsx. The content
+  // transform below renames `HeaderDocs` → `Header` to keep the export
+  // matching the file name.
+  "components/header-docs.tsx": "components/header.tsx",
+}
+
+/**
+ * Per-file content transforms applied DURING sync (before write). Used to
+ * adapt apps/web source for the scaffold's different routing/naming.
+ * Each entry maps a source file path to a transform function on its content.
+ *
+ * Why content transforms instead of more PATH_REMAPS or runtime redirects:
+ *   - Renaming HeaderDocs → Header keeps the scaffold's import API stable
+ *     for downstream contributors (they still write `<Header />`)
+ *   - Rewriting `/docs` → `/` in breadcrumb links avoids a runtime 308 hop
+ *     on every breadcrumb click in scaffolded projects (where docs is at /)
+ */
+const TEMPLATES_CONTENT_TRANSFORMS = {
+  "components/header-docs.tsx": (content) =>
+    content
+      .replace(/\bHeaderDocs\b/g, "Header")
+      .replace(
+        /'\/docs'/g, "'/'") // logo link from /docs back to /
+      .replace(/"\/docs"/g, '"/"'),
+  "app/(main)/layout.tsx": (content) =>
+    content
+      .replace(
+        /from\s+"@\/components\/header-docs"/g,
+        'from "@/components/header"',
+      )
+      .replace(/\bHeaderDocs\b/g, "Header"),
+  "components/footer.tsx": (content) =>
+    content.replace(/href="\/docs"/g, 'href="/"'),
+  "app/(main)/(docs)/[category]/page.tsx": (content) =>
+    content
+      .replace(/href="\/docs"/g, 'href="/"')
+      .replace(/>Docs</g, ">Home<"),
+  "app/(main)/(docs)/[category]/[slug]/page.tsx": (content) =>
+    content
+      .replace(/href="\/docs"/g, 'href="/"')
+      .replace(/>Docs</g, ">Home<"),
+}
+
+/**
+ * Same-shape transforms for registry consumers. Registry adds docs into
+ * an existing user app, so consumers expect `<Header />` from `@/components/header`,
+ * not the marketing/docs split that apps/web internally uses.
+ */
+const REGISTRY_CONTENT_TRANSFORMS = {
+  "components/header-docs.tsx": (content) =>
+    content.replace(/\bHeaderDocs\b/g, "Header"),
+  // Note: registry source path "app/(docs)/[category]/page.tsx" is the
+  // remap target — see syncRegistry's docsCategoryFiles loop. The breadcrumb
+  // /docs links stay as-is because registry consumers may legitimately mount
+  // their docs at /docs in their own next.config.
+}
 
 // Import transform map. Each @workspace/* prefix maps to a local @/* path.
 // When a contributor adds a new @workspace/* import to apps/web, they must
@@ -241,7 +325,8 @@ function validateNoWorkspaceImportsRemain(rootDir, label) {
 
 function copyAppsWebFileToTemplates(relativePath) {
   const src = join(APPS_WEB, relativePath)
-  const dest = join(TEMPLATES, relativePath)
+  const destRelative = PATH_REMAPS[relativePath] || relativePath
+  const dest = join(TEMPLATES, destRelative)
 
   if (!isTextFile(relativePath.split("/").pop())) {
     mkdirSync(dirname(dest), { recursive: true })
@@ -255,6 +340,10 @@ function copyAppsWebFileToTemplates(relativePath) {
   }
   if (relativePath === "app/layout.tsx") {
     content = injectMetadata(content)
+  }
+  const contentTransform = TEMPLATES_CONTENT_TRANSFORMS[relativePath]
+  if (contentTransform) {
+    content = contentTransform(content)
   }
   writeFile(dest, content)
 }
@@ -353,8 +442,19 @@ function generateTemplatesTsConfig() {
 }
 
 function generateTemplatesNextConfig() {
+  // 308 /docs → / so breadcrumb links inherited from apps/web (which has
+  // docs at /docs because apex is marketing) keep working in scaffolded
+  // projects (where docs is at /). Cheaper than rewriting every "/docs"
+  // string in the synced source files.
   const content = `/** @type {import('next').NextConfig} */
-const nextConfig = {}
+const nextConfig = {
+  async redirects() {
+    return [
+      { source: "/docs", destination: "/", permanent: true },
+      { source: "/docs/:path*", destination: "/:path*", permanent: true },
+    ]
+  },
+}
 
 export default nextConfig
 `
@@ -603,7 +703,8 @@ function syncTemplates() {
  */
 function copyAppsWebFileToRegistry(relativePath, { srcRelativePath } = {}) {
   const src = join(APPS_WEB, srcRelativePath || relativePath)
-  const dest = join(REGISTRY, relativePath)
+  const destRelative = PATH_REMAPS[relativePath] || relativePath
+  const dest = join(REGISTRY, destRelative)
 
   if (!isTextFile(relativePath.split("/").pop())) {
     mkdirSync(dirname(dest), { recursive: true })
@@ -614,6 +715,11 @@ function copyAppsWebFileToRegistry(relativePath, { srcRelativePath } = {}) {
   let content = readFileSync(src, "utf-8")
   if (relativePath.endsWith(".ts") || relativePath.endsWith(".tsx")) {
     content = transformImports(content)
+  }
+  const contentTransform =
+    REGISTRY_CONTENT_TRANSFORMS[srcRelativePath || relativePath]
+  if (contentTransform) {
+    content = contentTransform(content)
   }
   writeFile(dest, content)
 }

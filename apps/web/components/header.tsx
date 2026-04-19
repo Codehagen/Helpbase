@@ -1,160 +1,283 @@
-"use client"
+'use client'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import React from 'react'
+import { useScroll, useMotionValueEvent } from 'motion/react'
+import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from '@/components/ui/navigation-menu'
+import { Menu, X, ArrowRight } from 'lucide-react'
+import { useMedia } from '@/hooks/use-media'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { cn } from '@workspace/ui/lib/utils'
 
-import Link from "next/link"
-import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
-
-function SearchTrigger() {
-  return (
-    <button
-      type="button"
-      className="group flex h-9 w-full max-w-sm items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition-[border-color,background-color] duration-150 ease hover:border-foreground/20 hover:bg-muted/60 sm:w-64"
-      onClick={() => {
-        window.dispatchEvent(
-          new KeyboardEvent("keydown", {
-            key: "k",
-            metaKey: true,
-            bubbles: true,
-          })
-        )
-      }}
-    >
-      <SearchIcon className="size-4 shrink-0 opacity-50" />
-      <span className="flex-1 text-left">Search articles...</span>
-      <kbd className="pointer-events-none hidden h-5 items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:flex">
-        <span className="text-xs">&#8984;</span>K
-      </kbd>
-    </button>
-  )
+interface FeatureLink {
+    href: string
+    name: string
+    description?: string
 }
 
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => setMounted(true), [])
-
-  return (
-    <button
-      type="button"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      aria-label="Toggle theme"
-    >
-      {mounted ? (
-        resolvedTheme === "dark" ? (
-          <SunIcon className="size-4" />
-        ) : (
-          <MoonIcon className="size-4" />
-        )
-      ) : (
-        <div className="size-4" />
-      )}
-    </button>
-  )
+interface MobileLink {
+    groupName?: string
+    links?: FeatureLink[]
+    name?: string
+    href?: string
 }
 
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
-  )
-}
+const features: FeatureLink[] = [
+    {
+        href: '#automation',
+        name: 'Automation',
+        description: 'Automate your workflow',
+    },
+    {
+        href: '#scalability',
+        name: 'Scalability',
+        description: 'Scale your application effortlessly',
+    },
+    {
+        href: '#backup',
+        name: 'Backup',
+        description: 'Keep your data backed up',
+    },
+    {
+        href: '#analytics',
+        name: 'Analytics',
+        description: 'Track and measure your progress',
+    },
+]
 
-function SunIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2" />
-      <path d="M12 20v2" />
-      <path d="m4.93 4.93 1.41 1.41" />
-      <path d="m17.66 17.66 1.41 1.41" />
-      <path d="M2 12h2" />
-      <path d="M20 12h2" />
-      <path d="m6.34 17.66-1.41 1.41" />
-      <path d="m19.07 4.93-1.41 1.41" />
-    </svg>
-  )
-}
+const useCases: FeatureLink[] = [
+    {
+        href: '#ux',
+        name: 'Marketplace',
+        description: 'Find and buy AI tools',
+    },
+    {
+        href: '#performance',
+        name: 'Guides',
+        description: 'Learn how to use AI tools',
+    },
+    {
+        href: '#security',
+        name: 'API Integration',
+        description: 'Integrate AI tools into your app',
+    },
+    {
+        href: '#support',
+        name: 'Partnerships',
+        description: 'Get help when you need it',
+    },
+]
 
-function MoonIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-    </svg>
-  )
-}
+const contentLinks: FeatureLink[] = [
+    {
+        name: 'Announcements',
+        href: '#link',
+    },
+    {
+        name: 'Resources',
+        href: '#link',
+    },
+    { name: 'Blog', href: '#link' },
+]
 
-function GitHubIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-    >
-      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-    </svg>
-  )
-}
+const mobileLinks: MobileLink[] = [
+    {
+        groupName: 'Product',
+        links: features,
+    },
+    {
+        groupName: 'Solutions',
+        links: [...useCases, ...contentLinks],
+    },
+    { name: 'Pricing', href: '#' },
+    { name: 'Company', href: '#' },
+]
 
 export function Header() {
-  return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-6">
-        {/* Logo */}
-        <Link href="/" className="font-semibold tracking-tight">
-          helpbase
-        </Link>
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+    const [isScrolled, setIsScrolled] = React.useState(false)
+    const isLarge = useMedia('(min-width: 64rem)')
 
-        {/* Search */}
-        <div className="flex flex-1 justify-center px-4">
-          <SearchTrigger />
-        </div>
+    const { scrollY } = useScroll()
 
-        {/* Right side */}
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-          <a
-            href="https://github.com/Codehagen/helpbase"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="GitHub"
-          >
-            <GitHubIcon className="size-4" />
-          </a>
-        </div>
-      </div>
-    </header>
-  )
+    useMotionValueEvent(scrollY, 'change', (latest) => {
+        setIsScrolled(latest > 5)
+    })
+
+    return (
+        <header
+            role="banner"
+            data-state={isMobileMenuOpen ? 'active' : 'inactive'}
+            {...(isScrolled && { 'data-scrolled': true })}>
+            <div className={cn('in-data-scrolled:bg-background fixed inset-x-0 top-0 z-50 border-b', !isLarge && 'h-14 overflow-hidden border-b', isMobileMenuOpen && 'bg-background h-screen')}>
+                <div className="mx-auto max-w-5xl px-6">
+                    <div className="relative flex flex-wrap items-center justify-between lg:py-3">
+                        <div className="flex justify-between gap-8 max-lg:h-14 max-lg:w-full max-lg:border-b">
+                            <Link
+                                href="/"
+                                aria-label="helpbase home"
+                                className="flex items-center text-lg font-semibold tracking-tight text-foreground">
+                                helpbase
+                            </Link>
+
+                            {isLarge && (
+                                <div className="absolute inset-0 m-auto size-fit">
+                                    <NavMenu />{' '}
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                aria-label={isMobileMenuOpen == true ? 'Close Menu' : 'Open Menu'}
+                                className="relative z-20 -m-2.5 -mr-3 block cursor-pointer p-2.5 lg:hidden">
+                                <Menu className="in-data-[state=active]:rotate-180 in-data-[state=active]:scale-0 in-data-[state=active]:opacity-0 m-auto size-5 duration-200" />
+                                <X className="in-data-[state=active]:rotate-0 in-data-[state=active]:scale-100 in-data-[state=active]:opacity-100 absolute inset-0 m-auto size-5 -rotate-180 scale-0 opacity-0 duration-200" />
+                            </button>
+                        </div>
+
+                        {!isLarge && isMobileMenuOpen && <MobileMenu closeMenu={() => setIsMobileMenuOpen(false)} />}
+
+                        <div className="max-lg:in-data-[state=active]:mt-6 in-data-[state=active]:flex mb-6 hidden w-full flex-wrap items-center justify-end space-y-8 md:flex-nowrap lg:m-0 lg:flex lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none dark:shadow-none dark:lg:bg-transparent">
+                            <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
+                                <Button
+                                    asChild
+                                    variant="ghost"
+                                    className="rounded-full pr-2.5">
+                                    <Link href="#">
+                                        <span>Continue</span>
+                                        <span className="*:size-3! shadow-xs bg-card ring-border text-primary flex size-5 rounded-full ring-1 *:m-auto">
+                                            <ArrowRight className="size-4" />
+                                        </span>
+                                    </Link>
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+    )
+}
+
+const MobileMenu = ({ closeMenu }: { closeMenu: () => void }) => {
+    return (
+        <nav
+            role="navigation"
+            className="w-full">
+            <Accordion
+                type="single"
+                collapsible
+                className="**:hover:no-underline -mx-4 mt-0.5 space-y-0.5">
+                {mobileLinks.map((link, index) => {
+                    if (link.groupName && link.links) {
+                        return (
+                            <AccordionItem
+                                key={index}
+                                value={link.groupName}
+                                className="group relative border-b-0 before:pointer-events-none before:absolute before:inset-x-4 before:bottom-0 before:border-b">
+                                <AccordionTrigger className="**:!font-normal data-[state=open]:bg-foreground/5 flex items-center justify-between px-4 py-3 text-lg">{link.groupName}</AccordionTrigger>
+                                <AccordionContent className="pb-5">
+                                    <ul>
+                                        {link.links.map((feature, featureIndex) => (
+                                            <li key={featureIndex}>
+                                                <Link
+                                                    href={feature.href}
+                                                    onClick={closeMenu}
+                                                    className="block px-4 py-3 text-lg">
+                                                    {feature.name}
+                                                </Link>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )
+                    }
+                    return null
+                })}
+            </Accordion>
+            {mobileLinks.map((link, index) => {
+                if (link.name && link.href) {
+                    return (
+                        <Link
+                            key={index}
+                            href={link.href}
+                            onClick={closeMenu}
+                            className="group relative block border-0 border-b py-4 text-lg">
+                            {link.name}
+                        </Link>
+                    )
+                }
+                return null
+            })}
+        </nav>
+    )
+}
+
+const NavMenu = () => {
+    return (
+        <NavigationMenu viewport={false}>
+            <NavigationMenuList className="gap-3">
+                <NavigationMenuItem>
+                    <NavigationMenuTrigger>Product</NavigationMenuTrigger>
+                    <NavigationMenuContent className="min-w-xl rounded-3xl! shadow-black/5! mx-auto grid max-w-xl grid-cols-2 divide-x p-1">
+                        <div className="p-3">
+                            <span className="text-muted-foreground ml-4 text-xs font-medium">Features</span>
+                            <ul className="mt-2">
+                                {features.map((feature, index) => (
+                                    <ListItem
+                                        key={index}
+                                        href={feature.href}
+                                        title={feature.name}
+                                        description={feature.description}
+                                    />
+                                ))}
+                            </ul>
+                        </div>
+                        <div className="p-3">
+                            <span className="text-muted-foreground ml-4 text-xs font-medium">Agents Workflow</span>
+                            <ul className="mt-2">
+                                {useCases.map((useCase, index) => (
+                                    <ListItem
+                                        key={index}
+                                        href={useCase.href}
+                                        title={useCase.name}
+                                        description={useCase.description}
+                                    />
+                                ))}
+                            </ul>
+                        </div>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuLink
+                        asChild
+                        className={navigationMenuTriggerStyle()}>
+                        <Link href="#">Pricing</Link>
+                    </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuLink
+                        asChild
+                        className={navigationMenuTriggerStyle()}>
+                        <Link href="#">Company</Link>
+                    </NavigationMenuLink>
+                </NavigationMenuItem>
+            </NavigationMenuList>
+        </NavigationMenu>
+    )
+}
+
+function ListItem({ title, description, href, ...props }: React.ComponentPropsWithoutRef<'li'> & { href: string; title: string; description?: string }) {
+    return (
+        <li {...props}>
+            <NavigationMenuLink asChild>
+                <Link
+                    href={href}
+                    className="gap-0 px-4">
+                    <div className="text-foreground text-sm font-medium">{title}</div>
+                    <p className="text-muted-foreground line-clamp-1 text-sm">{description}</p>
+                </Link>
+            </NavigationMenuLink>
+        </li>
+    )
 }

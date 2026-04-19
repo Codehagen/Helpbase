@@ -7,7 +7,7 @@ export function Footer() {
         <p>
           Built with{" "}
           <Link
-            href="/"
+            href="/docs"
             className="font-medium text-foreground underline-offset-4 hover:underline"
           >
             helpbase

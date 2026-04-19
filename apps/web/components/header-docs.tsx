@@ -127,7 +127,7 @@ function GitHubIcon({ className }: { className?: string }) {
   )
 }
 
-export function Header() {
+export function HeaderDocs() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-6">

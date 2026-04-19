@@ -52,7 +52,7 @@ export default async function ArticlePage({
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
           <Link href="/" className="transition-colors hover:text-foreground">
-            Home
+            Docs
           </Link>
           <ChevronIcon />
           <Link

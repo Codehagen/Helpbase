@@ -23,7 +23,7 @@ export default async function CategoryPage({
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
         <Link href="/" className="transition-colors hover:text-foreground">
-          Home
+          Docs
         </Link>
         <ChevronIcon />
         <span className="text-foreground">{category.title}</span>

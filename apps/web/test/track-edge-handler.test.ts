@@ -115,19 +115,38 @@ describe("handleTrack — session_hash + insert shape", () => {
     expect(client.insert.mock.calls[0][0].session_hash).toBe(expected)
   })
 
-  it("uses cf-connecting-ip when x-forwarded-for is absent", async () => {
+  it("prefers cf-connecting-ip over x-forwarded-for (anti-spoof)", async () => {
     const client = makeClient()
     const frozen = new Date("2026-04-19T00:00:00Z")
     const req = new Request("https://example.com/functions/v1/track", {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        // x-forwarded-for is client-spoofable, cf-connecting-ip is not.
+        // When both are present, cf-connecting-ip wins.
+        "x-forwarded-for": "1.2.3.4",
         "cf-connecting-ip": "198.51.100.42",
       },
       body: JSON.stringify({ event: "page_view" }),
     })
     await handleTrack(req, { client, now: () => frozen })
     const expected = await sha256Hex("198.51.100.42|unknown|2026-04-19")
+    expect(client.insert.mock.calls[0][0].session_hash).toBe(expected)
+  })
+
+  it("falls back to x-forwarded-for when cf-connecting-ip is absent", async () => {
+    const client = makeClient()
+    const frozen = new Date("2026-04-19T00:00:00Z")
+    const req = new Request("https://example.com/functions/v1/track", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": "192.0.2.17, 10.0.0.1",
+      },
+      body: JSON.stringify({ event: "page_view" }),
+    })
+    await handleTrack(req, { client, now: () => frozen })
+    const expected = await sha256Hex("192.0.2.17|unknown|2026-04-19")
     expect(client.insert.mock.calls[0][0].session_hash).toBe(expected)
   })
 

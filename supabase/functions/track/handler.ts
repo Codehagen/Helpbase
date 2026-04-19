@@ -85,9 +85,12 @@ export async function handleTrack(
   const metadataTrimmed: Record<string, unknown> =
     metadataSerialized.length > 2048 ? {} : metadata
 
+  // Prefer cf-connecting-ip: Cloudflare sets it as the authoritative real IP,
+  // unforgeable by clients. x-forwarded-for is client-spoofable, so we only
+  // fall back to it when the Cloudflare header is absent (local dev, tests).
   const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("cf-connecting-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     "unknown"
   const ua = req.headers.get("user-agent") ?? "unknown"
   const day = (deps.now?.() ?? new Date()).toISOString().slice(0, 10)

@@ -16,7 +16,14 @@ const nextConfig = {
       // Tailark block illustrations reference these public assets.
       // Keep the allowlist explicit; do not switch to wildcards.
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
-      { protocol: "https", hostname: "res.cloudinary.com" },
+      // Scope Cloudinary to the Tailark cloud account only. Without a
+      // pathname constraint, any Cloudinary account's images could be
+      // proxied through /_next/image — moderate SSRF-lite + quota abuse.
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/dohqjvu9k/**",
+      },
     ],
   },
   // 301 stale `/landing` URLs back to `/` on apex/non-tenant hosts only.

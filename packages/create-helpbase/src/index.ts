@@ -190,11 +190,18 @@ async function run(directory: string | undefined, opts: RunOptions) {
   //    subdomain reservation is orthogonal and still valuable. Declining
   //    ("Not now") lets them proceed; they just won't have a hosted
   //    target until they run `helpbase login` later.
-  let authToken = readHelpbaseAuthToken()
+  // `authToken` is the token threaded into AI generation calls. Prefer
+  // the on-disk session, fall back to HELPBASE_TOKEN so CI/non-interactive
+  // runs that pre-issue the env var get a working AI path without the
+  // interactive login. Without this, the env-var user would skip the
+  // prompt (good) but AI gen would still fail MissingApiKey because the
+  // env var was never passed to `generateArticlesFromContent` /
+  // `generateFromRepo`.
+  let authToken =
+    readHelpbaseAuthToken() || process.env.HELPBASE_TOKEN?.trim() || undefined
   if (
     isInteractive &&
-    !authToken &&
-    !process.env.HELPBASE_TOKEN?.trim()
+    !authToken
   ) {
     const wantsLogin = await confirm({
       message:
@@ -286,6 +293,7 @@ async function run(directory: string | undefined, opts: RunOptions) {
       projectDir,
       url: source.url,
       model: resolveModel({ test: opts.test, modelOverride: opts.model }),
+      authToken,
       spinner: s,
     })
   } else if (source.kind === "repo") {
@@ -425,8 +433,17 @@ async function run(directory: string | undefined, opts: RunOptions) {
   // login prompt (or ran non-interactively without HELPBASE_TOKEN),
   // lead with `helpbase login` so the path to a subdomain is visible
   // at the end of the run. Logged-in users skip the redundant hint.
+  //
+  // Re-read the token file here rather than trusting the `authToken`
+  // variable — it may be stale if the user declined step 1 but later
+  // logged in via the ship-it-now path (which spawns `helpbase login`
+  // in a subprocess and writes the token file from there). Avoiding a
+  // redundant "run `helpbase login`" hint for someone who just did is
+  // the whole point.
   const loggedIn =
-    !!authToken || !!process.env.HELPBASE_TOKEN?.trim()
+    !!authToken ||
+    !!readHelpbaseAuthToken() ||
+    !!process.env.HELPBASE_TOKEN?.trim()
   const nextLines: string[] = []
   if (!loggedIn) {
     nextLines.push(
@@ -650,9 +667,10 @@ async function runUrlGeneration(opts: {
   projectDir: string
   url: string
   model: string
+  authToken?: string
   spinner: ReturnType<typeof spinner>
 }): Promise<boolean> {
-  const { projectDir, url, model, spinner: s } = opts
+  const { projectDir, url, model, authToken, spinner: s } = opts
   try {
     s.start(`Scraping ${pc.cyan(url)}...`)
     const content = await scrapeUrl(url)
@@ -663,7 +681,10 @@ async function runUrlGeneration(opts: {
       content,
       sourceUrl: url,
       model,
-      authToken: readHelpbaseAuthToken(),
+      // Use the token threaded from run() — honors HELPBASE_TOKEN env var
+      // for CI callers AND the step-1 login path. Re-reading disk here
+      // would miss the env-var case entirely.
+      authToken,
     })
     s.stop(`Synthesized ${articles.length} article${articles.length === 1 ? "" : "s"}.`)
 

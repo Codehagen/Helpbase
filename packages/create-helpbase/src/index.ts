@@ -982,7 +982,13 @@ async function runHelpbaseDeploy(projectDir: string): Promise<DeployOutcome> {
     const child = spawn(cmd, args, {
       stdio: ["inherit", "pipe", "pipe"],
       cwd: projectDir,
-      env: process.env,
+      // HELPBASE_INLINE=1 tells the spawned subcommand it's running inside
+      // create-helpbase's flow. Today this only matters for `helpbase login`
+      // (suppresses its trailing outro+nextSteps so the scaffolder owns the
+      // final "What next" panel). Setting it unconditionally for deploy too
+      // is forward-compatible: any future inline-aware behavior in deploy
+      // will Just Work without revisiting this call site.
+      env: { ...process.env, HELPBASE_INLINE: "1" },
     })
     child.stdout?.on("data", (chunk: Buffer) => {
       process.stdout.write(chunk)
@@ -1035,7 +1041,14 @@ async function runHelpbaseLogin(): Promise<"ok" | "failed"> {
   return new Promise<"ok" | "failed">((resolve) => {
     const child = spawn(cmd, args, {
       stdio: "inherit",
-      env: process.env,
+      // HELPBASE_INLINE=1 makes `helpbase login` skip its trailing outro +
+      // "Next: helpbase deploy · rename · whoami" panel when we spawn it
+      // inside the scaffold flow. Without this, the user sees TWO competing
+      // next-steps boxes within seconds: login's, then create-helpbase's
+      // own "What next" with overlapping commands. The reservation note
+      // (the magical moment) still prints — only the redundant tail is
+      // suppressed.
+      env: { ...process.env, HELPBASE_INLINE: "1" },
     })
     child.on("exit", (code) => resolve(code === 0 ? "ok" : "failed"))
     child.on("error", () => resolve("failed"))

@@ -14,6 +14,7 @@ import { syncCommand } from "./commands/sync.js"
 import { mcpCommand } from "./commands/mcp.js"
 import { auditCommand } from "./commands/audit.js"
 import { newCommand } from "./commands/new.js"
+import { addCommand } from "./commands/add.js"
 import { deployCommand } from "./commands/deploy.js"
 import { loginCommand } from "./commands/login.js"
 import { logoutCommand } from "./commands/logout.js"
@@ -87,6 +88,7 @@ program.addCommand(syncCommand)
 program.addCommand(mcpCommand)
 program.addCommand(auditCommand)
 program.addCommand(newCommand)
+program.addCommand(addCommand)
 program.addCommand(deployCommand)
 program.addCommand(loginCommand)
 program.addCommand(logoutCommand)

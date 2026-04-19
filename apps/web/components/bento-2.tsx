@@ -1,4 +1,3 @@
-import { CurrencyIllustration } from "@/components/ui/illustrations/currency-illustration"
 import { ReplyIllustration } from "@/components/ui/illustrations/reply-illustration"
 import { NotificationIllustration } from "@/components/ui/illustrations/notification-illustration"
 import { Card } from '@/components/ui/card'
@@ -38,9 +37,9 @@ export default function AiNativeBento() {
                         </div>
                     </Card>
                     <Card className="@3xl:col-span-2 grid grid-rows-[1fr_auto] gap-y-12 overflow-hidden rounded-2xl p-8">
-                        <div className="relative -m-8 p-8">
+                        <div className="relative -m-8 flex items-center justify-center p-8">
                             <Stripes />
-                            <CurrencyIllustration />
+                            <LlmsTxtPreview />
                         </div>
                         <div>
                             <h3 className="text-foreground font-semibold">llms.txt out of the box</h3>
@@ -94,4 +93,23 @@ const Stripes = () => (
         aria-hidden
         className="opacity-3 absolute -inset-x-6 inset-y-0 bg-[repeating-linear-gradient(-45deg,var(--color-foreground),var(--color-foreground)_1px,transparent_1px,transparent_6px)] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"
     />
+)
+
+// Replaces CurrencyIllustration in the llms.txt card. Showing the actual
+// manifest is more informative than a pictogram for a docs tool — Vegard
+// sees exactly what he'll get at /llms.txt.
+const LlmsTxtPreview = () => (
+    <div className="ring-border bg-card relative z-10 w-full max-w-sm rounded-xl border border-transparent p-4 font-mono text-xs ring-1">
+        <div className="text-muted-foreground mb-2 text-[0.65rem] uppercase tracking-wider">llms.txt</div>
+        <div className="space-y-1">
+            <div className="text-foreground"># Your Product docs</div>
+            <div className="text-muted-foreground">Docs: https://docs.yourco.com</div>
+            <div className="text-muted-foreground">MCP: https://docs.yourco.com/api/mcp</div>
+            <div className="text-foreground mt-2">## Articles</div>
+            <div className="text-muted-foreground">- getting-started</div>
+            <div className="text-muted-foreground">- authentication</div>
+            <div className="text-muted-foreground">- webhooks</div>
+            <div className="text-muted-foreground">- rate-limits</div>
+        </div>
+    </div>
 )

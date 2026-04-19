@@ -1,8 +1,8 @@
-import { ReplyIllustration } from "@/components/ui/illustrations/reply-illustration"
+import { AgentTasksIllustration } from "@/components/illustrations/agent-tasks"
 import { ModelsIllustration } from "@/components/illustrations/models"
 import { Card } from '@/components/ui/card'
-import { MapIllustration } from "@/components/ui/illustrations/map-illustration"
-import { VisualizationIllustration } from "@/components/ui/illustrations/visualization-illustration"
+import { UptimeIllustration } from "@/components/illustrations/uptime"
+import { DocumentAnalysisIllustration } from "@/components/illustrations/document-analysis"
 
 export default function AiNativeBento() {
     return (
@@ -46,9 +46,9 @@ export default function AiNativeBento() {
                         </div>
                     </Card>
                     <Card className="@xl:col-span-2 grid grid-rows-[1fr_auto] gap-y-12 overflow-hidden rounded-2xl p-8">
-                        <div className="relative -m-8 p-8">
+                        <div className="relative -m-8 flex items-center justify-center p-8">
                             <Stripes />
-                            <ReplyIllustration className="relative mt-0 w-full" />
+                            <AgentTasksIllustration />
                         </div>
                         <div>
                             <h3 className="text-foreground text-lg font-semibold">Structured agent output</h3>
@@ -58,8 +58,8 @@ export default function AiNativeBento() {
                         </div>
                     </Card>
                     <Card className="@xl:col-span-2 @3xl:col-span-3 grid grid-rows-[1fr_auto] gap-8 rounded-2xl p-8">
-                        <div className="-m-8 p-8">
-                            <VisualizationIllustration />
+                        <div className="-m-8 flex items-center justify-center p-8">
+                            <DocumentAnalysisIllustration />
                         </div>
                         <div>
                             <h3 className="text-foreground text-lg font-semibold">Docs that stay in sync with code</h3>
@@ -69,8 +69,8 @@ export default function AiNativeBento() {
                         </div>
                     </Card>
                     <Card className="@xl:col-span-2 @3xl:col-span-3 grid grid-rows-[1fr_auto] gap-8 rounded-2xl p-8">
-                        <div className="relative -mx-8 [--color-background:transparent] [mask-image:radial-gradient(ellipse_50%_45%_at_50%_50%,#000_70%,transparent_100%)]">
-                            <MapIllustration />
+                        <div className="-m-8 flex items-center justify-center p-8">
+                            <UptimeIllustration />
                         </div>
                         <div>
                             <h3 className="text-foreground text-lg font-semibold">Hosted tier, if you want it</h3>

@@ -1,5 +1,5 @@
 import { FlowIllustration } from "@/components/illustrations/flow"
-import { DocumentIllustation } from "@/components/ui/illustrations/document-illustration"
+import { DocumentMdIllustration } from "@/components/illustrations/document-md"
 
 export default function FeaturesOwnIt() {
     return (
@@ -26,7 +26,7 @@ export default function FeaturesOwnIt() {
                             </p>
                         </div>
                         <div className="self-end pb-4">
-                            <DocumentIllustation />
+                            <DocumentMdIllustration />
                         </div>
                     </div>
                     <div className="row-span-2 grid grid-rows-subgrid gap-8">

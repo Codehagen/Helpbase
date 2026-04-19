@@ -20,19 +20,6 @@ export function Hero() {
       aria-labelledby="hero-heading"
       className="selection:bg-primary-foreground selection:text-primary relative">
       <div className="pt-15">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 mx-auto max-w-6xl border-x"
-        />
-        <div
-          aria-hidden
-          className="top-15 corner-bevel max-w-332 pointer-events-none absolute inset-0 inset-x-0 z-10 mx-auto rounded-t-[2rem] border-x border-t"
-        />
-        <div
-          aria-hidden
-          className="max-w-316 h-15 pointer-events-none absolute inset-0 inset-x-0 z-10 mx-auto border-x"
-        />
-
         {/* Announcement pill */}
         <div className="flex justify-center">
           <div className="relative flex flex-wrap items-center justify-center gap-3 p-4">

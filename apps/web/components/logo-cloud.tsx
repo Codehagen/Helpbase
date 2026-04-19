@@ -1,5 +1,3 @@
-'use client'
-import { GeminiFull } from '@/components/ui/svgs/gemini'
 import { Beacon } from '@/components/ui/svgs/beacon'
 import { Bolt } from '@/components/ui/svgs/bolt'
 import { Cisco } from '@/components/ui/svgs/cisco'
@@ -7,198 +5,82 @@ import { Hulu } from '@/components/ui/svgs/hulu'
 import { OpenAIFull } from '@/components/ui/svgs/open-ai'
 import { Primevideo } from '@/components/ui/svgs/prime'
 import { Stripe } from '@/components/ui/svgs/stripe'
-import { Supabase } from '@/components/ui/svgs/supabase'
-import { Polars } from '@/components/ui/svgs/polars'
-import { AnimatePresence, motion } from 'motion/react'
-import React, { useEffect, useState } from 'react'
-import { Cloudflare } from '@/components/ui/svgs/cloudflare'
-import { VercelFull } from '@/components/ui/svgs/vercel'
-import { Spotify } from '@/components/ui/svgs/spotify'
-import { PayPal } from '@/components/ui/svgs/paypal'
-import { LeapWallet } from '@/components/ui/svgs/leap-wallet'
-import { Linear } from '@/components/ui/svgs/linear'
-import { Slack } from '@/components/ui/svgs/slack'
-import { Twilio } from '@/components/ui/svgs/twilio'
-import { cn } from '@workspace/ui/lib/utils'
+import { VisualStudioCode } from '@/components/ui/svgs/vs-code'
+import { InfiniteSlider } from '@/components/ui/infinite-slider'
+import { Button } from '@/components/ui/button'
+import { ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 
-const aiLogos: React.ReactNode[] = [
-    <OpenAIFull
-        key="openai"
-        height={24}
-    />,
-    <Bolt
-        key="bolt"
-        height={20}
-    />,
-    <GeminiFull
-        key="gemini"
-        height={24}
-        className="-translate-y-0.5"
-    />,
-]
-
-const hostingLogos: React.ReactNode[] = [
-    <Supabase
-        key="supabase"
-        height={24}
-    />,
-    <Cloudflare
-        key="cloudflare"
-        height={24}
-    />,
-    <VercelFull
-        key="vercel"
-        height={20}
-    />,
-]
-
-const paymentsLogos: React.ReactNode[] = [
-    <Stripe
-        key="stripe"
-        height={24}
-    />,
-    <PayPal
-        key="paypal"
-        height={24}
-    />,
-    <LeapWallet
-        key="leapwallet"
-        height={24}
-    />,
-]
-
-const streamingLogos: React.ReactNode[] = [
-    <Primevideo
-        key="primevideo"
-        height={28}
-    />,
-    <Hulu
-        key="hulu"
-        height={22}
-    />,
-    <Spotify
-        key="spotify"
-        height={24}
-    />,
-]
-
-const otherLogos: React.ReactNode[] = [
-    <Cisco
-        key="cisco"
-        height={32}
-    />,
-    <Beacon
-        key="beacon"
-        height={20}
-    />,
-    <Polars
-        key="polars"
-        height={24}
-    />,
-]
-
-const toolsLogos: React.ReactNode[] = [
-    <Linear
-        key="linear"
-        height={24}
-    />,
-    <Slack
-        key="slack"
-        height={24}
-    />,
-    <Twilio
-        key="twilio"
-        height={24}
-    />,
-]
-
-const logoGroups = [aiLogos, hostingLogos, paymentsLogos, streamingLogos, otherLogos, toolsLogos]
-
-export function LogoCloud() {
-    const [logoIndices, setLogoIndices] = useState([0, 0, 0, 0, 0, 0])
-
-    useEffect(() => {
-        let wrapperIndex = 0
-        const interval = setInterval(() => {
-            setLogoIndices((prev) => {
-                const groupLogos = logoGroups[wrapperIndex]
-                if (!groupLogos) return prev
-                const newIndices = [...prev]
-                newIndices[wrapperIndex] = ((newIndices[wrapperIndex] ?? 0) + 1) % groupLogos.length
-                return newIndices
-            })
-            wrapperIndex = (wrapperIndex + 1) % logoGroups.length
-        }, 2000)
-
-        return () => clearInterval(interval)
-    }, [])
-
+export default function LogoCloud() {
     return (
-        <section className="bg-background">
-            <div className="relative mx-auto max-w-6xl px-6 py-16">
-                <div
-                    aria-hidden
-                    className="*:corner-bevel absolute inset-0 grid grid-cols-3 gap-px *:border-x *:via-transparent *:first:border-l-0 *:last:rounded-r-[2rem] *:last:border-r-0 md:grid-cols-6">
-                    <div />
-                    <div className="max-md:hidden" />
-                    <div className="max-md:hidden" />
-                    <div className="max-md:hidden" />
-                    <div />
-                    <div />
-                </div>
-                <div className="grid grid-cols-3 gap-y-6 md:grid-cols-6">
-                    <LogoWrapper
-                        logos={aiLogos}
-                        group="ai"
-                        logoIndex={logoIndices[1]}
-                    />
-                    <LogoWrapper
-                        logos={hostingLogos}
-                        group="hosting"
-                        logoIndex={logoIndices[3]}
-                    />
-                    <LogoWrapper
-                        logos={paymentsLogos}
-                        group="payments"
-                        logoIndex={logoIndices[0]}
-                    />
-                    <LogoWrapper
-                        logos={streamingLogos}
-                        group="streaming"
-                        logoIndex={logoIndices[4]}
-                    />
-                    <LogoWrapper
-                        logos={otherLogos}
-                        group="other"
-                        logoIndex={logoIndices[2]}
-                    />
-                    <LogoWrapper
-                        logos={toolsLogos}
-                        group="tools"
-                        logoIndex={logoIndices[5]}
-                    />
+        <section className="overflow-hidden py-16">
+            <div className="group relative m-auto max-w-5xl px-6">
+                <div className="text-center">
+                    <div className="mx-auto max-w-xl text-balance">
+                        <h2 className="text-4xl font-semibold">You're in good company</h2>
+                        <p className="text-muted-foreground mt-4 text-lg">Tailark is trusted by innovative companies worldwide to deliver exceptional products and services that drive business growth.</p>
+                    </div>
+
+                    <div className="mask-x-from-90% relative py-12">
+                        <div
+                            aria-hidden
+                            className="mask-r-from-50% backdrop-grayscale-200 absolute inset-y-0 left-0 z-10 w-16"
+                        />
+                        <div
+                            aria-hidden
+                            className="mask-l-from-50% backdrop-grayscale-200 absolute inset-y-0 right-0 z-10 w-16"
+                        />
+                        <InfiniteSlider
+                            speedOnHover={20}
+                            speed={40}
+                            className="*:gap-12! md:*:gap-24! lg:*:gap-32! items-center">
+                            <Hulu
+                                height={24}
+                                width="auto"
+                            />
+                            <Beacon
+                                height={24}
+                                width="auto"
+                            />
+                            <Cisco
+                                height={24}
+                                width="auto"
+                            />
+                            <Primevideo
+                                height={32}
+                                width="auto"
+                            />
+                            <Stripe
+                                height={24}
+                                width="auto"
+                            />
+                            <OpenAIFull
+                                height={24}
+                                width="auto"
+                            />
+                            <VisualStudioCode
+                                height={24}
+                                width="auto"
+                            />
+
+                            <Bolt
+                                height={24}
+                                width="auto"
+                            />
+                        </InfiniteSlider>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="pr-2">
+                        <Link href="#">
+                            Read customer stories
+                            <ChevronRight className="size-3.5!" />
+                        </Link>
+                    </Button>
                 </div>
             </div>
         </section>
-    )
-}
-
-const LogoWrapper = ({ logos, group, logoIndex = 0, className }: { logos: React.ReactNode[]; group?: string; logoIndex?: number; className?: string }) => {
-    return (
-        <div className={cn('relative h-10', className)}>
-            <AnimatePresence
-                mode="popLayout"
-                initial={false}>
-                <motion.div
-                    key={`${group}-${logoIndex}`}
-                    initial={{ opacity: 0, scale: 0.75, y: -24, filter: 'blur(6px)' }}
-                    animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, scale: 0.75, y: 24, filter: 'blur(6px)' }}
-                    transition={{ duration: 0.5 }}
-                    className="**:fill-foreground/75! absolute inset-0 flex *:m-auto">
-                    {logos[logoIndex]}
-                </motion.div>
-            </AnimatePresence>
-        </div>
     )
 }

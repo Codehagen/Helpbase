@@ -91,15 +91,15 @@ const program = new Command()
   .option("--model <id>", "Override the AI model ID")
   .option(
     "--internal",
-    "Scaffold an internal-KB layout (handbook + runbooks + ADRs, auth-ready MCP via HELPBASE_MCP_TOKEN)",
+    "Use the internal-KB layout (handbook + runbooks + ADRs, auth-ready MCP via HELPBASE_MCP_TOKEN)",
   )
   .option(
     "--deploy",
-    "Ship to helpbase cloud immediately after scaffold (skip the prompt, assume yes)",
+    "Publish to helpbase cloud immediately after creation (skip the prompt, assume yes)",
   )
   .option(
     "--no-deploy",
-    "Skip the ship-it-now prompt (scaffold only, keep today's behavior)",
+    "Skip the ship-it-now prompt (create only, don't publish)",
   )
   .action(run)
 
@@ -216,7 +216,7 @@ async function run(directory: string | undefined, opts: RunOptions) {
       const loginResult = await runHelpbaseLogin()
       if (loginResult === "failed") {
         note(
-          `Couldn't complete login. You can still scaffold + use sample content. Run ${pc.cyan("npx helpbase@latest login")} later to claim a subdomain.`,
+          `Couldn't complete login. You can still create the project + use sample content. Run ${pc.cyan("npx helpbase@latest login")} later to claim a subdomain.`,
           "Login skipped",
         )
       } else {
@@ -257,7 +257,7 @@ async function run(directory: string | undefined, opts: RunOptions) {
     internal: opts.internal,
   })
 
-  s.stop("Project scaffolded!")
+  s.stop("Help center ready!")
 
   // 5. Kick off `pnpm install` in the background so it runs while the LLM
   //    call is in flight. Install is network + disk I/O, LLM synthesis is
@@ -696,7 +696,7 @@ async function runUrlGeneration(opts: {
     s.stop("Articles generated!")
     return true
   } catch (err) {
-    s.stop(pc.yellow("Couldn't generate articles. Sample content shipped with the scaffold remains."))
+    s.stop(pc.yellow("Couldn't generate articles. Sample content shipped with the help center remains."))
     printGenerationFallbackHint(err, url)
     return false
   }
@@ -751,7 +751,7 @@ async function runRepoGeneration(opts: {
     return true
   } catch (err) {
     if (lastPhase !== null) {
-      s.stop(pc.yellow("Couldn't generate articles. Sample content shipped with the scaffold remains."))
+      s.stop(pc.yellow("Couldn't generate articles. Sample content shipped with the help center remains."))
     }
     printRepoGenerationFallbackHint(err, repoPath)
     return false
@@ -907,7 +907,7 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
     note(
       `${err.message}\n` +
       `Point at a subdirectory with more focused content, or run:\n` +
-      `  ${pc.cyan(`helpbase ingest ${quotedRepoPath} --max-tokens 200000`)} after scaffold.`,
+      `  ${pc.cyan(`helpbase ingest ${quotedRepoPath} --max-tokens 200000`)} from the new project.`,
       "Repo is too large",
     )
     return
@@ -925,7 +925,7 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
         `This is common on cheap models that paraphrase quoted code.\n\n` +
         `Retry with:\n` +
         `  ${pc.cyan(`helpbase ingest ${quotedRepoPath} --model anthropic/claude-sonnet-4.6`)}\n` +
-        `after scaffold to regenerate with a stronger model.`,
+        `from the new project to regenerate with a stronger model.`,
       "All articles dropped",
     )
     return
@@ -933,7 +933,7 @@ function printRepoGenerationFallbackHint(err: unknown, repoPath: string): void {
   if (err instanceof GatewayError) {
     note(
       `Gateway error: ${err.message}\n` +
-      `Retry with ${pc.cyan(`helpbase ingest ${quotedRepoPath} --test`)} after scaffold to use a cheap fallback model.`,
+      `Retry with ${pc.cyan(`helpbase ingest ${quotedRepoPath} --test`)} from the new project to use a cheap fallback model.`,
       "AI generation failed",
     )
     return

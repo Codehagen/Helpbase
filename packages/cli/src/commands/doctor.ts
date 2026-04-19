@@ -219,7 +219,7 @@ async function collectChecks(opts: CheckOptions): Promise<Check[]> {
       category: "project",
       severity: "warn",
       value: "missing",
-      fix: "Run from a project root, or scaffold with `npx create-helpbase`",
+      fix: "Run from a project root, or create one with `npx create-helpbase`",
     })
   }
 

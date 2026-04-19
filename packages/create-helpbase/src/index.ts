@@ -21,7 +21,6 @@ import {
 } from "@workspace/shared/ai-text"
 import { scaffoldProject, clearSampleContent } from "./scaffold.js"
 import { readHelpbaseAuthToken } from "./auth.js"
-import { isByokMode } from "@workspace/shared/llm"
 import {
   generateFromRepo,
   AllDocsDroppedError,
@@ -165,7 +164,66 @@ async function run(directory: string | undefined, opts: RunOptions) {
     }
   }
 
-  // 2. Content source selection.
+  // 2. Login-first funnel capture (login-first scaffolder, 2026-04-19).
+  //    Fires BEFORE source selection on every cold scaffold. Rationale:
+  //    the previous design gated login on `source.kind !== "skip"` which
+  //    meant Skip users walked through the whole flow without ever
+  //    touching auth — 100% dead-air for the funnel. Moving it forward
+  //    captures every scaffolder run as a lead and reserves their
+  //    `docs-<hex>.helpbase.dev` subdomain before the user has picked a
+  //    content source.
+  //
+  //    The prompt copy leads with the subdomain hook (concrete benefit
+  //    + free-tier reassurance + 30s effort framing) rather than the
+  //    abstract "log in" ask. Tested with founders: the concrete URL
+  //    name converts better than "sign in to continue."
+  //
+  //    Skipped when:
+  //    - Non-interactive (CI / piped stdin): can't device-flow anyway.
+  //    - User already has a session on disk (`readHelpbaseAuthToken()`).
+  //    - `HELPBASE_TOKEN` env var is set: CI users pre-issue tokens; no
+  //      point prompting them to browser-flow through a login they
+  //      already completed server-side.
+  //
+  //    BYOK users (ANTHROPIC_API_KEY / OPENAI_API_KEY / AI_GATEWAY_API_KEY)
+  //    are NOT skipped here — they already have AI creds, but the
+  //    subdomain reservation is orthogonal and still valuable. Declining
+  //    ("Not now") lets them proceed; they just won't have a hosted
+  //    target until they run `helpbase login` later.
+  let authToken = readHelpbaseAuthToken()
+  if (
+    isInteractive &&
+    !authToken &&
+    !process.env.HELPBASE_TOKEN?.trim()
+  ) {
+    const wantsLogin = await confirm({
+      message:
+        "Claim your free docs URL? (docs-<hex>.helpbase.dev + 500k AI tokens/day, no card)",
+      initialValue: true,
+    })
+    if (isCancel(wantsLogin)) {
+      cancel("Setup cancelled.")
+      process.exit(0)
+    }
+    if (wantsLogin) {
+      const loginResult = await runHelpbaseLogin()
+      if (loginResult === "failed") {
+        note(
+          `Couldn't complete login. You can still scaffold + use sample content. Run ${pc.cyan("npx helpbase@latest login")} later to claim a subdomain.`,
+          "Login skipped",
+        )
+      } else {
+        // Re-read the token file — login just wrote it.
+        authToken = readHelpbaseAuthToken()
+      }
+    }
+    // Declined → fall through with no token. URL/repo sources without
+    // BYOK will hit MissingApiKey at AI gen time and the scaffolder
+    // falls back to sample content. The user gets a clear hint pointing
+    // at `helpbase login` in the fallback message.
+  }
+
+  // 3. Content source selection.
   //    Explicit select first (URL / repo / skip), then the source-specific
   //    input. Rationale: single-prompt heuristics on the input itself made
   //    `my-repo` ambiguous between "subdirectory" and "bare URL without
@@ -180,40 +238,6 @@ async function run(directory: string | undefined, opts: RunOptions) {
   if (source === "cancelled") {
     cancel("Setup cancelled.")
     process.exit(0)
-  }
-
-  // 3. Auth resolution — conditional on existing state.
-  //    Skip entirely when the user already has a helpbase session on disk
-  //    or any BYOK env var set (ANTHROPIC_API_KEY / OPENAI_API_KEY /
-  //    AI_GATEWAY_API_KEY via isByokMode()).
-  //    Otherwise offer a single confirm — the target persona (YC founder
-  //    with no key) always picks "log in free," so a 3-way select was
-  //    cognitive noise. BYOK users route via env var before running;
-  //    paste-a-key was removed to cut prompt count for the common path.
-  let authToken = readHelpbaseAuthToken()
-  if (isInteractive && source.kind !== "skip" && !authToken && !isByokMode()) {
-    const wantsLogin = await confirm({
-      message: "Log in to helpbase free? (500k tokens/day, no card — 30s browser flow)",
-      initialValue: true,
-    })
-    if (isCancel(wantsLogin)) {
-      cancel("Setup cancelled.")
-      process.exit(0)
-    }
-    if (wantsLogin) {
-      const loginResult = await runHelpbaseLogin()
-      if (loginResult === "failed") {
-        note(
-          `Couldn't run helpbase login. Falling back to sample content. Run ${pc.cyan("npx helpbase@latest login")} after scaffold to retry.`,
-          "Login skipped",
-        )
-      } else {
-        // Re-read the token file — login just wrote it.
-        authToken = readHelpbaseAuthToken()
-      }
-    }
-    // Declined → fall through with no token, generation will error with
-    // the MissingApiKey path and the scaffolded sample content stays.
   }
 
   // 4. Scaffold the project
@@ -397,12 +421,24 @@ async function run(directory: string | undefined, opts: RunOptions) {
 
   note(bootstrap, "Run it locally")
 
-  note(
-    `${pc.cyan("npx helpbase ingest .")}                 ${pc.dim("generate docs from your repo source")}\n` +
-    `${pc.cyan("npx helpbase deploy")}                    ${pc.dim("go live at <slug>.helpbase.dev")}\n` +
+  // "What next" adapts to auth state. If the user declined the step-1
+  // login prompt (or ran non-interactively without HELPBASE_TOKEN),
+  // lead with `helpbase login` so the path to a subdomain is visible
+  // at the end of the run. Logged-in users skip the redundant hint.
+  const loggedIn =
+    !!authToken || !!process.env.HELPBASE_TOKEN?.trim()
+  const nextLines: string[] = []
+  if (!loggedIn) {
+    nextLines.push(
+      `${pc.cyan("npx helpbase login")}                     ${pc.dim("claim docs-<hex>.helpbase.dev (free, no card)")}`,
+    )
+  }
+  nextLines.push(
+    `${pc.cyan("npx helpbase ingest .")}                 ${pc.dim("generate docs from your repo source")}`,
+    `${pc.cyan("npx helpbase deploy")}                    ${pc.dim("go live at <slug>.helpbase.dev")}`,
     `${pc.cyan("npx helpbase new")}                       ${pc.dim("add a new article interactively")}`,
-    "What next",
   )
+  note(nextLines.join("\n"), "What next")
 
   outro(
     `${pc.green("Your help center is ready!")}\n` +

@@ -26,7 +26,7 @@ export default function HowItWorks() {
         <section
             aria-labelledby="how-it-works-heading"
             className="bg-background overflow-hidden">
-            <div className="mx-auto max-w-5xl px-6 py-24 xl:px-0">
+            <div className="mx-auto max-w-5xl px-6 py-24">
                 <div className="@container relative">
                     <PlusDecorator className="-translate-[calc(50%-0.5px)]" />
                     <PlusDecorator className="right-0 -translate-y-[calc(50%-0.5px)] translate-x-[calc(50%-0.5px)]" />

@@ -19,5 +19,13 @@
   },
   "rtl": false,
   "menuColor": "inverted-translucent",
-  "menuAccent": "subtle"
+  "menuAccent": "subtle",
+  "registries": {
+    "@tailark-pro": {
+      "url": "https://pro.tailark.com/registry/{name}",
+      "headers": {
+        "Authorization": "Bearer ${TAILARK_API_KEY}"
+      }
+    }
+  }
 }

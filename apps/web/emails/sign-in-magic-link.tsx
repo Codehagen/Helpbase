@@ -33,8 +33,7 @@ export default function SignInMagicLinkEmail({
             extend: {
               colors: {
                 // Cool-neutral palette approximations of the in-app shadcn tokens
-                // (oklch doesn't render in email clients). Matches the
-                // editorial-technical aesthetic documented in DESIGN.md.
+                // (oklch doesn't render in email clients).
                 ink: "#0a0a0a",
                 paper: "#ffffff",
                 wash: "#fafafa",

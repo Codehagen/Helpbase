@@ -20,7 +20,7 @@ export default function Pricing() {
                         className="text-balance text-3xl font-semibold md:text-4xl">
                         Free as open source. Paid when you want us to host it.
                     </h2>
-                    <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-balance text-lg">
+                    <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-balance text-lg">
                         Self-host is free forever. Hosted saves you a server. Pick the one that matches how you want to spend your time.
                     </p>
                 </div>

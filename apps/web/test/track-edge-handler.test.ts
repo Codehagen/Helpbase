@@ -95,7 +95,7 @@ describe("handleTrack — session_hash + insert shape", () => {
     const res = await handleTrack(req, { client, now: () => frozen })
     expect(res.status).toBe(204)
     expect(client.insert).toHaveBeenCalledTimes(1)
-    const row = client.insert.mock.calls[0][0]
+    const row = client.insert.mock.calls[0]![0]
     expect(row.event).toBe("page_view")
     expect(row.path).toBe("/docs")
     expect(row.metadata).toEqual({ ref: "twitter" })
@@ -112,7 +112,7 @@ describe("handleTrack — session_hash + insert shape", () => {
     })
     expect(res.status).toBe(204)
     const expected = await sha256Hex("unknown|unknown|2026-04-19")
-    expect(client.insert.mock.calls[0][0].session_hash).toBe(expected)
+    expect(client.insert.mock.calls[0]![0].session_hash).toBe(expected)
   })
 
   it("prefers cf-connecting-ip over x-forwarded-for (anti-spoof)", async () => {
@@ -131,7 +131,7 @@ describe("handleTrack — session_hash + insert shape", () => {
     })
     await handleTrack(req, { client, now: () => frozen })
     const expected = await sha256Hex("198.51.100.42|unknown|2026-04-19")
-    expect(client.insert.mock.calls[0][0].session_hash).toBe(expected)
+    expect(client.insert.mock.calls[0]![0].session_hash).toBe(expected)
   })
 
   it("falls back to x-forwarded-for when cf-connecting-ip is absent", async () => {
@@ -147,7 +147,7 @@ describe("handleTrack — session_hash + insert shape", () => {
     })
     await handleTrack(req, { client, now: () => frozen })
     const expected = await sha256Hex("192.0.2.17|unknown|2026-04-19")
-    expect(client.insert.mock.calls[0][0].session_hash).toBe(expected)
+    expect(client.insert.mock.calls[0]![0].session_hash).toBe(expected)
   })
 
   it("caps oversize metadata (>2KB) to {}", async () => {
@@ -161,7 +161,7 @@ describe("handleTrack — session_hash + insert shape", () => {
       { client },
     )
     expect(res.status).toBe(204)
-    expect(client.insert.mock.calls[0][0].metadata).toEqual({})
+    expect(client.insert.mock.calls[0]![0].metadata).toEqual({})
   })
 
   it("drops path longer than 2048 chars", async () => {
@@ -171,7 +171,7 @@ describe("handleTrack — session_hash + insert shape", () => {
       makeReq({ event: "page_view", path: longPath }),
       { client },
     )
-    expect(client.insert.mock.calls[0][0].path).toBeNull()
+    expect(client.insert.mock.calls[0]![0].path).toBeNull()
   })
 })
 

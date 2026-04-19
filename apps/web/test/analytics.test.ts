@@ -47,7 +47,7 @@ describe("track()", () => {
     track("hero_install_copied", { command: "pnpm dlx create-helpbase" })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit]
     expect(url).toBe(`${URL}/functions/v1/track`)
     expect(init.method).toBe("POST")
     expect(init.keepalive).toBe(true)
@@ -71,7 +71,7 @@ describe("track()", () => {
 
     track("page_view")
 
-    const init = fetchMock.mock.calls[0][1] as RequestInit
+    const init = fetchMock.mock.calls[0]![1] as RequestInit
     const body = JSON.parse(init.body as string)
     expect(body.path).toBe("/docs/intro?ref=twitter")
   })

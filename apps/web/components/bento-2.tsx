@@ -95,9 +95,6 @@ const Stripes = () => (
     />
 )
 
-// Replaces CurrencyIllustration in the llms.txt card. Showing the actual
-// manifest is more informative than a pictogram for a docs tool — Vegard
-// sees exactly what he'll get at /llms.txt.
 const LlmsTxtPreview = () => (
     <div className="ring-border bg-card relative z-10 w-full max-w-sm rounded-xl border border-transparent p-4 font-mono text-xs ring-1">
         <div className="text-muted-foreground mb-2 text-[0.65rem] uppercase tracking-wider">llms.txt</div>

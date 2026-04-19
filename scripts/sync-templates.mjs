@@ -111,11 +111,9 @@ const HOSTED_TIER_EXCLUDES = [
   "components/header.tsx",
   "components/hero-section.tsx",
   "components/logo-cloud.tsx",
-  // Marketing page v2 (2026-04-19): hero + demo-cross-link live in
-  // components/marketing/, pulled in only by app/(marketing)/page.tsx.
-  // Scaffolded projects don't have a marketing page — excluding these
-  // keeps CopyButton (@workspace/ui) out of the scaffold, which has no
-  // workspace resolver.
+  // Marketing-only components pulled in by app/(marketing)/page.tsx.
+  // Scaffolded projects don't ship a marketing page, and these import
+  // @workspace/ui primitives the scaffold has no resolver for.
   "components/marketing/",
   // Tailark Pro blocks used exclusively by the helpbase.dev landing
   // page. Scaffolded projects ship a docs-only site — they don't need

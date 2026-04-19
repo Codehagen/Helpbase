@@ -5,10 +5,9 @@
 # Why this exists:
 # - The CLI + RPC + MCP route have unit tests, but none of them exercise
 #   the full loop: auth → CLI deploy → atomic RPC → hosted URL → MCP
-#   handshake → tool call → result. That loop is what Vegard runs.
-# - This is the lived version of the /plan-eng-review prior learning:
-#   "reviews miss install path." If this script passes against staging,
-#   the hosted-tier-v1 install path is real.
+#   handshake → tool call → result. That loop is what a real user runs.
+# - If this script passes against staging, the hosted-tier-v1 install
+#   path is real end-to-end.
 #
 # Usage:
 #   pnpm smoke:deploy                 Run against the Supabase project that

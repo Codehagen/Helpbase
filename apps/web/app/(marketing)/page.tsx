@@ -5,12 +5,9 @@ import { Hero } from "@/components/marketing/hero"
 import Comparator from "@/components/comparator-7"
 import FooterSection from "@/components/footer"
 
-// Below-fold sections lazy-load. The hero + comparator are what a cold
-// visitor sees in the first scroll — everything past that chunks out into
-// separate JS bundles and streams in as the user scrolls. next/dynamic
-// keeps SSR on so the HTML still ships pre-rendered (no client-only render
-// hop), but the JS for each section doesn't parse until it's actually
-// needed.
+// Below-fold sections load via next/dynamic so their JS code-splits out
+// of the first-paint bundle. SSR stays on — the HTML ships pre-rendered;
+// only client hydration defers.
 const HowItWorks = dynamic(() => import("@/components/how-it-works-3"))
 const FeaturesOwnIt = dynamic(() => import("@/components/features-1"))
 const AiNativeBento = dynamic(() => import("@/components/bento-2"))

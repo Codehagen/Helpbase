@@ -1,0 +1,109 @@
+import { AgentTasksIllustration } from "@/components/illustrations/agent-tasks"
+import { ModelsIllustration } from "@/components/illustrations/models"
+import { Card } from '@/components/ui/card'
+import { UptimeIllustration } from "@/components/illustrations/uptime"
+import { DocumentAnalysisIllustration } from "@/components/illustrations/document-analysis"
+
+export default function AiNativeBento() {
+    return (
+        <section
+            aria-labelledby="ai-native-heading"
+            className="@container bg-background py-24">
+            <div className="mx-auto w-full max-w-5xl px-6">
+                <div className="mb-12 text-center">
+                    <h2
+                        id="ai-native-heading"
+                        className="text-foreground text-3xl font-semibold md:text-4xl">
+                        Claude and Cursor can read your docs. Day one.
+                    </h2>
+                    <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-balance text-lg">
+                        Every helpbase site includes an MCP server and an llms.txt. Claude, Cursor, and ChatGPT can answer from your real docs the moment you deploy. You don&apos;t pay us for this later.
+                    </p>
+                </div>
+                <div className="not-dark:*:bg-card/50 @xl:grid-cols-2 @3xl:grid-cols-6 grid gap-3">
+                    <Card className="@3xl:col-span-2 grid grid-rows-[1fr_auto] gap-y-12 overflow-hidden rounded-2xl p-8">
+                        <div className="relative -m-8 flex items-center justify-center p-8">
+                            <Stripes />
+                            <ModelsIllustration />
+                        </div>
+                        <div>
+                            <h3 className="text-foreground text-lg font-semibold">MCP server, built in</h3>
+                            <p className="text-muted-foreground mt-3">
+                                Every helpbase site runs a Model Context Protocol endpoint. Point Claude Code or Cursor at the URL and they answer from your real docs instead of guessing.
+                            </p>
+                        </div>
+                    </Card>
+                    <Card className="@3xl:col-span-2 grid grid-rows-[1fr_auto] gap-y-12 overflow-hidden rounded-2xl p-8">
+                        <div className="relative -m-8 flex items-center justify-center p-8">
+                            <Stripes />
+                            <LlmsTxtPreview />
+                        </div>
+                        <div>
+                            <h3 className="text-foreground text-lg font-semibold">llms.txt, always fresh</h3>
+                            <p className="text-muted-foreground mt-3">
+                                A fresh /llms.txt on every build. It&apos;s the manifest AI agents already look for. You don&apos;t have to remember to write it.
+                            </p>
+                        </div>
+                    </Card>
+                    <Card className="@xl:col-span-2 grid grid-rows-[1fr_auto] gap-y-12 overflow-hidden rounded-2xl p-8">
+                        <div className="relative -m-8 flex items-center justify-center p-8">
+                            <Stripes />
+                            <AgentTasksIllustration />
+                        </div>
+                        <div>
+                            <h3 className="text-foreground text-lg font-semibold">Structured agent output</h3>
+                            <p className="text-muted-foreground mt-3">
+                                The MCP server exposes your content as typed tool calls: list articles, read a specific slug, search. No scraping, no guesswork.
+                            </p>
+                        </div>
+                    </Card>
+                    <Card className="@xl:col-span-2 @3xl:col-span-3 grid grid-rows-[1fr_auto] gap-8 rounded-2xl p-8">
+                        <div className="-m-8 flex items-center justify-center p-8">
+                            <DocumentAnalysisIllustration />
+                        </div>
+                        <div>
+                            <h3 className="text-foreground text-lg font-semibold">Docs that stay in sync with code</h3>
+                            <p className="text-muted-foreground mt-3">
+                                helpbase sync reads your source and proposes MDX edits based on the actual functions and types. You review, you merge. AI assists, it does not author.
+                            </p>
+                        </div>
+                    </Card>
+                    <Card className="@xl:col-span-2 @3xl:col-span-3 grid grid-rows-[1fr_auto] gap-8 rounded-2xl p-8">
+                        <div className="-m-8 flex items-center justify-center p-8">
+                            <UptimeIllustration />
+                        </div>
+                        <div>
+                            <h3 className="text-foreground text-lg font-semibold">Hosted tier, if you want it</h3>
+                            <p className="text-muted-foreground mt-3">
+                                helpbase deploy pushes the same app to {'{'}slug{'}'}.helpbase.dev. No servers to manage. Hosted MCP at scale, custom domain, team roles, analytics when you upgrade.
+                            </p>
+                        </div>
+                    </Card>
+                </div>
+            </div>
+        </section>
+    )
+}
+
+const Stripes = () => (
+    <div
+        aria-hidden
+        className="opacity-3 absolute -inset-x-6 inset-y-0 bg-[repeating-linear-gradient(-45deg,var(--color-foreground),var(--color-foreground)_1px,transparent_1px,transparent_6px)] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"
+    />
+)
+
+const LlmsTxtPreview = () => (
+    <div className="ring-border bg-card relative z-10 w-full max-w-sm rounded-xl border border-transparent p-4 font-mono text-xs ring-1">
+        <div className="text-muted-foreground mb-2 text-[0.65rem] uppercase tracking-wider">llms.txt</div>
+        <div className="space-y-1">
+            <div className="text-foreground"># Your Product docs</div>
+            <div className="text-muted-foreground">Docs: https://docs.yourco.com</div>
+            <div className="text-muted-foreground">MCP: https://docs.yourco.com/api/mcp</div>
+            <div className="text-foreground mt-2">## Articles</div>
+            <div className="text-muted-foreground">- getting-started</div>
+            <div className="text-muted-foreground">- authentication</div>
+            <div className="text-muted-foreground">- webhooks</div>
+            <div className="text-muted-foreground">- rate-limits</div>
+        </div>
+    </div>
+)

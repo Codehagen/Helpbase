@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — web / marketing page v2 — 2026-04-19
+
+- **New marketing page at `/`.** Terminal-hero with `pnpm dlx create-helpbase`
+  typing into a shadcn-framed Terminal (via `@magicui/terminal`), click-to-copy
+  primary CTA, `See the live demo →` secondary CTA. Announces OSS + live today.
+- **Dual-front comparator.** A vertical table compares Helpbase against two
+  real status-quos side by side: rolling your own Next.js help center vs. a
+  hosted docs SaaS. Checks the ownership, MCP, llms.txt, cost, and "maintained
+  without you" rows.
+- **How-it-works strip.** Scaffold → Preview → Deploy, 3 steps with
+  illustrations, mapped to the real CLI flow.
+- **AI-native bento.** Five-cell grid explaining the MCP server, llms.txt,
+  structured agent output, `helpbase sync` (code-grounded doc diffs), and the
+  hosted tier escape hatch.
+- **Demo cross-link.** A section that points visitors at `demo.helpbase.dev`
+  with a `curl /llms.txt` teaser of the structured agent output.
+- **Pricing — open-core, three tiers.** Self-host (free, MIT), Hosted free
+  (one site on `{slug}.helpbase.dev`, hosted MCP included), and Hosted Pro
+  (coming soon — custom domain, team roles, analytics, priority support).
+- **Grouped FAQ.** General / Hosted tier / MCP & AI, 9 questions covering OSS
+  vs hosted, ownership, MCP, and migration.
+- **Real footer.** GitHub, Docs, Pricing, Privacy, newsletter form. Named the
+  built-on stack in the copyright line.
+
+### Added — web / analytics
+
+- **Supabase-native page analytics.** New `public.marketing_events` table
+  (insert-only for anon via RLS, service-role read only). New `track` edge
+  function validates an event allowlist, caps metadata at 2 KB, and derives a
+  session hash as `sha256(ip|ua|yyyy-mm-dd)` without storing raw PII.
+- **Client helper `apps/web/lib/analytics.ts`.** `track(event, metadata)` uses
+  `keepalive: true` fetch and swallows every failure so analytics can never
+  break the page.
+
+### Added — `@workspace/ui`
+
+- **`CopyButton` primitive.** Wraps the button with `navigator.clipboard`
+  plus an `execCommand("copy")` fallback for older Safari / non-secure
+  contexts. Exposes an `onCopy` callback and a `data-copy-state` attribute
+  (`idle` / `copied` / `error`) for consumers.
+
+### Changed — web / header
+
+- **Killed placeholder nav.** The shadcn template left behind ten fake links
+  (`Automation`, `Scalability`, `Marketplace`, `Guides`, `Partnerships`, etc.)
+  and a `Continue` button pointing nowhere. Replaced with real helpbase nav:
+  Docs, Pricing (anchor), GitHub. Right-side: `Sign in` + `Deploy now`.
+
+### Security
+
+- **`cf-connecting-ip` precedence in edge analytics.** The `track` function
+  now prefers Cloudflare's authoritative IP header over the client-spoofable
+  `x-forwarded-for`, closing a trivial session-hash forgery.
+- **Scoped Cloudinary allowlist in `next.config.mjs`.** Added pathname
+  constraint `/dohqjvu9k/**` so arbitrary Cloudinary content cannot be
+  proxied through `/_next/image`.
+
+### For contributors
+
+- **Shadcn add, from `apps/web`.** Registry lives in
+  `apps/web/components.json`, not the repo root. Document in your workflow:
+  `cd apps/web && pnpm dlx shadcn@latest add @tailark-pro/...`.
+- **Test coverage + 26.** Net-new tests: `apps/web/test/analytics.test.ts`
+  (7), `apps/web/test/copy-button.test.tsx` (8), and
+  `apps/web/test/track-edge-handler.test.ts` (12). Handler refactored out of
+  the Deno `Deno.serve` entry so vitest can exercise it directly.
+
 ## [create-helpbase 0.5.0] — 2026-04-19
 
 ### Changed

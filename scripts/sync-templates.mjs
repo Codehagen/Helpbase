@@ -111,11 +111,39 @@ const HOSTED_TIER_EXCLUDES = [
   "components/header.tsx",
   "components/hero-section.tsx",
   "components/logo-cloud.tsx",
+  // Marketing-only components pulled in by app/(marketing)/page.tsx.
+  // Scaffolded projects don't ship a marketing page, and these import
+  // @workspace/ui primitives the scaffold has no resolver for.
+  "components/marketing/",
+  // Tailark Pro blocks used exclusively by the helpbase.dev landing
+  // page. Scaffolded projects ship a docs-only site — they don't need
+  // a comparator, pricing, or narrative-scroll sections.
+  "components/bento-2.tsx",
+  "components/comparator-7.tsx",
+  "components/features-1.tsx",
+  "components/faqs-3.tsx",
+  "components/how-it-works-3.tsx",
+  "components/pricing.tsx",
+  // Internal dependencies of the marketing Tailark blocks. Not used
+  // anywhere in the docs flow.
+  "components/code-block.tsx",
+  "components/map.tsx",
+  "components/particles.tsx",
+  "components/const.ts",
+  // MagicUI Terminal is only rendered in the marketing hero.
+  "components/ui/terminal.tsx",
+  // Supabase-backed marketing analytics client. Uses the hosted
+  // helpbase.dev's track edge function — scaffolded projects have no
+  // reason to ship it.
+  "lib/analytics.ts",
   "components/ui/accordion.tsx",
   "components/ui/button.tsx",
   "components/ui/navigation-menu.tsx",
   "components/ui/illustrations/",
   "components/ui/svgs/",
+  // Tailark Pro illustrations installed via shadcn registry land here.
+  // Used exclusively by the marketing Tailark blocks above.
+  "components/illustrations/",
   "hooks/use-media.ts",
 ]
 
@@ -162,7 +190,33 @@ const TEMPLATES_CONTENT_TRANSFORMS = {
       )
       .replace(/\bHeaderDocs\b/g, "Header"),
   "components/footer.tsx": (content) =>
-    content.replace(/href="\/docs"/g, 'href="/"'),
+    content
+      // Scaffolded projects are user-owned docs sites, not helpbase.dev.
+      // Neutralize the Tailark footer-4 copy so the scaffold's footer
+      // doesn't pitch helpbase or link to Codehagen/helpbase by default.
+      // Match both single- and double-quoted hrefs (the source uses
+      // single quotes inside JS link objects).
+      .replace(/href="\/docs"/g, 'href="/"')
+      .replace(
+        /(['"])https:\/\/github\.com\/Codehagen\/helpbase(?:\/[^'"]*)?\1/g,
+        "'#'",
+      )
+      .replace(/(['"])https:\/\/x\.com\/codehagen\1/gi, "'#'")
+      .replace(/(['"])https:\/\/demo\.helpbase\.dev\1/g, "'#'")
+      .replace(
+        /Open-source help centers with an MCP server and llms\.txt built in\. Self-host free, or host it with us\./,
+        "Your product docs, your brand.",
+      )
+      .replace(
+        /Built with shadcn\/ui, Next\.js, Supabase, Vercel\./,
+        "Built with helpbase.",
+      )
+      .replace(/Updates, every release/, "Stay in the loop")
+      .replace(
+        /Release notes and shipped features\. One email every few weeks, unsubscribe any time\./,
+        "Subscribe for product updates. Unsubscribe any time.",
+      )
+      .replace(/Open source, live/, "All systems normal"),
   "app/(main)/(docs)/[category]/page.tsx": (content) =>
     content
       .replace(/href="\/docs"/g, 'href="/"')

@@ -41,11 +41,11 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="relative z-10 mx-auto grid max-w-6xl gap-8 px-6 py-16 max-md:pb-10">
+        <div className="relative z-10 mx-auto grid max-w-6xl gap-8 px-6 py-16 max-md:pb-10 [&>*]:min-w-0">
           <div className="mx-auto max-w-3xl text-center">
             <h1
               id="hero-heading"
-              className="text-foreground text-balance text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-6xl">
+              className="text-foreground text-balance text-4xl font-medium leading-[1.1] tracking-[-0.02em] md:text-6xl md:leading-[1.05]">
               The help center your AI agents can actually read.
               <br className="hidden md:block" />{" "}
               <span className="text-muted-foreground">Open-source, built on shadcn, and yours from day one.</span>

@@ -8,7 +8,7 @@ const faqItems = [
             {
                 id: 'gen-1',
                 question: 'Is helpbase open source?',
-                answer: 'Yes, MIT-licensed on GitHub. The CLI writes a real Next.js app straight into your repo. Every file is yours to edit, commit, fork, and deploy anywhere.',
+                answer: 'Yes, MIT-licensed on GitHub. The CLI writes a real help center, built on shadcn, straight into your repo. Every file is yours to edit, commit, fork, and deploy anywhere.',
             },
             {
                 id: 'gen-2',
@@ -18,7 +18,7 @@ const faqItems = [
             {
                 id: 'gen-3',
                 question: 'What framework does it use?',
-                answer: 'Next.js 14 App Router + shadcn/ui + MDX. A standard stack, nothing proprietary. If you already build with Next.js, you already know it.',
+                answer: 'shadcn/ui + MDX + Next.js App Router. A standard stack, nothing proprietary. If you already ship with shadcn, you already know it.',
             },
         ],
     },
@@ -28,7 +28,7 @@ const faqItems = [
             {
                 id: 'host-1',
                 question: 'Can I migrate off the hosted tier?',
-                answer: 'Yes. The hosted tier runs the exact same MDX + config that create-helpbase put in your repo. Clone your repo, deploy the Next.js app anywhere, done. We built it so you can leave.',
+                answer: 'Yes. The hosted tier runs the exact same MDX + config that create-helpbase put in your repo. Clone your repo, deploy anywhere, done. We built it so you can leave.',
             },
             {
                 id: 'host-2',

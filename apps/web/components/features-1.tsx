@@ -14,7 +14,7 @@ export default function FeaturesOwnIt() {
                         Every file is yours, from the first commit.
                     </h2>
                     <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-balance text-lg">
-                        Helpbase doesn&apos;t store your content anywhere. The CLI writes a Next.js app straight into your git history. Every edit is a commit. Every file is yours.
+                        Helpbase doesn&apos;t store your content anywhere. The CLI writes a real help center, built on shadcn, straight into your git history. Every edit is a commit. Every file is yours.
                     </p>
                 </div>
                 <div className="ring-border @4xl:grid-cols-2 @max-4xl:divide-y @4xl:divide-x bg-card/50 relative grid overflow-hidden rounded-2xl border border-transparent shadow-md shadow-black/5 ring-1">
@@ -33,7 +33,7 @@ export default function FeaturesOwnIt() {
                         <div className="relative z-10 px-8 pt-8">
                             <h3 className="text-balance text-lg font-semibold">Zero vendor runtime</h3>
                             <p className="text-muted-foreground mt-3">
-                                No hosted CMS, no editorial database, no cloud to migrate off if we disappear. Deploy the same repo anywhere that runs Next.js.
+                                No hosted CMS, no editorial database, no cloud to migrate off if we disappear. Deploy the same repo anywhere.
                             </p>
                         </div>
                         <div className="self-end px-8 pb-8">

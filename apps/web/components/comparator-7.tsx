@@ -20,7 +20,7 @@ const options: Option[] = [
         name: "Roll your own",
         metric: "2–3 days",
         metricSubtitle: "to first site",
-        body: "Build a docs site in Next.js from scratch. Burn the weekend writing the framework, then another maintaining it.",
+        body: "Build a docs site from scratch. Burn the weekend wiring up the framework, then another maintaining it.",
         signals: [
             { positive: true, text: "You own every file" },
             { positive: false, text: "No MCP, no llms.txt" },
@@ -47,7 +47,7 @@ const options: Option[] = [
         name: "Helpbase",
         metric: "3 min",
         metricSubtitle: "to first site",
-        body: "Open source. One command drops a Next.js help center into your repo. MCP server and llms.txt built in. Host it yourself, or with us.",
+        body: "Open source. One command drops a full help center, built on shadcn, into your repo. MCP server and llms.txt built in. Host it yourself, or with us.",
         signals: [
             { positive: true, text: "Own every file" },
             { positive: true, text: "MCP + llms.txt built in" },

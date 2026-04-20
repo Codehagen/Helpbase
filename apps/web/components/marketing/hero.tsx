@@ -46,14 +46,14 @@ export function Hero() {
             <h1
               id="hero-heading"
               className="text-foreground text-balance text-4xl font-medium leading-[1.05] tracking-[-0.02em] md:text-6xl">
-              Half your docs readers are AI agents now.
+              The help center your AI agents can actually read.
               <br className="hidden md:block" />{" "}
-              <span className="text-muted-foreground">Helpbase is the help center built for them.</span>
+              <span className="text-muted-foreground">Open-source, built on shadcn, and yours from day one.</span>
             </h1>
 
             <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-2xl text-balance text-lg">
-              Every helpbase site includes an MCP server and an{" "}
-              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>, so Claude and Cursor answer from your real docs. One command drops a full Next.js site into your git history. Host it yourself, or deploy with us.
+              Every site ships with an MCP server and an{" "}
+              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>, so Claude and Cursor answer from your real docs. One command drops a full help center into your git history. Host it yourself, or deploy with us.
             </p>
 
             {/* Dual CTA: install command + demo */}

@@ -6,7 +6,7 @@ import { WorkflowIllustration } from "@/components/illustrations/workflow"
 const steps = [
     {
         title: "Install",
-        body: "Run pnpm dlx create-helpbase in your repo. You get a Next.js app with shadcn/ui, MDX content, an MCP server, and an llms.txt. Every file is yours.",
+        body: "Run pnpm dlx create-helpbase in your repo. You get a help center built on shadcn, with MDX content, an MCP server, and an llms.txt. Every file is yours.",
         visual: <InstallCommandPreview />,
     },
     {

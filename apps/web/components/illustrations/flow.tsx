@@ -144,7 +144,7 @@ export const FlowIllustration = () => {
                         className="bg-illustration ring-border-illustration shadow-black/6.5 row-span-3 grid w-28 grid-rows-subgrid gap-3 rounded-xl p-3 shadow-md ring-1">
                         <div className="flex items-center justify-between">
                             <div className="text-xs font-medium leading-tight">
-                                {node.name} <br /> Usage
+                                {node.name}
                             </div>
 
                             <div className={cn('shrink-0 *:size-3.5', node.name === 'Vercel' && '*:fill-foreground')}>
@@ -190,10 +190,10 @@ export const FlowIllustration = () => {
             </div>
 
             <div className="relative">
-                <div className="z-2 after:border-foreground/15 text-shadow-sm absolute -right-4 bottom-4 rounded bg-rose-500 px-1.5 py-0.5 text-xs font-semibold text-white shadow-lg shadow-rose-900/25 after:absolute after:inset-0 after:rounded after:border">PDF</div>
+                <div className="z-2 after:border-foreground/15 text-shadow-sm absolute -right-4 bottom-4 rounded bg-emerald-500 px-1.5 py-0.5 text-xs font-semibold text-white shadow-lg shadow-emerald-900/25 after:absolute after:inset-0 after:rounded after:border">MDX</div>
 
                 <div className="bg-illustration corner-tr-bevel ring-border-illustration z-1 shadow-black/6.5 relative w-24 space-y-3 rounded-md rounded-tr-[15%] p-3 shadow-md ring-1">
-                    <div className="text-xs font-semibold">INVOICE</div>
+                    <div className="text-xs font-semibold">help-center</div>
 
                     <div className="space-y-1.5">
                         {[1, 2].map((row) => (

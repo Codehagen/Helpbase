@@ -41,7 +41,7 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="corner-t-notch relative z-10 mx-auto grid max-w-6xl gap-8 rounded-t-[2rem] border-x border-t px-6 py-16 max-md:pb-10">
+        <div className="relative z-10 mx-auto grid max-w-6xl gap-8 px-6 py-16 max-md:pb-10">
           <div className="mx-auto max-w-3xl text-center">
             <h1
               id="hero-heading"

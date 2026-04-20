@@ -21,7 +21,7 @@ const planLabels: Record<Plan, string> = {
 
 const features: Feature[] = [
     {
-        name: 'Time to first help center',
+        name: 'Time to first site',
         description: 'From zero to a live docs site on your domain.',
         plans: { rollYourOwn: '2-3 days', hostedSaas: '1 day', helpbase: '3 min' },
     },
@@ -31,18 +31,18 @@ const features: Feature[] = [
         plans: { rollYourOwn: true, hostedSaas: false, helpbase: true },
     },
     {
-        name: 'MCP server (agent-consumable docs)',
+        name: 'MCP server',
         description: 'Model Context Protocol endpoint Claude / Cursor / ChatGPT can query.',
         plans: { rollYourOwn: 'DIY', hostedSaas: 'Limited', helpbase: 'Built in' },
     },
     {
-        name: 'llms.txt + structured agent output',
+        name: 'llms.txt + typed output',
         description: 'Discoverability manifest + machine-readable content, by default.',
         plans: { rollYourOwn: false, hostedSaas: false, helpbase: true },
     },
     {
-        name: 'Deploy anywhere (Vercel / Fly / self-host)',
-        description: 'No platform lock-in. Ship your docs on whatever infra you already use.',
+        name: 'Deploy anywhere',
+        description: 'No platform lock-in. Ship your docs on whatever infra you already use \u2014 Vercel, Fly, self-host, your call.',
         plans: { rollYourOwn: true, hostedSaas: false, helpbase: true },
     },
     {
@@ -56,7 +56,7 @@ const features: Feature[] = [
         plans: { rollYourOwn: false, hostedSaas: true, helpbase: 'Hosted tier' },
     },
     {
-        name: 'AI tools can read the docs',
+        name: 'Agents can read it',
         description: 'Your editor autocompletes from your real docs instead of guessing.',
         plans: { rollYourOwn: 'DIY', hostedSaas: 'Limited', helpbase: true },
     },

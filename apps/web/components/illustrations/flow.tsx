@@ -1,6 +1,5 @@
 'use client'
 
-import { LogoIcon } from "@/components/logo"
 import { Vercel } from '@/components/ui/svgs/vercel'
 import { Supabase } from '@/components/ui/svgs/supabase'
 import { Firebase } from '@/components/ui/svgs/firebase'
@@ -184,8 +183,10 @@ export const FlowIllustration = () => {
             </div>
 
             <div className="relative z-10 mb-20 mt-24">
-                <div className="dark:bg-illustration/75 dark:ring-border-illustration relative flex size-14 items-center justify-center rounded-full bg-black/75 shadow-xl shadow-black/20 ring-1 ring-black backdrop-blur">
-                    <LogoIcon className="size-6" />
+                <div className="dark:bg-illustration/75 dark:ring-border-illustration relative flex size-14 items-center justify-center rounded-full bg-black/85 shadow-xl shadow-black/20 ring-1 ring-black backdrop-blur">
+                    <span className="text-background text-lg font-semibold leading-none tracking-tight">
+                        h
+                    </span>
                 </div>
             </div>
 

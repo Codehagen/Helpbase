@@ -141,6 +141,18 @@ const HOSTED_TIER_EXCLUDES = [
   "components/ui/navigation-menu.tsx",
   "components/ui/illustrations/",
   "components/ui/svgs/",
+  // These primitives are only used by marketing components (pricing, bento)
+  // or by chart-illustration (which lives in components/ui/illustrations/,
+  // already excluded). Shipping them as dead code in the scaffold drags in
+  // recharts, motion/react, and other marketing-only deps that scaffolds
+  // don't need. Scaffold consumers can `shadcn add card` etc. on demand.
+  "components/ui/card.tsx",
+  "components/ui/chart.tsx",
+  "components/ui/infinite-slider.tsx",
+  "components/ui/input.tsx",
+  "components/ui/label.tsx",
+  "components/ui/text-scramble.tsx",
+  "components/ui/tooltip.tsx",
   // Tailark Pro illustrations installed via shadcn registry land here.
   // Used exclusively by the marketing Tailark blocks above.
   "components/illustrations/",
@@ -449,11 +461,21 @@ function inlineWorkspaceUtilitiesToTemplates() {
 }
 
 function inlineShadcnPrimitivesToTemplates() {
-  const src = join(UI_SRC, "components/badge.tsx")
-  const dest = join(TEMPLATES, "components/ui/badge.tsx")
-  let content = readFileSync(src, "utf-8")
-  content = transformImports(content)
-  writeFile(dest, content)
+  const primitives = [
+    { src: "components/badge.tsx", dest: "components/ui/badge.tsx" },
+    // The marketing footer's 'Follow on GitHub Releases' CTA uses Button.
+    // apps/web's components/ui/button.tsx is in HOSTED_TIER_EXCLUDES (it
+    // carries marketing-only press feedback styling), so the scaffold needs
+    // its own copy. Use the shared packages/ui Button — neutral, well-tested.
+    { src: "components/button.tsx", dest: "components/ui/button.tsx" },
+  ]
+  for (const { src, dest } of primitives) {
+    const srcPath = join(UI_SRC, src)
+    const destPath = join(TEMPLATES, dest)
+    let content = readFileSync(srcPath, "utf-8")
+    content = transformImports(content)
+    writeFile(destPath, content)
+  }
 }
 
 function inlineGlobalsCssToTemplates() {
@@ -657,6 +679,11 @@ function generateTemplatesPackageJson() {
       "class-variance-authority": "^0.7.1",
       "lucide-react": "^1.8.0",
       "radix-ui": "^1.4.3",
+      // card.tsx + (when scaffolds add their own primitives) other shadcn
+      // components import { Slot } from '@radix-ui/react-slot' directly.
+      // The umbrella radix-ui package re-exports it differently (Slot.Root),
+      // so we ship the individual package alongside.
+      "@radix-ui/react-slot": "^1.2.4",
       "tw-animate-css": "^1.4.0",
       shadcn: "^4.2.0",
     },
@@ -725,7 +752,7 @@ function syncTemplates() {
   console.log("  ✓ Inlined 4 workspace utilities into templates/lib/")
 
   inlineShadcnPrimitivesToTemplates()
-  console.log("  ✓ Inlined 1 shadcn primitive (Badge) into templates/components/ui/")
+  console.log("  ✓ Inlined 2 shadcn primitives (Badge, Button) into templates/components/ui/")
 
   inlineGlobalsCssToTemplates()
   console.log("  ✓ Inlined globals.css into templates/app/globals.css")

@@ -17,9 +17,10 @@
         "rehype-pretty-code",
         "shiki",
         "zod",
-        "lucide-react"
+        "lucide-react",
+        "@radix-ui/react-slot"
       ],
-      "registryDependencies": ["badge", "accordion", "tabs"],
+      "registryDependencies": ["badge", "accordion", "button", "tabs"],
       "files": [
         {
           "path": "registry/helpbase/app/(docs)/layout.tsx",

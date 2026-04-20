@@ -3,12 +3,12 @@ import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@workspace/ui/lib/utils'
 
-const buttonVariants = cva('cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0', {
+const buttonVariants = cva('cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,transform,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0', {
     variants: {
         variant: {
-            default: 'shadow-md border-[0.5px] border-white/10 shadow-black/15 [&_svg]:drop-shadow-sm text-shadow-sm bg-primary ring-1 ring-(--ring-color) [--ring-color:color-mix(in_oklab,black_15%,var(--color-primary))] dark:border-transparent dark:[--ring-color:color-mix(in_oklab,white_15%,var(--color-primary))] text-primary-foreground hover:bg-primary/90',
-            destructive: 'shadow-md border-[0.5px] border-white/10 shadow-black/25 [&_svg]:drop-shadow-sm text-shadow-sm bg-destructive ring-1 ring-(--ring-color) [--ring-color:color-mix(in_oklab,black_15%,var(--color-destructive))] text-destructive-foreground hover:bg-destructive/90',
-            outline: 'shadow-sm shadow-black/15 border border-transparent bg-card ring-1 ring-foreground/10 duration-200 hover:bg-muted/50 dark:ring-foreground/15 dark:hover:bg-muted/50',
+            default: 'shadow-md border-[0.5px] border-white/10 shadow-black/15 [&_svg]:drop-shadow-sm text-shadow-sm bg-primary ring-1 ring-(--ring-color) [--ring-color:color-mix(in_oklab,black_15%,var(--color-primary))] dark:border-transparent dark:[--ring-color:color-mix(in_oklab,white_15%,var(--color-primary))] text-primary-foreground hover:bg-primary/90 active:shadow-sm',
+            destructive: 'shadow-md border-[0.5px] border-white/10 shadow-black/25 [&_svg]:drop-shadow-sm text-shadow-sm bg-destructive ring-1 ring-(--ring-color) [--ring-color:color-mix(in_oklab,black_15%,var(--color-destructive))] text-destructive-foreground hover:bg-destructive/90 active:shadow-sm',
+            outline: 'shadow-sm shadow-black/15 border border-transparent bg-card ring-1 ring-foreground/10 hover:bg-muted/50 active:shadow-xs dark:ring-foreground/15 dark:hover:bg-muted/50',
             secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
             ghost: 'hover:bg-foreground/5 hover:text-foreground',
             link: 'text-primary underline-offset-4 hover:underline',

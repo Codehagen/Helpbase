@@ -46,9 +46,9 @@ export function Hero() {
             <h1
               id="hero-heading"
               className="text-foreground text-balance text-4xl font-medium leading-[1.1] tracking-[-0.02em] md:text-6xl md:leading-[1.05]">
-              The help center your AI agents can actually read.
+              Your docs have a new audience: AI agents.
               <br className="hidden md:block" />{" "}
-              <span className="text-muted-foreground">Open-source, built on shadcn, and yours from day one.</span>
+              <span className="text-muted-foreground">Helpbase is the help center built for them.</span>
             </h1>
 
             <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-2xl text-balance text-lg">

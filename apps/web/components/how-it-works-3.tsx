@@ -1,5 +1,5 @@
 import { cn } from '@workspace/ui/lib/utils'
-import { CodeIllustration } from "@/components/ui/illustrations/code-illustration"
+import { InstallCommandPreview } from "@/components/illustrations/install-command-preview"
 import { PreviewUrlCard } from "@/components/illustrations/preview-url-card"
 import { WorkflowIllustration } from "@/components/illustrations/workflow"
 
@@ -7,7 +7,7 @@ const steps = [
     {
         title: "Install",
         body: "Run pnpm dlx create-helpbase in your repo. You get a Next.js app with shadcn/ui, MDX content, an MCP server, and an llms.txt. Every file is yours.",
-        visual: <CodeIllustration />,
+        visual: <InstallCommandPreview />,
     },
     {
         title: "Preview",

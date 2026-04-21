@@ -5,5 +5,11 @@
       "path": "/api/cron/cleanup-reservations",
       "schedule": "0 3 * * *"
     }
+  ],
+  "headers": [
+    {
+      "source": "/:category/:slug",
+      "headers": [{ "key": "Vary", "value": "Accept" }]
+    }
   ]
 }

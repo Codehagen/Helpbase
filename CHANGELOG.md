@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — web / Accept: text/markdown on apex — 2026-04-21
+
+- **AI agents can now fetch any helpbase.dev docs page as raw markdown.**
+  Send `Accept: text/markdown` to an article URL and helpbase returns the
+  page body as markdown with a `# Title` heading and description prepended.
+  No SDK, no API key, no bespoke endpoint. The open web already had the
+  mechanism; we just honor it. Third leg of the AI-consumption stool
+  alongside `llms.txt` and the hosted MCP server.
+- **Explicit `.md` URLs.** A crawler can also hit
+  `helpbase.dev/getting-started/introduction.md` and get the same response,
+  no Accept header needed. Useful for pipelines that don't thread request
+  headers cleanly.
+- **RFC 9110 compliant parser.** The specificity gotcha (`text/html;q=0,
+  */*;q=1` must reject HTML even though the wildcard has higher q) is
+  tested and handled. 17 parser tests, all green.
+- **`Vary: Accept` at the edge.** Added to the Vercel routes manifest on
+  `/:category/:slug` so CDNs split the cache correctly between HTML and
+  markdown representations.
+- **406 Not Acceptable** for truly impossible Accept headers (e.g.
+  `application/pdf` on an article), scoped to 2-segment article paths only
+  so non-article pages (`/docs`, `/waitlist`) never 406.
+
 ### Added — web / marketing page v2 — 2026-04-19
 
 - **New marketing page at `/`.** Terminal-hero with `pnpm dlx create-helpbase`

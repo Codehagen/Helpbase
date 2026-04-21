@@ -2,6 +2,13 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
+import { negotiate } from "@/lib/accept"
+
+// acceptmarkdown.com content negotiation: the apex serves both HTML and
+// markdown representations of article pages. Tenant subdomains are NOT
+// negotiated in this phase — that ships in a follow-up so the load-bearing
+// tenant + reserved + MCP branches below stay untouched.
+const MARKDOWN_PRODUCES = ["text/html", "text/markdown"] as const
 
 // Kept in sync with RESERVED_SLUGS in packages/cli/src/commands/deploy.ts
 // and packages/cli/src/commands/link.ts. Any change here must happen in
@@ -101,9 +108,57 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url))
   }
 
-  // No subdomain = self-hosted / root domain, pass through
+  // No subdomain = self-hosted / root domain. Content-negotiate article
+  // pages for AI agents that send `Accept: text/markdown`, otherwise
+  // pass through to the standard HTML render.
+  //
+  // Scope is intentionally narrow:
+  //   - Only 2-segment paths (/{category}/{slug}) — the article shape.
+  //   - A trailing `.md` is stripped (explicit agent/crawler URL) and
+  //     always routes to the markdown handler regardless of Accept.
+  //   - Everything else (/, /docs, /waitlist, /admin, /errors/{code})
+  //     falls through unchanged so non-article pages never 406.
+  //
+  // The matcher above already excludes root file-like paths (/robots.txt),
+  // /_next, /api, and favicon, so segments here come from real page URLs.
   if (!subdomain) {
-    return NextResponse.next()
+    const isMdSuffix = pathname.endsWith(".md")
+    const cleanPath = isMdSuffix ? pathname.slice(0, -3) : pathname
+    const segments = cleanPath.split("/").filter(Boolean)
+
+    if (segments.length !== 2) {
+      return NextResponse.next()
+    }
+
+    const accept = request.headers.get("accept")
+    const choice = negotiate(accept, MARKDOWN_PRODUCES)
+
+    if (choice === null) {
+      return new NextResponse(
+        "Not Acceptable: this URL can serve text/html or text/markdown",
+        {
+          status: 406,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Vary": "Accept",
+          },
+        },
+      )
+    }
+
+    const wantsMd = isMdSuffix || choice === "text/markdown"
+    if (wantsMd) {
+      const [category, slug] = segments as [string, string]
+      const url = request.nextUrl.clone()
+      url.pathname = `/api/md/${category}/${slug}`
+      const res = NextResponse.rewrite(url)
+      res.headers.set("Vary", "Accept")
+      return res
+    }
+
+    const res = NextResponse.next()
+    res.headers.set("Vary", "Accept")
+    return res
   }
 
   // Reserved slugs redirect to root

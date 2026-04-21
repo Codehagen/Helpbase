@@ -8,6 +8,30 @@ const nextConfig = {
     root: path.resolve(import.meta.dirname, "../.."),
   },
   transpilePackages: ["@workspace/ui"],
+  // The /api/md/* route reads MDX from `content/` at request time. Next's
+  // tracer won't pick .md/.mdx files up automatically because they aren't
+  // imported from JS — without this include, the handler works in `next dev`
+  // but throws ENOENT in the Vercel serverless bundle. Matches the path
+  // that `resolveContentDir()` produces when HELPBASE_CONTENT_DIR is unset.
+  // Self-hosters that point HELPBASE_CONTENT_DIR outside the workspace
+  // need to add their own include.
+  outputFileTracingIncludes: {
+    "/api/md/**": ["./content/**/*.md", "./content/**/*.mdx"],
+  },
+  // Attach `Vary: Accept` to 2-segment article paths at the edge. The
+  // proxy.ts response header is stripped on static prerenders (Next 16
+  // static pipeline drops middleware headers), so per-path config is the
+  // only reliable way to get Vary onto the HTML cache entry. Without it,
+  // a CDN can cache `text/html` and `text/markdown` under the same key
+  // and serve the wrong representation on follow-up hits.
+  async headers() {
+    return [
+      {
+        source: "/:category/:slug",
+        headers: [{ key: "Vary", value: "Accept" }],
+      },
+    ]
+  },
   images: {
     // Marketing landing uses a remote backdrop image. Keep the allowlist
     // tight — only images.unsplash.com, nothing wildcard.

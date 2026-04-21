@@ -1,5 +1,11 @@
+'use client'
+
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import Link from 'next/link'
+import { motion, useReducedMotion } from 'motion/react'
+
+const EASE_OUT_QUAD: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94]
+const viewport = { once: true, margin: '0px 0px -10% 0px' }
 
 const faqItems = [
     {
@@ -65,6 +71,9 @@ const faqItems = [
 ]
 
 export default function FAQs() {
+    const shouldReduceMotion = useReducedMotion()
+    const initial = shouldReduceMotion ? false : { opacity: 0, y: 12 }
+
     return (
         <section
             id="faq"
@@ -72,7 +81,12 @@ export default function FAQs() {
             className="bg-background scroll-mt-24 py-16 md:py-24">
             <div className="mx-auto max-w-5xl px-6">
                 <div className="grid max-md:gap-8 md:grid-cols-5 md:divide-x md:border">
-                    <div className="max-w-lg md:col-span-2 md:p-10 lg:p-12">
+                    <motion.div
+                        initial={initial}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={viewport}
+                        transition={{ duration: 0.4, ease: EASE_OUT_QUAD }}
+                        className="max-w-lg md:col-span-2 md:p-10 lg:p-12">
                         <h2
                             id="faq-heading"
                             className="text-foreground text-3xl font-semibold md:text-4xl">
@@ -90,9 +104,14 @@ export default function FAQs() {
                             </Link>
                             .
                         </p>
-                    </div>
+                    </motion.div>
 
-                    <div className="space-y-12 md:col-span-3 md:px-4 md:pb-4 md:pt-10 lg:pt-12">
+                    <motion.div
+                        initial={initial}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={viewport}
+                        transition={{ duration: 0.4, ease: EASE_OUT_QUAD, delay: 0.1 }}
+                        className="space-y-12 md:col-span-3 md:px-4 md:pb-4 md:pt-10 lg:pt-12">
                         {faqItems.map((group) => (
                             <div
                                 className="space-y-4"
@@ -107,7 +126,7 @@ export default function FAQs() {
                                             key={item.id}
                                             value={item.id}
                                             className="data-[state=open]:bg-card data-[state=open]:ring-border data-[state=open]:shadow-black/6.5 group peer rounded-xl border-none px-6 py-1 data-[state=open]:border-none data-[state=open]:shadow-sm data-[state=open]:ring-1">
-                                            <AccordionTrigger className="not-group-last:border-b cursor-pointer rounded-none text-base transition-none hover:no-underline data-[state=open]:border-transparent hover:[&>svg]:translate-y-1 hover:data-[state=open]:[&>svg]:translate-y-0">
+                                            <AccordionTrigger className="not-group-last:border-b cursor-pointer rounded-none text-base transition-none hover:no-underline data-[state=open]:border-transparent [&>svg]:transition-transform [&>svg]:duration-150 [&>svg]:ease-[var(--ease-out-quad)] hover:[&>svg]:translate-y-1 hover:data-[state=open]:[&>svg]:translate-y-0">
                                                 {item.question}
                                             </AccordionTrigger>
                                             <AccordionContent>
@@ -118,7 +137,7 @@ export default function FAQs() {
                                 </Accordion>
                             </div>
                         ))}
-                    </div>
+                    </motion.div>
                 </div>
 
                 <p className="text-muted-foreground mt-12 md:hidden">

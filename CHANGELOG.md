@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [helpbase 0.8.2] — 2026-04-22
+
+Second hotfix after a real-user end-to-end test on a fresh scratch
+repo surfaced two more edge cases that would have hit every first-time
+installer. Ships three fixes.
+
+### Fixed — first-push on brand-new repos no longer crashes
+
+- **`--since 0000...` (40-zero SHA) is now handled gracefully.** On a
+  repo's very first push, GitHub's `github.event.before` is 40 zeros.
+  git can't resolve that ("bad object") and sync previously exited 1.
+  Fix: the rev-resolution regex now also catches `bad object` and
+  `ambiguous argument` (the latter covers `HEAD~N` past history too).
+  Under `--yes` (CI), these are treated as "brand-new repo, nothing
+  to sync" — exit 0 with a note. Interactive users still see the
+  targeted `E_INVALID_REV` error.
+
+### Fixed — graceful fallback when Actions can't open PRs
+
+- **The `Open PR` workflow step now survives the default-repo
+  permission block.** GitHub Actions is not allowed to create pull
+  requests by default (Settings → Actions → General → Workflow
+  permissions). Previously every first-time user hit this as a hard
+  failure even though the branch push succeeded.
+- **New behavior:** branch push succeeds, then `gh pr create` is
+  attempted. If GitHub returns "not permitted" or "Resource not
+  accessible", the workflow emits a `::warning::` pointing at both
+  the branch URL (manual PR-creation fallback) and the Settings URL
+  (one-time permission enable), and exits 0. Any other PR-create
+  failure still hard-fails.
+- **`--base main` was hardcoded; now uses `${GITHUB_REF_NAME}`** so
+  the workflow works on repos whose default branch is `master`,
+  `trunk`, etc.
+
+### Added — one-time setup section in registry README
+
+- Explicit "One-time setup" section in
+  `registry/helpbase-workflow/README.md` documents the Actions
+  permission enable, both via Settings UI and via `gh api`. Users who
+  flip it see auto-opened PRs; users who don't still get the branch
+  pushed with a graceful warning pointing at the manual PR URL.
+
+### Added — regression tests
+
+- `cli.integration.test.ts`:
+  - `--yes --since 0000...` on empty repo → exit 0, stdout contains
+    "Git could not resolve... nothing to sync"
+  - `--since HEAD~99` (interactive) → exit 1 + E_INVALID_REV
+
+### Cold-verify evidence
+
+Three-run test in a fresh Codehagen/helpbase-oidc-verify-v081-* repo:
+  Run 1 (first push, 40-zero SHA): ❌ expected failure, fixed in 0.8.2
+  Run 2 (second push, real diff, PR perm disabled): ❌ LLM generated
+         perfect proposal with citations (lib/pricing.ts:1-4), branch
+         pushed, PR-create blocked by org permission. Fixed in 0.8.2.
+  Run 3 (third push, permission enabled): ✅ full green, PR #1 opened
+         with the LLM-generated docs update.
+
 ## [helpbase 0.8.1] — 2026-04-22
 
 Hotfix for two bugs caught by cold end-to-end verify against a fresh

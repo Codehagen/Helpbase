@@ -81,8 +81,28 @@ Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
     try {
       codeDiff = getGitDiff(since)
     } catch (err) {
-      // If the rev does not resolve at all, surface a targeted error.
-      if (err instanceof Error && /unknown revision|bad revision/i.test(err.message)) {
+      // Classify: does this error mean "the rev doesn't resolve" (a legit
+      // first-push / misconfig case) vs. something unexpected?
+      // GitHub's zero-SHA on brand-new repo first-push emits "bad object",
+      // `HEAD~N` beyond history emits "ambiguous argument", user typos
+      // emit "unknown revision". Catch all three shapes.
+      const isUnresolvedRev =
+        err instanceof Error &&
+        /unknown revision|bad revision|bad object|ambiguous argument/i.test(
+          err.message,
+        )
+      if (isUnresolvedRev) {
+        // In CI / non-interactive mode, an unresolvable rev typically
+        // means "brand-new repo, nothing to sync against" — not a user
+        // error. Exit 0 rather than failing every first-push workflow.
+        // Interactive users still see the targeted error so they can fix
+        // their --since arg.
+        if (opts.yes) {
+          emit(
+            `Git could not resolve '${since}' (likely a brand-new repo with no prior commit) — nothing to sync.`,
+          )
+          return
+        }
         throw new HelpbaseError({
           code: "E_INVALID_REV",
           problem: `Git could not resolve '${since}'`,

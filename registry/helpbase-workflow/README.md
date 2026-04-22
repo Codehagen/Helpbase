@@ -22,6 +22,32 @@ That drops a single file into your repo:
 Push the workflow. First scheduled run (or push to `main`) triggers it.
 That's it.
 
+## One-time setup: let Actions open PRs
+
+GitHub's default setting blocks Actions from opening pull requests. If
+you don't flip this once, helpbase will still push a branch with the
+proposed docs update on every run, but won't open the PR for you — you'll
+see a warning in the Action log pointing at the branch URL to open it
+manually.
+
+To enable auto-PR, visit:
+
+```
+Settings → Actions → General → Workflow permissions
+  [x] Read and write permissions
+  [x] Allow GitHub Actions to create and approve pull requests
+```
+
+Or via the CLI:
+
+```bash
+gh api --method PUT repos/{owner}/{repo}/actions/permissions/workflow \
+  -F default_workflow_permissions=write \
+  -F can_approve_pull_request_reviews=true
+```
+
+For org-owned repos, this might already be set at the organization level.
+
 ## How the auth works
 
 When the action runs, GitHub mints a short-lived JSON Web Token that

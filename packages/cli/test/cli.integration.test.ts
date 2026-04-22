@@ -161,5 +161,53 @@ describe("helpbase CLI integration", () => {
         fs.rmSync(dir, { recursive: true, force: true })
       }
     })
+
+    it("exits 0 under --yes when --since points at an unresolvable rev (0.8.2 fix)", () => {
+      // Regression: GitHub Actions on a first-ever push passes a 40-zero SHA
+      // as --since (github.event.before), which git can't resolve ("bad
+      // object"). Before 0.8.2, this threw E_INVALID_REV + exit 1, failing
+      // every brand-new repo's first Action run. The fix: under --yes,
+      // treat an unresolvable rev the same as an empty diff — print a
+      // friendly note and exit 0.
+      const dir = setupEmptyGitRepo()
+      try {
+        const zeros = "0000000000000000000000000000000000000000"
+        const result = execSync(
+          `node ${CLI} sync --since ${zeros} --yes --content /tmp/nonexistent`,
+          { cwd: dir, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] },
+        )
+        expect(result).toContain(`Git could not resolve '${zeros}'`)
+        expect(result).toContain("nothing to sync")
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true })
+      }
+    })
+
+    it("exits 1 with E_INVALID_REV in interactive mode on unresolvable rev", () => {
+      const dir = setupEmptyGitRepo()
+      try {
+        let exitCode = 0
+        let output = ""
+        try {
+          execSync(`node ${CLI} sync --since HEAD~99`, {
+            cwd: dir,
+            encoding: "utf-8",
+            stdio: ["pipe", "pipe", "pipe"],
+          })
+        } catch (err) {
+          const e = err as NodeJS.ErrnoException & {
+            status?: number
+            stdout?: string
+            stderr?: string
+          }
+          exitCode = e.status ?? 1
+          output = (e.stdout ?? "") + (e.stderr ?? "")
+        }
+        expect(exitCode).toBe(1)
+        expect(output).toContain("E_INVALID_REV")
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true })
+      }
+    })
   })
 })

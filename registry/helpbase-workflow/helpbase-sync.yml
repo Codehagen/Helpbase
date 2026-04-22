@@ -93,8 +93,30 @@ jobs:
           git add -A
           git commit -m "docs: sync with codebase ($(date +%Y-%m-%d))"
           git push origin "$BRANCH"
-          gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "docs: sync with codebase ($(date +%Y-%m-%d))" \
-            --body "Automated proposal from \`helpbase sync\`. Every change cites specific lines of source code — check the diff before merging."
+
+          # `gh pr create` needs "Allow GitHub Actions to create and
+          # approve pull requests" enabled under
+          # Settings → Actions → General → Workflow permissions.
+          # It's OFF by default on new repos / orgs. If the PR-create
+          # call 403s on that setting, don't fail the workflow — the
+          # branch is already pushed with the proposed doc update;
+          # the user just needs to open the PR manually (or flip the
+          # setting once).
+          PR_LOG=$(mktemp)
+          if ! gh pr create \
+                --base "${GITHUB_REF_NAME}" \
+                --head "$BRANCH" \
+                --title "docs: sync with codebase ($(date +%Y-%m-%d))" \
+                --body "Automated proposal from \`helpbase sync\`. Every change cites specific lines of source code — check the diff before merging." 2>"$PR_LOG"; then
+            if grep -qiE "not permitted|Resource not accessible" "$PR_LOG"; then
+              echo "::warning::GitHub Actions is not permitted to open PRs on this repo."
+              echo "::warning::Branch was pushed — open the PR manually:"
+              echo "::warning::  https://github.com/${GITHUB_REPOSITORY}/pull/new/${BRANCH}"
+              echo "::warning::To auto-open future PRs, enable the 'create and approve pull requests' permission at:"
+              echo "::warning::  https://github.com/${GITHUB_REPOSITORY}/settings/actions"
+              exit 0
+            fi
+            # Unknown failure — re-surface the error, fail the workflow.
+            cat "$PR_LOG" >&2
+            exit 1
+          fi

@@ -139,6 +139,10 @@ export type WireErrorCode =
   | "bad_request"
   | "payload_too_large"
   | "internal_error"
+  // CI / GitHub Actions OIDC auth lane — v0.8+
+  | "oidc_invalid"
+  | "oidc_wrong_audience"
+  | "ci_quota_exceeded"
 
 /** URL that CLI 429 messages point at. Ships statically in the web app. */
 export const UPGRADE_URL = "https://helpbase.dev/waitlist" as const

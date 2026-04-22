@@ -194,6 +194,93 @@ export type Database = {
           },
         ]
       }
+      llm_usage_events_ci: {
+        Row: {
+          completion_tokens: number
+          cost_usd: number
+          created_at: string
+          event_name: string
+          id: string
+          latency_ms: number | null
+          model: string
+          owner: string
+          prompt_tokens: number
+          ref: string | null
+          repo_id: number
+          repo_slug: string
+          request_id: string | null
+          route: string
+          status: string
+          total_tokens: number | null
+        }
+        Insert: {
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          event_name: string
+          id?: string
+          latency_ms?: number | null
+          model: string
+          owner: string
+          prompt_tokens?: number
+          ref?: string | null
+          repo_id: number
+          repo_slug: string
+          request_id?: string | null
+          route: string
+          status: string
+          total_tokens?: number | null
+        }
+        Update: {
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          event_name?: string
+          id?: string
+          latency_ms?: number | null
+          model?: string
+          owner?: string
+          prompt_tokens?: number
+          ref?: string | null
+          repo_id?: number
+          repo_slug?: string
+          request_id?: string | null
+          route?: string
+          status?: string
+          total_tokens?: number | null
+        }
+        Relationships: []
+      }
+      marketing_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: number
+          metadata: Json
+          path: string | null
+          session_hash: string
+          ts: string
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: number
+          metadata?: Json
+          path?: string | null
+          session_hash: string
+          ts?: string
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: number
+          metadata?: Json
+          path?: string | null
+          session_hash?: string
+          ts?: string
+        }
+        Relationships: []
+      }
       session: {
         Row: {
           createdAt: string
@@ -698,6 +785,7 @@ export type Database = {
         }[]
       }
       get_global_tokens_today: { Args: never; Returns: number }
+      get_repo_tokens_today: { Args: { p_repo_id: number }; Returns: number }
       get_user_tokens_today: { Args: { p_user_id: string }; Returns: number }
       increment_global_tokens: {
         Args: { p_day: string; p_delta: number }

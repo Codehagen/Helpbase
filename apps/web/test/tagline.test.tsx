@@ -21,8 +21,8 @@ beforeAll(() => {
     rootMargin = ""
     thresholds: number[] = []
   }
-  // @ts-expect-error — assigning stub to global
-  globalThis.IntersectionObserver = IOStub
+  globalThis.IntersectionObserver =
+    IOStub as unknown as typeof IntersectionObserver
 })
 
 import {

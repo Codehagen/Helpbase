@@ -40,15 +40,17 @@ const REQUIRED_TABLES = [
   "tenant_chunks",
   "tenant_deploys",
   "tenant_mcp_queries",
+  "llm_usage_events_ci",
 ]
 
-const REQUIRED_RPCS = ["deploy_tenant"]
+const REQUIRED_RPCS = ["deploy_tenant", "get_repo_tokens_today"]
 
 const REQUIRED_COLUMNS = {
   tenants: ["mcp_public_token", "mcp_calls_today", "owner_id", "slug", "active"],
   tenant_chunks: ["fts", "line_start", "line_end", "article_id"],
   tenant_deploys: ["validation_report", "dropped_count", "deploy_id"],
   tenant_mcp_queries: ["tool_name", "query", "result_count", "matched"],
+  llm_usage_events_ci: ["repo_id", "repo_slug", "owner", "event_name", "total_tokens"],
 }
 
 function fail(msg) {

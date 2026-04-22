@@ -36,7 +36,7 @@ export const dynamic = "force-dynamic"
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const gate = await withAuthAndQuota(req)
   if (gate instanceof NextResponse) return gate
-  const { userId, resetAtIso, maxOutputTokens: remainingBudget } = gate
+  const { resetAtIso, maxOutputTokens: remainingBudget } = gate
 
   let body: GenerateObjectRequest
   try {
@@ -104,8 +104,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const message = err instanceof Error ? err.message : "Unknown gateway error"
     const rawPreview = typeof message === "string" ? message.slice(0, 500) : undefined
     // Gateway error → log status, do NOT charge tokens.
-    await logUsageEvent({
-      userId,
+    await logUsageEvent(gate, {
       route: "generate-object",
       model: body.model,
       promptTokens: 0,
@@ -122,8 +121,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const latency = Date.now() - t0
   const usage = wireUsageFromSdk(sdkUsage, 0)
 
-  await logUsageEvent({
-    userId,
+  await logUsageEvent(gate, {
     route: "generate-object",
     model: body.model,
     promptTokens: usage.promptTokens,

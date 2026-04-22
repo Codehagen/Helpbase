@@ -1,0 +1,127 @@
+name: helpbase sync
+
+# Keep docs in sync with code. Runs weekly and on every push to the base
+# branch. When a code change would make an existing MDX doc wrong,
+# `helpbase sync` proposes citation-grounded edits and this workflow opens
+# a PR you can review.
+#
+# Zero config. Auth happens via GitHub Actions OIDC — the workflow
+# requests a short-lived JWT scoped to helpbase.dev, and the helpbase
+# backend verifies it against GitHub's JWKS. No secrets to paste, no
+# `helpbase login` step, no tokens to rotate. Per-repo quota (500k
+# tokens/day free tier) is tracked by GitHub repository_id so quota
+# follows the repo across renames + org transfers.
+#
+# BYOK override: if you'd rather run on your own provider key (e.g.
+# Anthropic / OpenAI / Vercel AI Gateway), set the corresponding secret
+# under `env:` below — it short-circuits OIDC and calls your provider
+# directly. Everything still runs in *your* Actions minutes.
+
+on:
+  schedule:
+    # Monday 09:00 UTC — adjust to your timezone's start-of-week.
+    - cron: "0 9 * * 1"
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    name: Propose doc updates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      # Required to mint the GitHub OIDC token. Tokens are minted per-job
+      # and scoped to the audience below — `https://helpbase.dev` is a
+      # stable identifier hardcoded in the helpbase backend verifier.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch enough history for the diff baseline below. github.event.before
+          # points at the prior tip on push events (usually 1 commit back), but
+          # on schedule/manual runs we fall back to HEAD~1 which requires
+          # history beyond the default shallow clone.
+          fetch-depth: 50
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Request GitHub OIDC token
+        id: oidc
+        uses: actions/github-script@v7
+        with:
+          # Matches HELPBASE_OIDC_AUDIENCE in apps/web/lib/oidc-verify.ts.
+          # Do NOT change unless you're also updating the helpbase backend.
+          script: |
+            const token = await core.getIDToken("https://helpbase.dev")
+            core.setSecret(token)
+            core.setOutput("token", token)
+
+      - name: Run helpbase sync
+        env:
+          # GitHub OIDC JWT, zero-config path. The helpbase backend verifies
+          # it against GitHub's JWKS and allocates quota per-repo.
+          HELPBASE_CI_TOKEN: ${{ steps.oidc.outputs.token }}
+          # Optional BYOK overrides. If any of these are set, the CLI
+          # bypasses the helpbase proxy and calls the provider directly.
+          # Leave unset for the zero-config OIDC path.
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # This repo keeps docs under apps/web/content (monorepo layout),
+          # so we override the default --content path. Everything else is
+          # the shipped v0.8.2 YAML verbatim — this is what every user
+          # installing helpbase-workflow gets.
+          npx -y helpbase sync \
+            --since ${{ github.event.before || 'HEAD~1' }} \
+            --content apps/web/content \
+            --apply \
+            --yes
+
+      - name: Open PR if docs changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No doc updates proposed — nothing to PR."
+            exit 0
+          fi
+
+          BRANCH="helpbase-sync/$(date +%Y%m%d-%H%M%S)"
+          git config user.name "helpbase-sync"
+          git config user.email "helpbase-sync@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "docs: sync with codebase ($(date +%Y-%m-%d))"
+          git push origin "$BRANCH"
+
+          # `gh pr create` needs "Allow GitHub Actions to create and
+          # approve pull requests" enabled under
+          # Settings → Actions → General → Workflow permissions.
+          # It's OFF by default on new repos / orgs. If the PR-create
+          # call 403s on that setting, don't fail the workflow — the
+          # branch is already pushed with the proposed doc update;
+          # the user just needs to open the PR manually (or flip the
+          # setting once).
+          PR_LOG=$(mktemp)
+          if ! gh pr create \
+                --base "${GITHUB_REF_NAME}" \
+                --head "$BRANCH" \
+                --title "docs: sync with codebase ($(date +%Y-%m-%d))" \
+                --body "Automated proposal from \`helpbase sync\`. Every change cites specific lines of source code — check the diff before merging." 2>"$PR_LOG"; then
+            if grep -qiE "not permitted|Resource not accessible" "$PR_LOG"; then
+              echo "::warning::GitHub Actions is not permitted to open PRs on this repo."
+              echo "::warning::Branch was pushed — open the PR manually:"
+              echo "::warning::  https://github.com/${GITHUB_REPOSITORY}/pull/new/${BRANCH}"
+              echo "::warning::To auto-open future PRs, enable the 'create and approve pull requests' permission at:"
+              echo "::warning::  https://github.com/${GITHUB_REPOSITORY}/settings/actions"
+              exit 0
+            fi
+            # Unknown failure — re-surface the error, fail the workflow.
+            cat "$PR_LOG" >&2
+            exit 1
+          fi

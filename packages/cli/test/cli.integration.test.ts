@@ -97,4 +97,69 @@ describe("helpbase CLI integration", () => {
       expect(result.exitCode).toBe(1)
     })
   })
+
+  describe("sync empty-diff handling (E_NO_HISTORY)", () => {
+    // Regression guard for helpbase@0.8.1 hotfix. Before the fix, sync
+    // throw E_NO_HISTORY + exit 1 whenever `git diff <since> HEAD` was
+    // empty. That failed every scheduled helpbase-workflow CI run and
+    // every push-to-main that happened to equal origin/main. The fix:
+    // under --yes (non-interactive / CI), exit 0 with a friendly note
+    // instead of erroring. Interactive users still see the full error.
+
+    function setupEmptyGitRepo(): string {
+      const dir = fs.mkdtempSync(
+        path.join(require("node:os").tmpdir(), "helpbase-sync-emptydiff-"),
+      )
+      execSync("git init --initial-branch=main", { cwd: dir, stdio: "ignore" })
+      execSync("git config user.email test@example.com", { cwd: dir, stdio: "ignore" })
+      execSync("git config user.name test", { cwd: dir, stdio: "ignore" })
+      fs.writeFileSync(path.join(dir, "seed.txt"), "seed")
+      execSync("git add . && git commit -m seed", { cwd: dir, stdio: "ignore" })
+      return dir
+    }
+
+    it("exits 0 with a friendly note when --yes is set and the diff is empty", () => {
+      const dir = setupEmptyGitRepo()
+      try {
+        const result = execSync(
+          `node ${CLI} sync --since HEAD --yes --content /tmp/nonexistent`,
+          { cwd: dir, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] },
+        )
+        expect(result).toContain("No code changes since HEAD")
+        expect(result).toContain("nothing to sync")
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true })
+      }
+    })
+
+    it("exits 1 with the full E_NO_HISTORY error in interactive mode", () => {
+      const dir = setupEmptyGitRepo()
+      try {
+        let exitCode = 0
+        let stdout = ""
+        let stderr = ""
+        try {
+          execSync(`node ${CLI} sync --since HEAD`, {
+            cwd: dir,
+            encoding: "utf-8",
+            stdio: ["pipe", "pipe", "pipe"],
+          })
+        } catch (err) {
+          const e = err as NodeJS.ErrnoException & {
+            status?: number
+            stdout?: string
+            stderr?: string
+          }
+          exitCode = e.status ?? 1
+          stdout = e.stdout ?? ""
+          stderr = e.stderr ?? ""
+        }
+        expect(exitCode).toBe(1)
+        const output = stdout + stderr
+        expect(output).toContain("E_NO_HISTORY")
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true })
+      }
+    })
+  })
 })

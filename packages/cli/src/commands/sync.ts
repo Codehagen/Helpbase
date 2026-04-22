@@ -12,7 +12,7 @@ import {
 import { resolveModel, MissingApiKeyError, GatewayError, TEST_MODEL } from "@workspace/shared/ai"
 import type { SyncProposal } from "@workspace/shared/schemas"
 import { HelpbaseError, formatError } from "../lib/errors.js"
-import { spinner, ok, info, note } from "../lib/ui.js"
+import { spinner, ok, info, note, emit } from "../lib/ui.js"
 import { resolveAuthOrPromptLogin } from "../lib/inline-auth.js"
 import { toCliLlmError } from "../lib/llm-errors-cli.js"
 
@@ -97,6 +97,19 @@ Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
     }
 
     if (codeDiff.trim().length === 0) {
+      // In non-interactive / CI mode, an empty diff is an expected state
+      // (no code changed since last run) — not an error. Exit 0 so the
+      // GitHub Action shows green rather than failing every scheduled
+      // / empty-push run. Interactive users still see the full error
+      // so they can course-correct their --since arg.
+      //
+      // Use emit() (stdout, never suppressed) rather than ok() — CI logs
+      // gate on stdio.isTTY, so ok()'s canDecorate() check would swallow
+      // the message in the exact environment this branch exists to serve.
+      if (opts.yes) {
+        emit(`No code changes since ${since} — nothing to sync.`)
+        return
+      }
       throw new HelpbaseError({
         code: "E_NO_HISTORY",
         problem: `No code changes found since ${since}`,

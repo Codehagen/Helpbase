@@ -52,9 +52,10 @@ The workflow ships with sensible defaults you'll likely want to tweak:
 
 - **Schedule** — default is Monday 09:00 UTC (`cron: "0 9 * * 1"`). Edit
   the `cron` line to match when your team starts the week.
-- **Base branch** — default assumes `main`. Change both `branches: [main]`
-  under `push:` and `--since origin/main` in the run step if you use
-  `master`, `trunk`, or something else.
+- **Base branch** — default assumes `main`. If you use `master`, `trunk`,
+  or something else, update `branches: [main]` under `push:`. The diff
+  baseline (`--since`) uses `github.event.before` on push events, so no
+  other branch-name reference needs to change.
 - **Content directory** — default assumes a standard MDX layout
   (`content/docs/`, `content/`, or `apps/web/content/`). If your docs
   live elsewhere, append `--content <path>` to the `helpbase sync` command.

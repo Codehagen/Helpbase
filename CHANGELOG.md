@@ -7,7 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — web / Accept: text/markdown on apex — 2026-04-21
+## [helpbase 0.8.0] — 2026-04-22
+
+Three things Shadcn asked for, all shipped in one release.
+
+### Added — zero-config CI via GitHub Actions OIDC
+
+- **`helpbase-workflow` v2 needs no secrets.** `shadcn add
+  https://helpbase.dev/r/helpbase-workflow.json` + `git push` is the full
+  setup. The workflow requests a GitHub-signed JSON Web Token scoped to
+  `https://helpbase.dev` via `actions/get-id-token`, the helpbase
+  backend verifies it against GitHub's public JWKS, and allocates
+  per-repo quota keyed on the `repository_id` claim (stable across
+  renames + org transfers). 500k tokens/day free tier. No
+  `HELPBASE_TOKEN` secret, no `jq` extraction, no paste-and-pray.
+- **New CLI env var `HELPBASE_CI_TOKEN`.** The workflow sets it from the
+  OIDC step output and `helpbase sync` passes it as the Bearer to the
+  hosted LLM proxy. Priority order is now: BYOK (`ANTHROPIC_API_KEY` /
+  `OPENAI_API_KEY` / `AI_GATEWAY_API_KEY`) → `HELPBASE_CI_TOKEN` →
+  logged-in session → device-flow prompt.
+- **Fork-PR defense.** GitHub's default is not to mint OIDC tokens for
+  fork PRs, but the backend verifier rejects defensively if one
+  somehow arrives (audience + signature + `event_name` check). Belt
+  and suspenders for zero cost.
+- **BYOK escape hatch preserved.** If you'd rather run on your own
+  provider key, set the corresponding `secrets.FOO` and the CLI skips
+  the helpbase proxy entirely. Your provider, your bill, your choice.
+
+### Added — skills server (v1 prototype)
+
+- **New MCP tools: `list_skills` + `get_skill`.** Agents can pull
+  writing-style, tone, or formatting rules from
+  `.helpbase/skills/<name>.md` at your repo root. Docs team edits
+  markdown in git; other teams' agents consume over MCP. Answers
+  Shadcn's third ask verbatim: "enforcing tone, writing styles...
+  editable by the docs team... pulled by other teams."
+- **Empty-list is not an error.** Repos without `.helpbase/skills/`
+  see a helpful get-started message from `list_skills` and an
+  available-names hint from `get_skill`. The surface is opt-in.
+- **`HELPBASE_SKILLS_DIR` env var override** for non-standard layouts.
+  Otherwise walks up from cwd finding `.helpbase/skills/`.
+- **Draft RFC** for the skills-server design lives in a GitHub
+  Discussion (link once published): naming, scope, multi-skill files,
+  federation, versioning, v2 roadmap. Feedback welcome before we add
+  ceremony the prototype can avoid.
+
+### Added — MDX-in-subfolder content layout
+
+- **`content/docs/` added to the MCP loader fallback.** `shadcn add
+  helpbase-mcp` on a repo that keeps MDX under `content/docs/` (a common
+  convention for docs alongside blog, changelog, etc.) now works
+  zero-config. Resolution order: `HELPBASE_CONTENT_DIR` env → walk up
+  looking for `apps/web/content/` → `content/docs/` → `content/`. More
+  specific wins when a repo has both (`content/` often holds non-doc
+  assets).
+
+### Changed — web / `/api/v1/llm/*` auth dispatcher
+
+- **Two-lane auth on one endpoint.** `withAuthAndQuota` now peeks at
+  the Bearer token's `iss` claim (no crypto) and routes to either the
+  existing Better Auth session lane (CLI users) or the new OIDC CI
+  lane (workflow runs). CLI users see zero change. Hosted-tier
+  behavior preserved.
+- **New per-repo quota table `llm_usage_events_ci`.** Parallel to
+  `llm_usage_events` (user-keyed). Global 10M/day cap stays shared
+  across both lanes. New RPC `get_repo_tokens_today(p_repo_id)`
+  mirrors `get_user_tokens_today` shape.
+- **New wire error codes:** `oidc_invalid`, `oidc_wrong_audience`,
+  `ci_quota_exceeded`. Each message points at the exact workflow fix
+  (e.g. "Update the audience in your workflow's id-token step").
+
+### Fixed — web / proxy pass-through for `/r/*.json`
+
+- **`shadcn add https://helpbase.dev/r/*.json` no longer 406s.** The
+  article-content-negotiation branch in `proxy.ts` treated every
+  2-segment path as an article, so shadcn CLI's `Accept:
+  application/json` tripped a 406. Registry JSON paths now
+  fall through to the static file handler unchanged. Three regression
+  tests guard the pass-through.
+
+### Added — marketing / Made with shadcn positioning
+
+- **Hero + footer lead with Shadcn's framing.** "Code in your repo,
+  generated but editable." Single source of truth in
+  `apps/web/lib/tagline.ts` with a CI-gated test so drift between
+  hero / footer / README fails the build. Footer ships a "Made with
+  shadcn" badge linking to `ui.shadcn.com`.
+
+### Added — Accept: text/markdown on apex — 2026-04-21
 
 - **AI agents can now fetch any helpbase.dev docs page as raw markdown.**
   Send `Accept: text/markdown` to an article URL and helpbase returns the

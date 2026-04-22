@@ -130,6 +130,15 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next()
     }
 
+    // Static JSON surfaces that happen to be 2-segment are not articles.
+    // `/r/<name>.json` is the shadcn registry endpoint — shadcn CLI sends
+    // `Accept: application/json`, which would 406 against our
+    // html|markdown negotiation. Skip the article branch entirely so the
+    // static file handler serves the JSON unmodified.
+    if (segments[0] === "r") {
+      return NextResponse.next()
+    }
+
     const accept = request.headers.get("accept")
     const choice = negotiate(accept, MARKDOWN_PRODUCES)
 

@@ -1,6 +1,9 @@
 {
   "name": "@helpbase/mcp",
   "version": "0.1.2",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Self-hosted MCP server that exposes your Helpbase docs to AI agents. Runs from your repo, reads your MDX, serves it over the Model Context Protocol.",
   "type": "module",
   "bin": {

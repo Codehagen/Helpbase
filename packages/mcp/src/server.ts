@@ -7,11 +7,18 @@ import {
   type Doc,
 } from "./content/loader.js"
 import {
+  findSkillsDir,
+  loadSkills,
+  type Skill,
+} from "./content/skills.js"
+import {
   handleSearchDocs,
   searchDocsInput,
 } from "./tools/search-docs.js"
 import { getDocInput, handleGetDoc } from "./tools/get-doc.js"
 import { handleListDocs, listDocsInput } from "./tools/list-docs.js"
+import { getSkillInput, handleGetSkill } from "./tools/get-skill.js"
+import { handleListSkills, listSkillsInput } from "./tools/list-skills.js"
 import {
   loadSearchIndex,
   resolveDefaultIndexPath,
@@ -26,6 +33,10 @@ export interface ServerDeps {
   searchIndex: SearchIndex | null
   /** Absolute path we tried to load from (useful for tests + diagnostics). */
   searchIndexPath: string
+  /** Resolved .helpbase/skills/ directory, or null when none was found. */
+  skillsDir: string | null
+  /** Loaded skills. Empty when no skills dir is present — not an error. */
+  skills: Skill[]
 }
 
 export interface BuildServerOptions {
@@ -50,6 +61,16 @@ export interface BuildServerOptions {
    * Pre-loaded categories. Required when `preloadedDocs` is set.
    */
   preloadedCategories?: CategoryMeta[]
+  /**
+   * Override the skills dir. If omitted, resolves via findSkillsDir().
+   * Pass `null` to force skills-off regardless of filesystem state.
+   */
+  skillsDir?: string | null
+  /**
+   * Pre-loaded skills. If provided, skips filesystem loading entirely.
+   * Mirrors the preloadedDocs pattern for hosted/serverless contexts.
+   */
+  preloadedSkills?: Skill[]
 }
 
 /**
@@ -81,6 +102,22 @@ export function buildServer(options: BuildServerOptions = {}): {
     contentDir = options.contentDir ?? findContentDir()
     docs = loadDocs(contentDir)
     categories = loadCategories(contentDir)
+  }
+
+  // Skills are OPTIONAL. A repo without .helpbase/skills/ sees an empty
+  // list via list_skills — not an error. Pre-loaded skills (hosted
+  // tier) bypass filesystem walk entirely.
+  let skillsDir: string | null
+  let skills: Skill[]
+  if (options.preloadedSkills) {
+    skillsDir = options.skillsDir ?? null
+    skills = options.preloadedSkills
+  } else if (options.skillsDir === null) {
+    skillsDir = null
+    skills = []
+  } else {
+    skillsDir = options.skillsDir ?? findSkillsDir()
+    skills = loadSkills(skillsDir)
   }
 
   let searchIndex: SearchIndex | null = null
@@ -152,8 +189,45 @@ export function buildServer(options: BuildServerOptions = {}): {
     async (input) => handleListDocs(docs, categories, input),
   )
 
+  // Skills server (v1): agents pull writing-style / tone / formatting
+  // rules from .helpbase/skills/. Empty-list response when no skills
+  // are defined — no error, just silence. See content/skills.ts.
+  server.registerTool(
+    "list_skills",
+    {
+      title: "List skills",
+      description:
+        "List writing-style, tone, and formatting rules the docs team has " +
+        "published for this product. Returns an empty list if no skills " +
+        "are defined in .helpbase/skills/.",
+      inputSchema: listSkillsInput.shape,
+    },
+    async () => handleListSkills(skills),
+  )
+
+  server.registerTool(
+    "get_skill",
+    {
+      title: "Get skill",
+      description:
+        "Fetch the full content of a single skill (writing-style / tone / " +
+        "formatting rule) by name. Use list_skills to discover available " +
+        "names.",
+      inputSchema: getSkillInput.shape,
+    },
+    async (input) => handleGetSkill(skills, input),
+  )
+
   return {
     server,
-    deps: { contentDir, docs, categories, searchIndex, searchIndexPath },
+    deps: {
+      contentDir,
+      docs,
+      categories,
+      searchIndex,
+      searchIndexPath,
+      skillsDir,
+      skills,
+    },
   }
 }

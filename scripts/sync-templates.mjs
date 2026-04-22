@@ -83,6 +83,10 @@ const HOSTED_TIER_EXCLUDES = [
   "lib/supabase-admin.ts",
   "lib/waitlist.ts",
   "lib/rate-limit.ts",
+  // GitHub Actions OIDC verifier — backend-only. Depends on jose +
+  // the hosted /api/v1/llm auth lane. Scaffolded docs projects have
+  // no API routes to verify JWTs for.
+  "lib/oidc-verify.ts",
   "components/tenant-search-trigger.tsx",
   // Admin dashboard + TanStack Query foundation: hosted-tier only.
   // The scaffolded docs site is pure SSR — it has no client server-state

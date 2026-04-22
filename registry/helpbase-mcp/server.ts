@@ -7,16 +7,27 @@ import {
   type Doc,
 } from "./content/loader.js"
 import {
+  findSkillsDir,
+  loadSkills,
+  type Skill,
+} from "./content/skills.js"
+import {
   handleSearchDocs,
   searchDocsInput,
 } from "./tools/search-docs.js"
 import { getDocInput, handleGetDoc } from "./tools/get-doc.js"
 import { handleListDocs, listDocsInput } from "./tools/list-docs.js"
+import { getSkillInput, handleGetSkill } from "./tools/get-skill.js"
+import { handleListSkills, listSkillsInput } from "./tools/list-skills.js"
 
 export interface ServerDeps {
   contentDir: string
   docs: Doc[]
   categories: CategoryMeta[]
+  /** Resolved .helpbase/skills/ directory, or null when none was found. */
+  skillsDir: string | null
+  /** Loaded skills. Empty when no skills dir is present — not an error. */
+  skills: Skill[]
 }
 
 export interface BuildServerOptions {
@@ -24,6 +35,11 @@ export interface BuildServerOptions {
   version?: string
   /** Override the content dir. If omitted, resolves via findContentDir(). */
   contentDir?: string
+  /**
+   * Override the skills dir. If omitted, resolves via findSkillsDir().
+   * Pass `null` to force skills-off regardless of filesystem state.
+   */
+  skillsDir?: string | null
 }
 
 /**
@@ -44,6 +60,14 @@ export function buildServer(options: BuildServerOptions = {}): {
   const contentDir = options.contentDir ?? findContentDir()
   const docs = loadDocs(contentDir)
   const categories = loadCategories(contentDir)
+
+  // Skills are OPTIONAL — no .helpbase/skills/ means an empty list,
+  // not an error. Pass `skillsDir: null` to force skills-off.
+  const skillsDir =
+    options.skillsDir === null
+      ? null
+      : (options.skillsDir ?? findSkillsDir())
+  const skills = loadSkills(skillsDir)
 
   const server = new McpServer({
     name: options.name ?? "helpbase-mcp",
@@ -83,5 +107,37 @@ export function buildServer(options: BuildServerOptions = {}): {
     async (input) => handleListDocs(docs, categories, input),
   )
 
-  return { server, deps: { contentDir, docs, categories } }
+  // Skills server: agents pull writing-style / tone / formatting rules
+  // from .helpbase/skills/. Empty list when no skills are defined — no
+  // error, just silence. See content/skills.ts.
+  server.registerTool(
+    "list_skills",
+    {
+      title: "List skills",
+      description:
+        "List writing-style, tone, and formatting rules the docs team has " +
+        "published for this product. Returns an empty list if no skills " +
+        "are defined in .helpbase/skills/.",
+      inputSchema: listSkillsInput.shape,
+    },
+    async () => handleListSkills(skills),
+  )
+
+  server.registerTool(
+    "get_skill",
+    {
+      title: "Get skill",
+      description:
+        "Fetch the full content of a single skill (writing-style / tone / " +
+        "formatting rule) by name. Use list_skills to discover available " +
+        "names.",
+      inputSchema: getSkillInput.shape,
+    },
+    async (input) => handleGetSkill(skills, input),
+  )
+
+  return {
+    server,
+    deps: { contentDir, docs, categories, skillsDir, skills },
+  }
 }

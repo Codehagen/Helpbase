@@ -1,8 +1,12 @@
 # Helpbase MCP Server
 
 Self-hosted Model Context Protocol server for your docs. Runs as source code
-in your repo (no vendored npm binary), reads your MDX, exposes three tools
-(`search_docs`, `get_doc`, `list_docs`) over stdio to any MCP client.
+in your repo (no vendored npm binary), reads your MDX, exposes five tools
+over stdio to any MCP client:
+
+- `search_docs` / `get_doc` / `list_docs` — docs surface
+- `list_skills` / `get_skill` — writing-style / tone / formatting rules
+  the docs team publishes in `.helpbase/skills/*.md`
 
 ## Run it
 
@@ -52,6 +56,25 @@ for (in order):
 
 The first match wins. If none exists, the server fails on startup with a clear
 error — no silent empty index.
+
+## Skills discovery
+
+Skills are optional. If you want to publish writing-style, tone, or formatting
+rules that agents can pull on demand, drop markdown files under
+`.helpbase/skills/<name>.md` at your repo root:
+
+```
+.helpbase/skills/
+  voice.md          ← tone + writing style
+  api-reference.md  ← formatting rules for API docs
+  terminology.md    ← preferred terms, avoided words
+```
+
+Frontmatter is optional. A `description` field shows up in `list_skills`
+output; the body is the full skill content returned by `get_skill`.
+
+Override the location via `HELPBASE_SKILLS_DIR`. Walks up from cwd to find
+`.helpbase/skills/` otherwise. No skills found → empty list, not an error.
 
 ## Why ship as source instead of an npm dep?
 

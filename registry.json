@@ -330,6 +330,21 @@
           "target": "mcp/tools/list-docs.ts"
         },
         {
+          "path": "registry/helpbase-mcp/content/skills.ts",
+          "type": "registry:file",
+          "target": "mcp/content/skills.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/list-skills.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/list-skills.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/get-skill.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/get-skill.ts"
+        },
+        {
           "path": "registry/helpbase-mcp/README.md",
           "type": "registry:file",
           "target": "mcp/README.md"

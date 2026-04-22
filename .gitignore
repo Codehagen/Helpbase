@@ -46,7 +46,15 @@ public/_helpbase-assets/
 apps/web/public/llms.txt
 apps/web/public/llms-full.txt
 apps/web/public/_helpbase-assets/
-.helpbase
+# CLI local state under .helpbase/ — user-specific (slug, session token,
+# reservation cache, synthesis artifacts) and must NEVER be committed.
+# Skills (.helpbase/skills/*.md) are source-of-truth for the docs team
+# and DO get committed — so we ignore the known artifact filenames rather
+# than blanket-ignoring the whole directory (gitignore won't re-include
+# files from a fully-excluded parent). The ** prefix matches .helpbase/
+# at any nesting depth — CLI creates it relative to cwd, so monorepo
+# subdirs (apps/web/.helpbase/, etc.) need the same rules.
+**/.helpbase/*.json
 
 # Eval harness output — per-run artifact, not committed
 packages/cli/eval/eval-report.json

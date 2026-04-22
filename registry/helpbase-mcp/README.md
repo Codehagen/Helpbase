@@ -44,8 +44,14 @@ HELPBASE_CONTENT_DIR=./apps/web/content npx tsx mcp/index.ts
 ## Content discovery
 
 If `HELPBASE_CONTENT_DIR` is not set, the server walks up from its cwd looking
-for `apps/web/content/` (monorepo) or `./content/` (flat). If neither exists,
-it fails on startup with a clear error — no silent empty index.
+for (in order):
+
+- `apps/web/content/` — monorepo shape
+- `content/docs/` — MDX-in-subfolder shape (docs alongside blog, changelog, etc.)
+- `content/` — flat shape
+
+The first match wins. If none exists, the server fails on startup with a clear
+error — no silent empty index.
 
 ## Why ship as source instead of an npm dep?
 

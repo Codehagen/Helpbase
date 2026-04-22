@@ -17,8 +17,13 @@ export interface CategoryMeta {
   order: number
 }
 
+// More-specific candidates come first so `content/docs/` wins over a
+// sibling `content/` that might hold non-doc assets (blog posts, changelog
+// entries, marketing copy). `content/docs/` is a common MDX-in-subfolder
+// convention for docs-only content.
 const CONTENT_DIR_CANDIDATES = [
   "apps/web/content",
+  "content/docs",
   "content",
 ]
 
@@ -27,8 +32,10 @@ const CONTENT_DIR_CANDIDATES = [
  *
  * Resolution order:
  *   1. HELPBASE_CONTENT_DIR env var (absolute or relative to cwd)
- *   2. Walk up from cwd looking for `apps/web/content/` (monorepo shape)
- *   3. Walk up from cwd looking for `content/` (flat shape)
+ *   2. Walk up from cwd trying each candidate in order:
+ *      - `apps/web/content/` (monorepo shape)
+ *      - `content/docs/`     (MDX-in-subfolder shape)
+ *      - `content/`          (flat shape)
  *
  * Returns an absolute path. Throws if nothing is found — callers should let this
  * bubble up with a clear message rather than silently serving an empty index.

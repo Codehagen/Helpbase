@@ -31,6 +31,20 @@ describe("findContentDir", () => {
     // /tmp has no apps/web/content or content folder.
     expect(() => findContentDir("/tmp")).toThrow(/Could not find/)
   })
+
+  it("finds content/docs for MDX-in-subfolder layouts", () => {
+    delete process.env.HELPBASE_CONTENT_DIR
+    const repoRoot = path.join(__dirname, "fixtures", "repo-docs-subfolder")
+    expect(findContentDir(repoRoot)).toBe(path.join(repoRoot, "content/docs"))
+  })
+
+  it("prefers content/docs over bare content when both exist", () => {
+    delete process.env.HELPBASE_CONTENT_DIR
+    const repoRoot = path.join(__dirname, "fixtures", "repo-both-layouts")
+    // More-specific wins: content/ likely holds non-doc assets in a repo
+    // that also has content/docs/.
+    expect(findContentDir(repoRoot)).toBe(path.join(repoRoot, "content/docs"))
+  })
 })
 
 describe("loadDocs", () => {

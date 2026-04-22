@@ -112,7 +112,7 @@ export function buildServer(options: BuildServerOptions = {}): {
     name: options.name ?? "helpbase-mcp",
     // Kept in sync with package.json by a test in test/package-bin.test.ts.
     // Update both together on every release.
-    version: options.version ?? "0.1.1",
+    version: options.version ?? "0.1.2",
   })
 
   server.registerTool(

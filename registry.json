@@ -173,6 +173,11 @@
           "target": "lib/types.ts"
         },
         {
+          "path": "registry/helpbase/lib/tagline.ts",
+          "type": "registry:lib",
+          "target": "lib/tagline.ts"
+        },
+        {
           "path": "registry/helpbase/content/getting-started/_category.json",
           "type": "registry:file",
           "target": "content/getting-started/_category.json"

@@ -8,11 +8,15 @@
 # failed on the second publish) does the right thing.
 #
 # Usage:
-#   pnpm release                    # publish both (if bumped)
+#   pnpm release                    # publish helpbase + create-helpbase (if bumped)
 #   pnpm release helpbase           # publish only the CLI
 #   pnpm release create-helpbase    # publish only the scaffolder
+#   pnpm release mcp                # publish only @helpbase/mcp
 #   pnpm release --dry-run          # show what would publish, don't call npm
 #   pnpm release --skip-build       # trust existing dist/ (faster reruns)
+#
+# `mcp` is opt-in: it is NOT part of the default set because its release
+# cadence is independent from helpbase + create-helpbase.
 #
 # Auth: run `npm login` once first. Each publish prompts for 2FA in
 # your browser if you have it enabled.
@@ -44,9 +48,9 @@ for arg in "$@"; do
       sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
-    helpbase|create-helpbase) PACKAGES+=("$arg") ;;
+    helpbase|create-helpbase|mcp) PACKAGES+=("$arg") ;;
     -*) echo "Unknown flag: $arg" >&2; exit 2 ;;
-    *) echo "Unknown package: $arg (expected helpbase or create-helpbase)" >&2; exit 2 ;;
+    *) echo "Unknown package: $arg (expected helpbase, create-helpbase, or mcp)" >&2; exit 2 ;;
   esac
 done
 
@@ -72,6 +76,15 @@ pkg_dir_for() {
   case "$1" in
     helpbase) echo "packages/cli" ;;
     create-helpbase) echo "packages/create-helpbase" ;;
+    mcp) echo "packages/mcp" ;;
+  esac
+}
+
+# Map our CLI alias to the npm registry name (for `npm view`).
+npm_name_for() {
+  case "$1" in
+    mcp) echo "@helpbase/mcp" ;;
+    *) echo "$1" ;;
   esac
 }
 
@@ -111,7 +124,16 @@ version_is_newer() {
 
 if [ "$SKIP_BUILD" = "false" ]; then
   echo "→ Building..."
-  pnpm -w -r --filter "@workspace/shared" --filter helpbase --filter create-helpbase build >/tmp/helpbase-release-build.log 2>&1 || {
+  # Build every selected package plus its workspace deps. Shared is always
+  # built because helpbase + create-helpbase consume it; mcp is standalone.
+  BUILD_FILTERS=(--filter "@workspace/shared")
+  for pkg in "${PACKAGES[@]}"; do
+    case "$pkg" in
+      mcp) BUILD_FILTERS+=(--filter "@helpbase/mcp") ;;
+      *)   BUILD_FILTERS+=(--filter "$pkg") ;;
+    esac
+  done
+  pnpm -w -r "${BUILD_FILTERS[@]}" build >/tmp/helpbase-release-build.log 2>&1 || {
     echo "✖ Build failed — see /tmp/helpbase-release-build.log" >&2
     tail -20 /tmp/helpbase-release-build.log >&2
     exit 1
@@ -126,23 +148,24 @@ SKIPPED=()
 
 for pkg in "${PACKAGES[@]}"; do
   dir=$(pkg_dir_for "$pkg")
+  npm_name=$(npm_name_for "$pkg")
   local_v=$(read_local_version "$dir")
-  pub_v=$(read_published_version "$pkg")
+  pub_v=$(read_published_version "$npm_name")
 
   if version_is_newer "$local_v" "$pub_v"; then
     echo ""
-    echo "→ $pkg: local $local_v > npm $pub_v — publishing..."
+    echo "→ $npm_name: local $local_v > npm $pub_v — publishing..."
     if [ "$DRY_RUN" = "true" ]; then
       ( cd "$dir" && pnpm publish --dry-run --no-git-checks 2>&1 | tail -5 )
-      PUBLISHED+=("$pkg@$local_v (dry-run)")
+      PUBLISHED+=("$npm_name@$local_v (dry-run)")
     else
       ( cd "$dir" && pnpm publish --no-git-checks )
-      PUBLISHED+=("$pkg@$local_v")
+      PUBLISHED+=("$npm_name@$local_v")
     fi
   else
     echo ""
-    echo "→ $pkg: local $local_v == npm $pub_v (or older) — skipping."
-    SKIPPED+=("$pkg@$local_v")
+    echo "→ $npm_name: local $local_v == npm $pub_v (or older) — skipping."
+    SKIPPED+=("$npm_name@$local_v")
   fi
 done
 

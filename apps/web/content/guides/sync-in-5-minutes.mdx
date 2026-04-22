@@ -37,20 +37,12 @@ The demo uses a fixture bundled with the CLI. It's the fastest way to check
 that `sync` is wired up correctly on your machine.
 </Callout>
 
-## Step 2 — Sign in
+## Step 2 — Auth
 
-```bash
-helpbase login
-```
-
-Magic-link flow. Free tier is 500,000 tokens per day — enough for roughly 10
-full generates or 250 `context --ask` calls.
+No sign-in is required. The `helpbase-workflow` uses GitHub Actions OIDC to authenticate automatically. No secrets to set and no tokens to manage.
 
 <Callout type="note">
-Prefer your own key? Set `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or
-`AI_GATEWAY_API_KEY` — helpbase routes direct to whichever provider you set
-(first found wins). See
-[helpbase.dev/guides/byok](https://helpbase.dev/guides/byok).
+Prefer your own key for generation? Set `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY` as a repo secret. See [helpbase.dev/guides/byok](https://helpbase.dev/guides/byok).
 </Callout>
 
 ## Step 3 — Make a code change worth documenting

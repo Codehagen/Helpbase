@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [helpbase 0.8.1] — 2026-04-22
+
+Hotfix for two bugs caught by cold end-to-end verify against a fresh
+GitHub repo using v0.8.0's OIDC lane. Both would have broken the first
+install every user does from the Shadcn reply.
+
+### Fixed — helpbase-workflow first-run reliability
+
+- **`--since origin/main` on push-to-main was always empty.** The shipped
+  v0.8.0 YAML hardcoded `--since origin/main`, but `actions/checkout@v4`
+  makes `origin/main === HEAD` on push events, so the diff was empty
+  every time. Swapped to `${{ github.event.before || 'HEAD~1' }}` — uses
+  the prior commit SHA from the push payload, falls back to `HEAD~1` for
+  schedule / workflow_dispatch.
+- **`helpbase sync` exited 1 on empty diff even under `--yes`.** A
+  scheduled cron run with no recent commits would fail the GitHub
+  Action red. Now exits 0 with a one-line "nothing to sync" message
+  (via `emit()` so CI logs see it, not gated by `canDecorate()`).
+  Interactive users still see the full `E_NO_HISTORY` error with fix
+  hints — they probably typo'd their `--since` arg.
+- **Registry README Customize section rewritten** to reflect that
+  base-branch customization no longer requires touching the `--since`
+  line.
+
+### Added — regression tests
+
+- `cli.integration.test.ts` grew two cases covering the `--yes` → exit
+  0 path and the interactive `--since HEAD` on an empty-diff repo →
+  exit 1 + E_NO_HISTORY path.
+
+### Known edge case (v0.8.2 target)
+
+- First-ever push to a brand-new repo: `github.event.before` is 40
+  zeros, which fails to resolve in git. Workflow exits 1 via
+  E_INVALID_REV. Rare in practice (users installing helpbase-workflow
+  typically have existing repos), but worth catching under `--yes` in
+  the next patch.
+
 ## [helpbase 0.8.0] — 2026-04-22
 
 Three things Shadcn asked for, all shipped in one release.

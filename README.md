@@ -2,7 +2,8 @@
 
 # helpbase
 
-**The AI-native knowledge layer, as code you own.**
+**Code in your repo, generated but editable.**
+The AI-native knowledge layer, as code you own.
 
 Helpbase ships MCP, `llms.txt`, and (soon) codebase-grounded doc sync as
 primitives that run in your repo, not services in someone else's cloud.

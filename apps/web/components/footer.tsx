@@ -1,6 +1,12 @@
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
+import {
+    MADE_WITH_SHADCN_LABEL,
+    MADE_WITH_SHADCN_URL,
+    SHADCN_TAGLINE,
+} from '@/lib/tagline'
+
 const links = [
     {
         group: 'Product',
@@ -44,11 +50,20 @@ export default function FooterSection() {
                         </Link>
 
                         <p className="text-muted-foreground text-balance text-sm">
-                            Open-source help centers with an MCP server and llms.txt built in. Self-host free, or host it with us.
+                            {SHADCN_TAGLINE} Open-source help centers with MCP + llms.txt built in. Self-host, or deploy with us.
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 text-sm">
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <Link
+                            href={MADE_WITH_SHADCN_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={MADE_WITH_SHADCN_LABEL}
+                            className="ring-foreground/10 bg-card text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 rounded-full border border-transparent px-3 py-1 text-xs shadow-sm ring-1 transition-colors">
+                            <span aria-hidden className="size-1.5 rounded-full bg-foreground" />
+                            {MADE_WITH_SHADCN_LABEL}
+                        </Link>
                         <Link
                             href="https://github.com/Codehagen/helpbase"
                             target="_blank"

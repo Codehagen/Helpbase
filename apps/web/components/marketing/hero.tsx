@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/terminal"
 import { CopyButton } from "@workspace/ui/components/copy-button"
 import { track } from "@/lib/analytics"
+import { SHADCN_TAGLINE } from "@/lib/tagline"
 
 const INSTALL_COMMAND = "pnpm dlx create-helpbase"
 
@@ -46,9 +47,9 @@ export function Hero() {
             <h1
               id="hero-heading"
               className="text-foreground text-balance text-4xl font-medium leading-[1.1] tracking-[-0.02em] md:text-6xl md:leading-[1.05]">
-              Half your docs readers are AI agents now.
+              {SHADCN_TAGLINE}
               <br className="hidden md:block" />{" "}
-              <span className="text-muted-foreground">Helpbase is the help center built for them.</span>
+              <span className="text-muted-foreground">The shadcn-native help center.</span>
             </h1>
 
             <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-2xl text-balance text-lg">

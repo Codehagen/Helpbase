@@ -5,8 +5,17 @@ name: helpbase sync
 # `helpbase sync` proposes citation-grounded edits and this workflow opens
 # a PR you can review.
 #
-# Everything runs in *your* Actions minutes with *your* secrets. No SaaS
-# in the path. Swap the schedule or triggers to taste.
+# Zero config. Auth happens via GitHub Actions OIDC — the workflow
+# requests a short-lived JWT scoped to helpbase.dev, and the helpbase
+# backend verifies it against GitHub's JWKS. No secrets to paste, no
+# `helpbase login` step, no tokens to rotate. Per-repo quota (500k
+# tokens/day free tier) is tracked by GitHub repository_id so quota
+# follows the repo across renames + org transfers.
+#
+# BYOK override: if you'd rather run on your own provider key (e.g.
+# Anthropic / OpenAI / Vercel AI Gateway), set the corresponding secret
+# under `env:` below — it short-circuits OIDC and calls your provider
+# directly. Everything still runs in *your* Actions minutes.
 
 on:
   schedule:
@@ -23,6 +32,10 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # Required to mint the GitHub OIDC token. Tokens are minted per-job
+      # and scoped to the audience below — `https://helpbase.dev` is a
+      # stable identifier hardcoded in the helpbase backend verifier.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,14 +46,28 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Request GitHub OIDC token
+        id: oidc
+        uses: actions/github-script@v7
+        with:
+          # Matches HELPBASE_OIDC_AUDIENCE in apps/web/lib/oidc-verify.ts.
+          # Do NOT change unless you're also updating the helpbase backend.
+          script: |
+            const token = await core.getIDToken("https://helpbase.dev")
+            core.setSecret(token)
+            core.setOutput("token", token)
+
       - name: Run helpbase sync
         env:
-          # Set one of these as a repo secret (see README):
-          #   AI_GATEWAY_API_KEY — BYOK, your Vercel AI Gateway account, unlimited.
-          #   HELPBASE_TOKEN     — hosted proxy, helpbase free-tier quota (500k tokens/day).
-          # If both are set, AI_GATEWAY_API_KEY wins (CLI checks env var first).
+          # GitHub OIDC JWT, zero-config path. The helpbase backend verifies
+          # it against GitHub's JWKS and allocates quota per-repo.
+          HELPBASE_CI_TOKEN: ${{ steps.oidc.outputs.token }}
+          # Optional BYOK overrides. If any of these are set, the CLI
+          # bypasses the helpbase proxy and calls the provider directly.
+          # Leave unset for the zero-config OIDC path.
           AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
-          HELPBASE_TOKEN: ${{ secrets.HELPBASE_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           npx -y helpbase sync \
             --since origin/main \

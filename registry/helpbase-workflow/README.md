@@ -5,8 +5,7 @@ on every push to your main branch. When a code change would make an MDX
 doc wrong, the workflow opens a PR with the proposed update, grounded in
 citations into your source.
 
-No SaaS in the path. Runs in your Actions minutes, reads your secrets,
-writes to your repo.
+Zero config. No secrets to set. Auth happens via GitHub Actions OIDC.
 
 ## Install
 
@@ -20,26 +19,32 @@ That drops a single file into your repo:
 .github/workflows/helpbase-sync.yml
 ```
 
-## Configure
+Push the workflow. First scheduled run (or push to `main`) triggers it.
+That's it.
 
-Add one secret to your GitHub repo (**Settings → Secrets and variables →
-Actions → New repository secret**). You have two options:
+## How the auth works
 
-- **Any BYOK key** (recommended for CI) — `ANTHROPIC_API_KEY`,
-  `OPENAI_API_KEY`, or `AI_GATEWAY_API_KEY`. Bypasses helpbase's hosted
-  proxy entirely. Your provider account, your bill, no daily quota
-  limit. First key found wins. See
-  [helpbase.dev/guides/byok](https://helpbase.dev/guides/byok).
-- **`HELPBASE_TOKEN`** — a helpbase session access token. After running
-  `helpbase login` locally, pull the value from `~/.helpbase/auth.json`:
-  `jq -r .access_token ~/.helpbase/auth.json`. Uses helpbase's hosted proxy
-  and the free-tier 500k tokens/day cap. Note: session tokens are relatively
-  short-lived — rotate the secret when it expires.
+When the action runs, GitHub mints a short-lived JSON Web Token that
+identifies which repository is calling. The workflow passes that token
+to the helpbase backend, which verifies it against GitHub's public keys
+and allocates quota to your repository. Per-repo free tier is 500,000
+tokens/day, reset at UTC midnight. Quota is keyed on the GitHub numeric
+`repository_id`, so it follows the repo across renames and org transfers.
 
-If both are set, `AI_GATEWAY_API_KEY` wins (BYOK mode).
+No token is stored on your side. Each CI run mints a fresh one scoped to
+this workflow, valid for ~6 minutes, bound to this specific repo.
 
-`GH_TOKEN` is read from `github.token` automatically, so you don't need
-to provision it manually.
+## BYOK override
+
+If you'd rather use your own LLM provider account (unlimited, your bill,
+your choice of model routing), set any of these as a repo secret:
+
+- `AI_GATEWAY_API_KEY` — Vercel AI Gateway
+- `ANTHROPIC_API_KEY`
+- `OPENAI_API_KEY`
+
+When any of these is set, the CLI skips the helpbase proxy entirely and
+calls your provider directly. First env var wins.
 
 ## Customize
 
@@ -50,8 +55,9 @@ The workflow ships with sensible defaults you'll likely want to tweak:
 - **Base branch** — default assumes `main`. Change both `branches: [main]`
   under `push:` and `--since origin/main` in the run step if you use
   `master`, `trunk`, or something else.
-- **Content directory** — default assumes `content/`. If your docs live
-  elsewhere, append `--content docs/` to the `helpbase sync` command.
+- **Content directory** — default assumes a standard MDX layout
+  (`content/docs/`, `content/`, or `apps/web/content/`). If your docs
+  live elsewhere, append `--content <path>` to the `helpbase sync` command.
 
 ## What the PR looks like
 
@@ -66,8 +72,24 @@ To preview what the workflow would propose, run the same command on your
 machine:
 
 ```bash
+# With your own key:
 AI_GATEWAY_API_KEY=your_key_here \
   npx helpbase sync --since origin/main --dry-run
+
+# Or with your logged-in session:
+helpbase login
+npx helpbase sync --since origin/main --dry-run
 ```
 
 Drop `--dry-run` when you're ready to see the real proposals.
+
+## Upgrading from v0.7 or earlier
+
+Earlier versions of this workflow required you to set `HELPBASE_TOKEN` or
+`AI_GATEWAY_API_KEY` as a repo secret. v0.8+ uses GitHub OIDC by default
+and no secret is needed.
+
+To upgrade: re-run `npx shadcn@latest add https://helpbase.dev/r/helpbase-workflow.json`.
+It overwrites the YAML. Then go to `Settings → Secrets and variables →
+Actions` and delete `HELPBASE_TOKEN` if you set it before — it's no
+longer read by the workflow.

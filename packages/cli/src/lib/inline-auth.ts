@@ -17,14 +17,18 @@ import { isByokMode } from "@workspace/shared/llm"
  * Flow:
  *   1. If any BYOK key is set (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`,
  *      `OPENAI_API_KEY`) → BYOK mode; return null (caller skips auth).
- *   2. If a session already exists → return it.
- *   3. If `HELPBASE_TOKEN` is set but did not resolve to a session (invalid /
+ *   2. If `HELPBASE_CI_TOKEN` is set → GitHub Actions OIDC path. Pass
+ *      the raw JWT as the Bearer. The helpbase backend verifies it
+ *      directly against GitHub's JWKS (not via Better Auth), so we do
+ *      NOT round-trip it through getSessionWithBearer here.
+ *   3. If a session already exists → return it.
+ *   4. If `HELPBASE_TOKEN` is set but did not resolve to a session (invalid /
  *      expired) → throw E_AUTH_REQUIRED. We do NOT fall into an interactive
  *      prompt here: the env var signals explicit CI intent, and silently
  *      replacing it with an interactive login would mask a broken CI token.
- *   4. Else if TTY: prompt to run the browser device-flow inline so the
+ *   5. Else if TTY: prompt to run the browser device-flow inline so the
  *      user stays in the current command instead of bouncing to `login`.
- *   5. Else (non-TTY or declined): throw E_AUTH_REQUIRED with the exact re-run command.
+ *   6. Else (non-TTY or declined): throw E_AUTH_REQUIRED with the exact re-run command.
  */
 export interface ResolveAuthOptions {
   /** Verb shown in the prompt, e.g. "generate", "sync", "ask". */
@@ -51,6 +55,16 @@ export async function resolveAuthOrPromptLogin(
   // actual LLM-call routing.
   if (isByokMode()) {
     return { byok: true }
+  }
+
+  // GitHub Actions OIDC path. The helpbase-workflow registry action sets
+  // HELPBASE_CI_TOKEN from actions/get-id-token with audience
+  // `https://helpbase.dev`. The server distinguishes this from Better
+  // Auth session tokens by peeking at the JWT's `iss` claim — we don't
+  // need to validate anything client-side. Zero round-trip.
+  const ciToken = process.env.HELPBASE_CI_TOKEN
+  if (ciToken && ciToken.length > 0) {
+    return { byok: false, authToken: ciToken }
   }
 
   const existing = await getCurrentSession()

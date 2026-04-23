@@ -72,13 +72,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # This repo keeps docs under apps/web/content (monorepo layout),
-          # so we override the default --content path. Everything else is
-          # the shipped v0.8.2 YAML verbatim — this is what every user
-          # installing helpbase-workflow gets.
+          # Zero-config: helpbase@0.8.3+ auto-discovers apps/web/content/
+          # (monorepo), content/docs/ (MDX-in-subfolder), and content/
+          # (flat) — no --content override needed. This file is the shipped
+          # YAML verbatim, the same one every user installing
+          # helpbase-workflow gets.
           npx -y helpbase sync \
             --since ${{ github.event.before || 'HEAD~1' }} \
-            --content apps/web/content \
             --apply \
             --yes
 

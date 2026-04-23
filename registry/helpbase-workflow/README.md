@@ -82,9 +82,12 @@ The workflow ships with sensible defaults you'll likely want to tweak:
   or something else, update `branches: [main]` under `push:`. The diff
   baseline (`--since`) uses `github.event.before` on push events, so no
   other branch-name reference needs to change.
-- **Content directory** — default assumes a standard MDX layout
-  (`content/docs/`, `content/`, or `apps/web/content/`). If your docs
-  live elsewhere, append `--content <path>` to the `helpbase sync` command.
+- **Content directory** — zero-config for the three common MDX layouts:
+  `content/` (flat), `content/docs/` (MDX-in-subfolder), and
+  `apps/web/content/` (monorepo). `helpbase sync` walks up from the
+  repo root and picks the first match. If your docs live elsewhere,
+  append `--content <path>` to the `helpbase sync` command, or set
+  `HELPBASE_CONTENT_DIR` in the job's env.
 
 ## What the PR looks like
 

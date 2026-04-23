@@ -15,6 +15,7 @@ import { HelpbaseError, formatError } from "../lib/errors.js"
 import { spinner, ok, info, note, emit } from "../lib/ui.js"
 import { resolveAuthOrPromptLogin } from "../lib/inline-auth.js"
 import { toCliLlmError } from "../lib/llm-errors-cli.js"
+import { findContentDir } from "../lib/content-dir.js"
 
 /**
  * `helpbase sync` — codebase-grounded documentation updates.
@@ -46,7 +47,10 @@ interface SyncOptions {
 export const syncCommand = new Command("sync")
   .description("Propose MDX edits grounded in a code diff (no writes by default)")
   .option("--since <rev>", "Git rev to diff against (default: origin/main or HEAD~10)")
-  .option("--content <dir>", "MDX content directory", "content")
+  .option(
+    "--content <dir>",
+    "MDX content directory (auto-discovers apps/web/content/, content/docs/, content/ if unset)",
+  )
   .option("-o, --output <file>", "Write the unified diff to this file instead of stdout")
   .option("--model <id>", "Override the model ID (e.g. anthropic/claude-sonnet-4.6)")
   .option("--test", `Use the cheap test model (${TEST_MODEL})`)
@@ -144,15 +148,36 @@ Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
     info(`Diffing against ${pc.cyan(since)} (${codeDiff.length.toLocaleString()} bytes)`)
 
     // ── Read MDX content ────────────────────────────────────────────
-    const contentDir = path.resolve(process.cwd(), opts.content ?? "content")
+    // --content wins if passed. Otherwise auto-discover by walking up
+    // from cwd trying apps/web/content/, content/docs/, content/ — keeps
+    // the shipped workflow zero-config across the three common MDX
+    // layouts (monorepo, MDX-in-subfolder, flat).
+    let contentDir: string
+    if (opts.content) {
+      contentDir = path.resolve(process.cwd(), opts.content)
+    } else {
+      const discovered = findContentDir(process.cwd())
+      if (!discovered) {
+        throw new HelpbaseError({
+          code: "E_NO_CONTENT",
+          problem: "Could not find a docs directory",
+          cause: `Looked for ${pc.cyan("apps/web/content/")}, ${pc.cyan("content/docs/")}, or ${pc.cyan("content/")} walking up from ${pc.cyan(process.cwd())}.`,
+          fix: [
+            `Point at your docs with ${pc.cyan("--content <path>")} (e.g. ${pc.cyan("--content docs/")}).`,
+            `Or set ${pc.cyan("HELPBASE_CONTENT_DIR")} if your layout is uncommon.`,
+          ],
+        })
+      }
+      contentDir = discovered
+    }
     const mdxFiles = readMdxFiles(contentDir)
     if (mdxFiles.length === 0) {
       throw new HelpbaseError({
         code: "E_NO_CONTENT",
         problem: `No MDX files found under ${pc.cyan(contentDir)}`,
         fix: [
-          `Run this from a project with docs under ${pc.cyan("content/")}.`,
-          `Or pass a different path: ${pc.cyan("--content docs/")}`,
+          `Add at least one ${pc.cyan(".mdx")} or ${pc.cyan(".md")} file under that directory.`,
+          `Or pass a different path: ${pc.cyan("--content <path>")}.`,
         ],
       })
     }

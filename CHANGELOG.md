@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [helpbase 0.8.3] — 2026-04-23
+
+Zero-config content-dir auto-discovery. Closes the "drop-in / works
+with fumadocs" gap surfaced by a CEO-review of the v0.8.2 claims:
+the MCP server already auto-walked three common layouts, but the sync
+CLI defaulted to a single `"content"` path and errored on anything
+else — so a fumadocs user who installed the workflow hit
+`No MDX files found under content/` on first run.
+
+### Fixed — `helpbase sync` works zero-config on fumadocs layouts
+
+- **`--content` is no longer required.** When unset, sync walks up
+  from the current working directory and picks the first match of:
+  `apps/web/content/` (monorepo), `content/docs/` (MDX-in-subfolder,
+  including fumadocs defaults), `content/` (flat). Mirrors the
+  candidate order the MCP loader already uses
+  (`packages/mcp/src/content/loader.ts`), so the MCP server and the
+  sync CLI always pick the same directory.
+- **Custom layouts still work the same way.** Pass `--content <path>`
+  to override auto-discovery, or set `HELPBASE_CONTENT_DIR` in CI
+  env. Both short-circuit the walk.
+
+### Changed — shipped workflow YAML is now truly zero-config
+
+- `registry/helpbase-workflow/helpbase-sync.yml` has not changed —
+  it already omitted `--content`. What changed is that omitting it no
+  longer errors on fumadocs/monorepo projects.
+- Dogfood `.github/workflows/helpbase-sync.yml` dropped its
+  `--content apps/web/content` override — the monorepo layout is
+  auto-discovered.
+- `registry/helpbase-workflow/README.md` Customize section rewritten
+  to describe the three auto-discovered layouts.
+
+### Added — unit test lockstep guard
+
+- `packages/cli/test/content-dir.unit.test.ts`: 11 cases covering
+  fallback order, preference (content/docs wins over content),
+  cwd-walk-up, `HELPBASE_CONTENT_DIR` override (absolute + relative),
+  and miss behavior. First assertion pins the candidate list so any
+  future drift between CLI and MCP shows up as a failing test.
+
 ## [helpbase 0.8.2] — 2026-04-22
 
 Second hotfix after a real-user end-to-end test on a fresh scratch

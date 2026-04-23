@@ -26,8 +26,12 @@ Most help center tools are either closed-source hosted SaaS or generic wikis tha
 ## Quick start
 
 <Steps>
-  <Step title="Scaffold a new project">
-    Run the scaffolder to create a new help center project with sample content:
+  <Step title="Install helpbase">
+    For existing Next.js apps, drop the full helpbase primitive in one command:
+    ```bash
+    pnpm dlx helpbase init
+    ```
+    Or scaffold a fresh project from scratch:
     ```bash
     npx create-helpbase my-docs
     cd my-docs

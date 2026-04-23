@@ -13,7 +13,7 @@ import { CopyButton } from "@workspace/ui/components/copy-button"
 import { track } from "@/lib/analytics"
 import { SHADCN_TAGLINE } from "@/lib/tagline"
 
-const INSTALL_COMMAND = "pnpm dlx create-helpbase"
+const INSTALL_COMMAND = "pnpm dlx helpbase init"
 
 export function Hero() {
   return (
@@ -54,7 +54,7 @@ export function Hero() {
 
             <p className="text-muted-foreground mx-auto mb-8 mt-4 max-w-2xl text-balance text-lg">
               Every helpbase site includes an MCP server and an{" "}
-              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>, so Claude and Cursor answer from your real docs. One command drops a full Next.js site into your git history. Host it yourself, or deploy with us.
+              <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-base">llms.txt</code>, so Claude and Cursor answer from your real docs. One command drops docs routes, MDX pipeline, MCP server, and the sync workflow into your existing repo. Host it yourself, or deploy with us.
             </p>
 
             {/* Dual CTA: install command + demo */}
@@ -105,6 +105,16 @@ export function Hero() {
                 </Link>
               </Button>
             </div>
+
+            <p className="text-muted-foreground mt-4 text-sm">
+              Want the pieces?{" "}
+              <Link
+                href="/install"
+                className="text-foreground underline-offset-4 hover:underline"
+                onClick={() => track("hero_install_options_clicked")}>
+                Browse install options →
+              </Link>
+            </p>
           </div>
 
           {/* Terminal canvas */}

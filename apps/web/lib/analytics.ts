@@ -12,10 +12,12 @@
 export type MarketingEvent =
   | "page_view"
   | "hero_install_copied"
+  | "hero_install_options_clicked"
   | "hero_demo_clicked"
   | "pricing_tier_clicked"
   | "demo_opened"
   | "faq_expanded"
+  | "install_catalog_copied"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY

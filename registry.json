@@ -20,7 +20,12 @@
         "lucide-react",
         "@radix-ui/react-slot"
       ],
-      "registryDependencies": ["badge", "accordion", "button", "tabs"],
+      "registryDependencies": [
+        "badge",
+        "accordion",
+        "button",
+        "tabs"
+      ],
       "files": [
         {
           "path": "registry/helpbase/app/(docs)/layout.tsx",
@@ -265,7 +270,9 @@
       "type": "registry:component",
       "title": "Help Center Sidebar",
       "description": "Collapsible docs sidebar with category icons, active indicators, and mobile drawer.",
-      "dependencies": ["next-themes"],
+      "dependencies": [
+        "next-themes"
+      ],
       "files": [
         {
           "path": "registry/helpbase/components/docs-sidebar.tsx",
@@ -289,7 +296,9 @@
         "gray-matter",
         "zod"
       ],
-      "devDependencies": ["tsx"],
+      "devDependencies": [
+        "tsx"
+      ],
       "envVars": {
         "HELPBASE_CONTENT_DIR": ""
       },
@@ -357,6 +366,280 @@
       "title": "Helpbase Sync Workflow",
       "description": "Drop-in GitHub Actions workflow that runs `helpbase sync` on a schedule and on every push to main. Opens a PR with citation-grounded doc updates whenever a code change would make an MDX doc wrong. Runs in your Actions minutes with your secrets — no SaaS in the path. Requires AI_GATEWAY_API_KEY as a repo secret.",
       "files": [
+        {
+          "path": "registry/helpbase-workflow/helpbase-sync.yml",
+          "type": "registry:file",
+          "target": ".github/workflows/helpbase-sync.yml"
+        },
+        {
+          "path": "registry/helpbase-workflow/README.md",
+          "type": "registry:file",
+          "target": ".github/workflows/helpbase-sync.README.md"
+        }
+      ]
+    },
+    {
+      "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+      "name": "helpbase",
+      "type": "registry:block",
+      "title": "Helpbase",
+      "description": "The full helpbase install in one command. Drops the help-center routes + starter MDX content, the self-hosted MCP server that exposes your docs to AI agents, and the GitHub Actions workflow that opens citation-grounded PRs whenever code and docs drift. Zero-config auth via GitHub OIDC. All code, all yours, running in your Actions minutes. Customize from there.",
+      "dependencies": [
+        "@modelcontextprotocol/sdk",
+        "@radix-ui/react-slot",
+        "gray-matter",
+        "lucide-react",
+        "next-mdx-remote",
+        "next-themes",
+        "rehype-pretty-code",
+        "rehype-slug",
+        "remark-gfm",
+        "shiki",
+        "zod"
+      ],
+      "devDependencies": [
+        "tsx"
+      ],
+      "registryDependencies": [
+        "badge",
+        "accordion",
+        "button",
+        "tabs"
+      ],
+      "envVars": {
+        "HELPBASE_CONTENT_DIR": ""
+      },
+      "files": [
+        {
+          "path": "registry/helpbase/app/(docs)/layout.tsx",
+          "type": "registry:page",
+          "target": "app/(docs)/layout.tsx"
+        },
+        {
+          "path": "registry/helpbase/app/(docs)/[category]/page.tsx",
+          "type": "registry:page",
+          "target": "app/(docs)/[category]/page.tsx"
+        },
+        {
+          "path": "registry/helpbase/app/(docs)/[category]/[slug]/page.tsx",
+          "type": "registry:page",
+          "target": "app/(docs)/[category]/[slug]/page.tsx"
+        },
+        {
+          "path": "registry/helpbase/app/(docs)/helpbase-styles.css",
+          "type": "registry:file",
+          "target": "app/(docs)/helpbase-styles.css"
+        },
+        {
+          "path": "registry/helpbase/components/header.tsx",
+          "type": "registry:component",
+          "target": "components/header.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/footer.tsx",
+          "type": "registry:component",
+          "target": "components/footer.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/docs-sidebar.tsx",
+          "type": "registry:component",
+          "target": "components/docs-sidebar.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mobile-sidebar.tsx",
+          "type": "registry:component",
+          "target": "components/mobile-sidebar.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/search-dialog.tsx",
+          "type": "registry:component",
+          "target": "components/search-dialog.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/search-trigger.tsx",
+          "type": "registry:component",
+          "target": "components/search-trigger.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/theme-provider.tsx",
+          "type": "registry:component",
+          "target": "components/theme-provider.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/toc.tsx",
+          "type": "registry:component",
+          "target": "components/toc.tsx"
+        },
+        {
+          "path": "registry/helpbase/lib/mdx-components.tsx",
+          "type": "registry:lib",
+          "target": "lib/mdx-components.tsx"
+        },
+        {
+          "path": "registry/helpbase/lib/assets.ts",
+          "type": "registry:lib",
+          "target": "lib/assets.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/content.ts",
+          "type": "registry:lib",
+          "target": "lib/content.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/content-dir.ts",
+          "type": "registry:lib",
+          "target": "lib/content-dir.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/mdx-config.ts",
+          "type": "registry:lib",
+          "target": "lib/mdx-config.ts"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/callout.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/callout.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/figure.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/figure.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/video.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/video.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/steps.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/steps.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/accordion.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/accordion.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/tabs.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/tabs.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/card-group.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/card-group.tsx"
+        },
+        {
+          "path": "registry/helpbase/components/mdx/cta-card.tsx",
+          "type": "registry:component",
+          "target": "components/mdx/cta-card.tsx"
+        },
+        {
+          "path": "registry/helpbase/lib/search.ts",
+          "type": "registry:lib",
+          "target": "lib/search.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/toc.ts",
+          "type": "registry:lib",
+          "target": "lib/toc.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/schemas.ts",
+          "type": "registry:lib",
+          "target": "lib/schemas.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/slugify.ts",
+          "type": "registry:lib",
+          "target": "lib/slugify.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/types.ts",
+          "type": "registry:lib",
+          "target": "lib/types.ts"
+        },
+        {
+          "path": "registry/helpbase/lib/tagline.ts",
+          "type": "registry:lib",
+          "target": "lib/tagline.ts"
+        },
+        {
+          "path": "registry/helpbase/content/getting-started/_category.json",
+          "type": "registry:file",
+          "target": "content/getting-started/_category.json"
+        },
+        {
+          "path": "registry/helpbase/content/getting-started/introduction.mdx",
+          "type": "registry:file",
+          "target": "content/getting-started/introduction.mdx"
+        },
+        {
+          "path": "registry/helpbase/content/customization/_category.json",
+          "type": "registry:file",
+          "target": "content/customization/_category.json"
+        },
+        {
+          "path": "registry/helpbase/content/customization/theming.mdx",
+          "type": "registry:file",
+          "target": "content/customization/theming.mdx"
+        },
+        {
+          "path": "registry/helpbase-mcp/index.ts",
+          "type": "registry:file",
+          "target": "mcp/index.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/server.ts",
+          "type": "registry:file",
+          "target": "mcp/server.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/content/loader.ts",
+          "type": "registry:file",
+          "target": "mcp/content/loader.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/content/index.ts",
+          "type": "registry:file",
+          "target": "mcp/content/index.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/search-docs.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/search-docs.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/get-doc.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/get-doc.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/list-docs.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/list-docs.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/content/skills.ts",
+          "type": "registry:file",
+          "target": "mcp/content/skills.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/list-skills.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/list-skills.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/tools/get-skill.ts",
+          "type": "registry:file",
+          "target": "mcp/tools/get-skill.ts"
+        },
+        {
+          "path": "registry/helpbase-mcp/README.md",
+          "type": "registry:file",
+          "target": "mcp/README.md"
+        },
         {
           "path": "registry/helpbase-workflow/helpbase-sync.yml",
           "type": "registry:file",

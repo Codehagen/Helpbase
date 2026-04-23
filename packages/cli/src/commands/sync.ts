@@ -163,7 +163,8 @@ Set AI_GATEWAY_API_KEY first — https://vercel.com/ai-gateway
           problem: "Could not find a docs directory",
           cause: `Looked for ${pc.cyan("apps/web/content/")}, ${pc.cyan("content/docs/")}, or ${pc.cyan("content/")} walking up from ${pc.cyan(process.cwd())}.`,
           fix: [
-            `Point at your docs with ${pc.cyan("--content <path>")} (e.g. ${pc.cyan("--content docs/")}).`,
+            `First-time setup? Install the full helpbase primitive: ${pc.cyan("pnpm dlx helpbase init")} (drops docs routes, starter MDX, MCP, and this workflow).`,
+            `Already have docs? Point at them with ${pc.cyan("--content <path>")} (e.g. ${pc.cyan("--content docs/")}).`,
             `Or set ${pc.cyan("HELPBASE_CONTENT_DIR")} if your layout is uncommon.`,
           ],
         })

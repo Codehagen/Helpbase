@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [helpbase 0.8.4] — 2026-04-23
+
+One-command install for existing Next.js apps. Closes the "no MDX"
+onboarding hole surfaced by a devex-review of the cold install flow:
+a dev who saw the Shadcn reply, installed only the workflow, and had
+no docs yet hit `E_NO_CONTENT` on first run with no good next step.
+0.8.4 ships the branded install (`helpbase init`), a composed
+registry primitive that lands routes + content + MCP + workflow in
+one shadcn drop, and a friendlier error for anyone who still lands
+on `E_NO_CONTENT`.
+
+### Added — `helpbase init` (branded one-command install)
+
+- **New `init` subcommand.** `pnpm dlx helpbase init` drops the full
+  helpbase primitive into the current directory via the shadcn CLI.
+  Thin wrapper — same files as running `shadcn add`
+  `https://helpbase.dev/r/helpbase.json` directly, just with a
+  brandable name for the Loom / tweet / docs.
+- **Registry URL override via `HELPBASE_REGISTRY_URL`** or the
+  `--url` flag, for staging / local / forked registries.
+- **Package-manager aware**: picks `pnpm dlx` → `bunx` → `yarn dlx` →
+  `npx` in priority order, same detection as `helpbase add`.
+
+### Added — `helpbase` registry entry (Option B)
+
+- **New composed primitive at `https://helpbase.dev/r/helpbase.json`.**
+  Bundles the help-center block (35 files: routes, components, MDX
+  pipeline, starter content), the MCP server (11 files), and the
+  sync workflow (2 files) into a single 48-file shadcn drop. Every
+  file also remains available as a standalone primitive at the same
+  registry URLs (help-center, helpbase-mcp, helpbase-workflow) for
+  piece-by-piece installs.
+
+### Changed — E_NO_CONTENT error leads with `helpbase init`
+
+- **First fix hint now points at `helpbase init`** for greenfield
+  users. `--content <path>` and `HELPBASE_CONTENT_DIR` remain as
+  second and third hints for users who already have docs in an
+  uncommon layout. Shipped because a first-time install of just the
+  workflow on a repo without docs was a dead-end otherwise — the
+  previous hints both assumed docs exist.
+
+### Homepage + docs
+
+- **Landing-page CTA swapped to `pnpm dlx helpbase init`** (was
+  `pnpm dlx create-helpbase`). `create-helpbase` remains available
+  and is now linked from the new `/install` catalog page as the
+  greenfield option.
+- **New `/install` page** lists every primitive with install command,
+  "when to use" blurb, and a link to the raw registry JSON for audit.
+
+### Cold-verify evidence
+
+- Built `apps/web/public/r/helpbase.json` (48 unique file targets,
+  zero path collisions across the three source primitives).
+- Ran `npx shadcn@latest add http://localhost:8765/helpbase.json` on
+  a fresh Next.js 16 + turbopack + Tailwind app with
+  `shadcn@latest init` already run. All 48 files landed; shadcn
+  resolved the registry deps (button, badge, accordion, tabs) from
+  `ui.shadcn.com` automatically. One skip: `components/ui/button.tsx`
+  (identical to what `shadcn init` wrote, so `--overwrite=false`
+  correctly declined).
+
 ## [helpbase 0.8.3] — 2026-04-23
 
 Zero-config content-dir auto-discovery. Closes the "drop-in / works

@@ -32,6 +32,7 @@ describe("helpbase CLI integration", () => {
       expect(stdout).toContain("generate")
       expect(stdout).toContain("audit")
       expect(stdout).toContain("new")
+      expect(stdout).toContain("init")
       expect(stdout).toContain("deploy")
       expect(stdout).toContain("login")
       expect(stdout).toContain("logout")
@@ -49,7 +50,7 @@ describe("helpbase CLI integration", () => {
 
     it("each subcommand has help text", () => {
       for (const cmd of [
-        "dev", "generate", "context", "sync", "mcp", "audit", "new", "deploy",
+        "dev", "generate", "context", "sync", "mcp", "audit", "new", "init", "deploy",
         "login", "logout", "whoami", "link", "open", "feedback", "doctor",
       ]) {
         const { stdout } = exec(`${cmd} --help`)

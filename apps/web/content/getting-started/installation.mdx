@@ -18,10 +18,15 @@ helpbase ships as a scaffolder that creates a standalone Next.js project. No run
 
 <Steps>
   <Step title="Run the scaffolder">
+    For new docs sites:
     ```bash
     npx create-helpbase my-docs
     ```
-    This creates a new directory with a complete help center project.
+    For adding helpbase to an existing app:
+    ```bash
+    pnpm dlx helpbase init
+    ```
+    This drops the full helpbase primitive into your current directory.
   </Step>
   <Step title="Pick a content source">
     The scaffolder asks where to seed content from. Three options:
